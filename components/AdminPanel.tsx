@@ -393,7 +393,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-stone-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-stone-100 text-stone-800 flex items-center justify-center p-4">
         <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm border border-stone-200">
           <h2 className="text-2xl font-display text-italian-red mb-6 text-center">Área Administrativa</h2>
           <form onSubmit={handleLogin} className="space-y-4">
@@ -423,7 +423,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const currentPromos = menuData.find(c => c.id === 'promocoes')?.items || [];
 
   return (
-    <div className="min-h-screen bg-stone-100 pb-20">
+    <div className="min-h-screen bg-stone-100 pb-20 text-stone-800">
       <header className="bg-stone-900 text-white sticky top-0 z-30 shadow-md">
         <div className="max-w-5xl mx-auto px-4 py-4">
           <div className="flex justify-between items-center mb-4">
@@ -484,7 +484,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                    <input 
                      type="text" 
                      placeholder="Nome da categoria (ex: Vinhos)" 
-                     className="flex-1 p-2 bg-white border border-stone-300 rounded-lg text-sm"
+                     className="flex-1 p-2 bg-white border border-stone-300 rounded-lg text-sm text-stone-900"
                      value={newCategoryName}
                      onChange={(e) => setNewCategoryName(e.target.value)}
                    />
@@ -548,11 +548,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                    {/* Inputs... */}
                    <div>
                       <label className="block text-sm font-bold text-stone-700 mb-1">Nome</label>
-                      <input type="text" value={settingsForm.name} onChange={(e) => setSettingsForm({...settingsForm, name: e.target.value})} className="w-full p-2.5 bg-white border border-stone-300 rounded-md"/>
+                      <input type="text" value={settingsForm.name} onChange={(e) => setSettingsForm({...settingsForm, name: e.target.value})} className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900"/>
                    </div>
                    <div>
                       <label className="block text-sm font-bold text-stone-700 mb-1">WhatsApp</label>
-                      <input type="text" value={settingsForm.whatsapp} onChange={(e) => setSettingsForm({...settingsForm, whatsapp: e.target.value})} className="w-full p-2.5 bg-white border border-stone-300 rounded-md"/>
+                      <input type="text" value={settingsForm.whatsapp} onChange={(e) => setSettingsForm({...settingsForm, whatsapp: e.target.value})} className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900"/>
                    </div>
                    {/* ... Other inputs ... */}
                 </div>
@@ -570,17 +570,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <div className="grid grid-cols-12 gap-3 items-end">
                         <div className="col-span-8 md:col-span-9">
                            <label className="block text-xs font-bold text-stone-500 mb-1">Nome</label>
-                           <input type="text" value={newRegionName} onChange={(e) => setNewRegionName(e.target.value)} className="w-full p-2 bg-white border border-stone-300 rounded-md text-sm"/>
+                           <input type="text" value={newRegionName} onChange={(e) => setNewRegionName(e.target.value)} className="w-full p-2 bg-white border border-stone-300 rounded-md text-sm text-stone-900"/>
                         </div>
                         <div className="col-span-4 md:col-span-3">
                            <label className="block text-xs font-bold text-stone-500 mb-1">Taxa</label>
-                           <input type="number" value={newRegionPrice} onChange={(e) => setNewRegionPrice(e.target.value)} className="w-full p-2 bg-white border border-stone-300 rounded-md text-sm"/>
+                           <input type="number" value={newRegionPrice} onChange={(e) => setNewRegionPrice(e.target.value)} className="w-full p-2 bg-white border border-stone-300 rounded-md text-sm text-stone-900"/>
                         </div>
                       </div>
                       <div className="grid grid-cols-12 gap-3 items-end">
                          <div className="col-span-10">
                            <label className="block text-xs font-bold text-stone-500 mb-1">CEPs</label>
-                           <input type="text" value={newRegionZips} onChange={(e) => setNewRegionZips(e.target.value)} className="w-full p-2 bg-white border border-stone-300 rounded-md text-sm"/>
+                           <input type="text" value={newRegionZips} onChange={(e) => setNewRegionZips(e.target.value)} className="w-full p-2 bg-white border border-stone-300 rounded-md text-sm text-stone-900"/>
                          </div>
                          <div className="col-span-2 flex gap-1">
                            <button onClick={handleAddRegion} className="flex-1 p-2 bg-italian-green text-white rounded-md flex items-center justify-center">
@@ -629,27 +629,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                      {/* ... Basic Inputs ... */}
                      <div>
                         <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Categoria</label>
-                        <select value={newProductForm.category} onChange={(e) => setNewProductForm({...newProductForm, category: e.target.value})} className="w-full p-2 bg-stone-50 border border-stone-300 rounded-lg">
+                        <select value={newProductForm.category} onChange={(e) => setNewProductForm({...newProductForm, category: e.target.value})} className="w-full p-2 bg-stone-50 border border-stone-300 rounded-lg text-stone-900">
                            {menuData.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
                         </select>
                      </div>
                      <div>
                         <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Subcategoria (Valor/Tamanho)</label>
-                        <input type="text" className="w-full p-2 bg-stone-50 border border-stone-300 rounded-lg" 
+                        <input type="text" className="w-full p-2 bg-stone-50 border border-stone-300 rounded-lg text-stone-900" 
                            placeholder="Ex: Lata, Long Neck..." value={newProductForm.subcategory || ''} onChange={e => setNewProductForm({...newProductForm, subcategory: e.target.value})} />
                      </div>
                      <div>
                         <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Preço (R$)</label>
-                        <input type="number" step="0.01" className="w-full p-2 bg-stone-50 border border-stone-300 rounded-lg" 
+                        <input type="number" step="0.01" className="w-full p-2 bg-stone-50 border border-stone-300 rounded-lg text-stone-900" 
                            value={newProductForm.price} onChange={e => setNewProductForm({...newProductForm, price: parseFloat(e.target.value)})} />
                      </div>
                      <div className="md:col-span-2">
                         <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Nome</label>
-                        <input type="text" className="w-full p-2 bg-stone-50 border border-stone-300 rounded-lg" value={newProductForm.name || ''} onChange={e => setNewProductForm({...newProductForm, name: e.target.value})} />
+                        <input type="text" className="w-full p-2 bg-stone-50 border border-stone-300 rounded-lg text-stone-900" value={newProductForm.name || ''} onChange={e => setNewProductForm({...newProductForm, name: e.target.value})} />
                      </div>
                      <div className="md:col-span-2">
                         <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Descrição</label>
-                        <input type="text" className="w-full p-2 bg-stone-50 border border-stone-300 rounded-lg" value={newProductForm.description || ''} onChange={e => setNewProductForm({...newProductForm, description: e.target.value})} />
+                        <input type="text" className="w-full p-2 bg-stone-50 border border-stone-300 rounded-lg text-stone-900" value={newProductForm.description || ''} onChange={e => setNewProductForm({...newProductForm, description: e.target.value})} />
                      </div>
                      
                      {/* NEW: INGREDIENTS */}
@@ -658,7 +658,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         <div className="flex gap-2 mb-2">
                           <input 
                             type="text" 
-                            className="flex-1 p-2 bg-stone-50 border border-stone-300 rounded-lg text-sm"
+                            className="flex-1 p-2 bg-stone-50 border border-stone-300 rounded-lg text-sm text-stone-900"
                             placeholder="Ex: Tomate, Cebola, Bacon..."
                             value={tempIngredient}
                             onChange={(e) => setTempIngredient(e.target.value)}
@@ -677,7 +677,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                      
                      <div>
                         <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Imagem</label>
-                        <input type="file" className="w-full text-xs" accept="image/*" onChange={(e) => handleImageUpload(e, true)} />
+                        <input type="file" className="w-full text-xs text-stone-900" accept="image/*" onChange={(e) => handleImageUpload(e, true)} />
                      </div>
                   </div>
                   <button onClick={handleAddNew} className="mt-4 w-full bg-italian-green text-white py-2 rounded-lg font-bold hover:bg-green-700">Confirmar e Adicionar</button>
@@ -727,7 +727,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                 <div className="flex gap-2 mb-2">
                                   <input 
                                     type="text" 
-                                    className="flex-1 p-2 bg-stone-50 border border-stone-300 rounded-lg text-sm"
+                                    className="flex-1 p-2 bg-stone-50 border border-stone-300 rounded-lg text-sm text-stone-900"
                                     placeholder="Adicionar ingrediente..."
                                     value={tempIngredient}
                                     onChange={(e) => setTempIngredient(e.target.value)}
@@ -757,8 +757,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                               {/* ... Options UI (Keep existing) ... */}
                               <div className="bg-stone-50 p-3 rounded-lg border border-stone-200 mb-4">
                                 <div className="flex gap-2 mb-2">
-                                  <input type="text" placeholder="Nome da Opção (ex: Borda Recheada)" className="flex-1 p-2 bg-white border border-stone-300 rounded text-sm" value={newOptionName} onChange={e => setNewOptionName(e.target.value)}/>
-                                  <select className="p-2 bg-white border border-stone-300 rounded text-sm" value={newOptionType} onChange={(e) => setNewOptionType(e.target.value as any)}>
+                                  <input type="text" placeholder="Nome da Opção (ex: Borda Recheada)" className="flex-1 p-2 bg-white border border-stone-300 rounded text-sm text-stone-900" value={newOptionName} onChange={e => setNewOptionName(e.target.value)}/>
+                                  <select className="p-2 bg-white border border-stone-300 rounded text-sm text-stone-900" value={newOptionType} onChange={(e) => setNewOptionType(e.target.value as any)}>
                                     <option value="single">Seleção Única (Radio)</option>
                                     <option value="multiple">Múltipla Escolha (Check)</option>
                                   </select>
