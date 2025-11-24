@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Category, Product, StoreSettings } from '../types';
-import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin } from 'lucide-react';
+import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check } from 'lucide-react';
 
 interface AdminPanelProps {
   menuData: Category[];
@@ -40,6 +40,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   // Settings State
   const [settingsForm, setSettingsForm] = useState<StoreSettings>(settings);
+  
+  // Region Management State
+  const [editingRegionId, setEditingRegionId] = useState<string | null>(null);
   const [newRegionName, setNewRegionName] = useState('');
   const [newRegionPrice, setNewRegionPrice] = useState('');
   const [newRegionZips, setNewRegionZips] = useState('');
@@ -109,33 +112,63 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleAddRegion = () => {
     if (!newRegionName || !newRegionPrice) return;
     
-    // Process ZIPs
+    // Process ZIPs: Allow numbers and hyphens, remove other chars
     const zipArray = newRegionZips
-      ? newRegionZips.split(',').map(z => z.trim().replace(/\D/g, '')).filter(z => z.length > 0)
+      ? newRegionZips.split(',').map(z => z.trim().replace(/[^0-9-]/g, '')).filter(z => z.length > 0)
       : [];
 
     const newRegion = {
-      id: newRegionName.toLowerCase().replace(/\s+/g, '-'),
+      // If editing, keep ID. If new, generate slug.
+      id: editingRegionId || newRegionName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
       name: newRegionName,
       price: parseFloat(newRegionPrice),
       zipPrefixes: zipArray
     };
     
-    setSettingsForm({
-      ...settingsForm,
-      deliveryRegions: [...(settingsForm.deliveryRegions || []), newRegion]
-    });
+    if (editingRegionId) {
+      // Update existing region
+      setSettingsForm({
+        ...settingsForm,
+        deliveryRegions: (settingsForm.deliveryRegions || []).map(r => r.id === editingRegionId ? newRegion : r)
+      });
+      // Reset edit mode
+      setEditingRegionId(null);
+    } else {
+      // Add new region
+      setSettingsForm({
+        ...settingsForm,
+        deliveryRegions: [...(settingsForm.deliveryRegions || []), newRegion]
+      });
+    }
     
+    // Clear inputs
+    setNewRegionName('');
+    setNewRegionPrice('');
+    setNewRegionZips('');
+  };
+
+  const startEditingRegion = (region: any) => {
+    setEditingRegionId(region.id);
+    setNewRegionName(region.name);
+    setNewRegionPrice(region.price.toString());
+    setNewRegionZips(region.zipPrefixes ? region.zipPrefixes.join(', ') : '');
+  };
+
+  const cancelEditingRegion = () => {
+    setEditingRegionId(null);
     setNewRegionName('');
     setNewRegionPrice('');
     setNewRegionZips('');
   };
 
   const handleRemoveRegion = (id: string) => {
-    setSettingsForm({
-      ...settingsForm,
-      deliveryRegions: (settingsForm.deliveryRegions || []).filter(r => r.id !== id)
-    });
+    if (window.confirm('Remover esta região de entrega?')) {
+      setSettingsForm({
+        ...settingsForm,
+        deliveryRegions: (settingsForm.deliveryRegions || []).filter(r => r.id !== id)
+      });
+      if (editingRegionId === id) cancelEditingRegion();
+    }
   };
 
   // --- IMAGE UTILS ---
@@ -307,7 +340,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                    <MapPin className="w-5 h-5 text-italian-red" /> Taxas de Entrega por CEP
                 </h2>
                 
-                <div className="bg-stone-50 p-4 rounded-lg border border-stone-200 mb-4">
+                <div className={`p-4 rounded-lg border mb-4 transition-colors ${editingRegionId ? 'bg-orange-50 border-orange-200' : 'bg-stone-50 border-stone-200'}`}>
+                   {editingRegionId && (
+                      <div className="flex items-center gap-2 mb-3 text-orange-700 text-sm font-bold">
+                        <Edit3 className="w-4 h-4" /> Editando Região
+                      </div>
+                   )}
                    <div className="space-y-3">
                       <div className="grid grid-cols-12 gap-3 items-end">
                         <div className="col-span-8 md:col-span-9">
@@ -334,22 +372,38 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       
                       <div className="grid grid-cols-12 gap-3 items-end">
                          <div className="col-span-10">
-                           <label className="block text-xs font-bold text-stone-500 mb-1">CEPs (Prefixos ou Completos - Separados por vírgula)</label>
+                           <label className="block text-xs font-bold text-stone-500 mb-1">CEPs (Separados por vírgula)</label>
                            <input 
                               type="text" 
                               value={newRegionZips}
                               onChange={(e) => setNewRegionZips(e.target.value)}
-                              placeholder="Ex: 13295-000, 13200, 13295-100"
+                              placeholder="Ex: 13295-000, 13200"
                               className="w-full p-2 bg-white border border-stone-300 rounded-md text-sm"
                            />
-                           <p className="text-[10px] text-stone-400 mt-1">O sistema verificará se o CEP do cliente começa com um destes números.</p>
+                           <p className="text-[10px] text-stone-400 mt-1">
+                             O sistema verificará se o CEP do cliente começa com um destes números. Hifens são opcionais.
+                           </p>
                          </div>
-                         <div className="col-span-2">
+                         <div className="col-span-2 flex gap-1">
+                           {editingRegionId && (
+                             <button 
+                                onClick={cancelEditingRegion}
+                                className="flex-1 p-2 bg-white border border-stone-300 text-stone-500 rounded-md text-sm font-bold hover:bg-stone-100 flex items-center justify-center h-[38px]"
+                                title="Cancelar Edição"
+                             >
+                                <X className="w-4 h-4" />
+                             </button>
+                           )}
                            <button 
                               onClick={handleAddRegion}
-                              className="w-full p-2 bg-italian-green text-white rounded-md text-sm font-bold hover:bg-green-700 flex items-center justify-center h-[38px]"
+                              className={`flex-1 p-2 rounded-md text-sm font-bold flex items-center justify-center h-[38px] transition-colors ${
+                                editingRegionId 
+                                  ? 'bg-orange-500 hover:bg-orange-600 text-white' 
+                                  : 'bg-italian-green hover:bg-green-700 text-white'
+                              }`}
+                              title={editingRegionId ? "Atualizar Região" : "Adicionar Região"}
                            >
-                              <Plus className="w-4 h-4" />
+                              {editingRegionId ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
                            </button>
                          </div>
                       </div>
@@ -358,7 +412,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                 <div className="space-y-2">
                   {(settingsForm.deliveryRegions || []).map((region, idx) => (
-                    <div key={idx} className="flex flex-col md:flex-row items-start md:items-center justify-between p-3 bg-white border border-stone-200 rounded-lg shadow-sm gap-2">
+                    <div key={idx} className={`flex flex-col md:flex-row items-start md:items-center justify-between p-3 bg-white border rounded-lg shadow-sm gap-2 ${editingRegionId === region.id ? 'border-orange-300 ring-1 ring-orange-300 bg-orange-50' : 'border-stone-200'}`}>
                       <div className="flex-1">
                          <div className="flex items-center gap-2">
                             <span className="font-bold text-stone-800">{region.name}</span>
@@ -375,11 +429,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                          )}
                       </div>
                       
-                      <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
-                        <span className="font-bold text-green-600">R$ {region.price.toFixed(2)}</span>
+                      <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">
+                        <span className="font-bold text-green-600 mr-2">R$ {region.price.toFixed(2)}</span>
+                        
+                        <button 
+                          onClick={() => startEditingRegion(region)}
+                          className="text-stone-400 hover:text-orange-500 p-1.5 hover:bg-orange-50 rounded"
+                          title="Editar Região"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        
                         <button 
                           onClick={() => handleRemoveRegion(region.id)}
-                          className="text-stone-400 hover:text-red-500 p-1"
+                          className="text-stone-400 hover:text-red-500 p-1.5 hover:bg-red-50 rounded"
+                          title="Remover Região"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
