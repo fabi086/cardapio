@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Category, Product, StoreSettings } from '../types';
 import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid } from 'lucide-react';
 
@@ -40,6 +40,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   // Settings State
   const [settingsForm, setSettingsForm] = useState<StoreSettings>(settings);
+
+  // SINCRONIZAÇÃO IMPORTANTE: Atualiza o formulário quando os dados externos mudam
+  useEffect(() => {
+    setSettingsForm(settings);
+  }, [settings]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,7 +100,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // --- SETTINGS ACTIONS ---
   const handleSaveSettings = () => {
     onUpdateSettings(settingsForm);
-    alert('Configurações salvas!');
+    alert('Configurações salvas e atualizadas no site!');
   };
 
   // --- IMAGE UTILS ---
@@ -187,10 +192,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         {activeTab === 'settings' && (
            <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200 animate-in fade-in slide-in-from-bottom-2">
               <h2 className="text-xl font-bold text-stone-800 mb-6 flex items-center gap-2">
-                 <Settings className="w-5 h-5 text-italian-red" /> Dados da Pizzaria
+                 <Settings className="w-5 h-5 text-italian-red" /> Dados do Estabelecimento
               </h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <div className="md:col-span-2 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800 mb-2">
+                    <strong>Dica:</strong> As alterações feitas aqui atualizam o nome, logo e rodapé do site instantaneamente. Use esta área para personalizar a marca do seu negócio.
+                 </div>
+
                  <div>
                     <label className="block text-sm font-bold text-stone-700 mb-1">Nome do Estabelecimento</label>
                     <input 
@@ -212,6 +221,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <p className="text-[10px] text-stone-500 mt-1">
                       Preferência: Apenas números com DDD (ex: 5511999999999).
                     </p>
+                 </div>
+                 <div className="md:col-span-2">
+                    <label className="block text-sm font-bold text-stone-700 mb-1">Logo URL (Link da Imagem)</label>
+                    <input 
+                       type="text" 
+                       value={settingsForm.logoUrl} 
+                       onChange={(e) => setSettingsForm({...settingsForm, logoUrl: e.target.value})}
+                       className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 focus:ring-1 focus:ring-italian-green"
+                       placeholder="/logo.png ou https://..."
+                    />
                  </div>
                  <div className="md:col-span-2">
                     <label className="block text-sm font-bold text-stone-700 mb-1">Endereço Completo</label>

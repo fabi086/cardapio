@@ -321,14 +321,14 @@ function App() {
 
   // 4. UPDATE SETTINGS
   const handleUpdateSettings = async (newSettings: StoreSettings) => {
-     // Atualiza estado local IMEDIATAMENTE para refletir em toda a aplicação
+     // Atualiza estado local IMEDIATAMENTE para refletir no frontend (White-label)
      setStoreSettings(newSettings);
 
      if (!supabase) return;
 
      try {
         if (settingsId) {
-            // Atualizar configuração existente usando o ID capturado
+            // Atualizar configuração existente usando o ID capturado no carregamento
             const { error } = await supabase
                .from('settings')
                .update({ 
@@ -343,7 +343,7 @@ function App() {
             
             if (error) throw error;
         } else {
-            // Se não houver ID (primeira vez), inserir
+            // Se não houver ID (primeira vez), inserir e pegar o novo ID
             const { data, error } = await supabase
                .from('settings')
                .insert([{ 
@@ -357,7 +357,6 @@ function App() {
                .select();
             
             if (error) throw error;
-            // Salvar o ID recém criado para futuros updates
             if (data && data[0]) setSettingsId(data[0].id);
         }
      } catch (err: any) {
@@ -371,7 +370,9 @@ function App() {
   };
 
   const handleResetMenu = () => {
+      // Recarrega os dados do banco para limpar alterações locais não salvas
       fetchData();
+      alert("Dados recarregados do servidor.");
   };
 
   // --- CART ACTIONS ---
