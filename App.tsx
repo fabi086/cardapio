@@ -38,7 +38,8 @@ function App() {
       console.log('Modo Offline: Carregando dados locais.');
       setMenuData(MENU_DATA);
       setStoreSettings(DEFAULT_SETTINGS);
-      setError('Modo Offline (Configure o Supabase para salvar na nuvem)');
+      // Silently handle offline mode without scary errors
+      setError(null);
       setLoading(false);
       return;
     }
@@ -95,22 +96,27 @@ function App() {
       setError(null);
 
     } catch (err: any) {
-      // Log detalhado para debug no console
+      // Tratamento silencioso para erro de tabela inexistente (comum em configurações iniciais)
+      if (err.code === '42P01' || err.code === 'PGRST205') { 
+         console.warn('Supabase: Tabelas ainda não criadas. Usando dados locais de exemplo.');
+         setMenuData(MENU_DATA);
+         setStoreSettings(DEFAULT_SETTINGS);
+         setError(null);
+         setLoading(false);
+         return;
+      }
+
+      // Log detalhado para outros erros reais
       console.error('Erro ao buscar dados:', JSON.stringify(err, null, 2));
-      if (err.message) console.error('Mensagem:', err.message);
 
       // Fallback to local data on error
       setMenuData(MENU_DATA);
       setStoreSettings(DEFAULT_SETTINGS);
 
-      // Tratamento amigável para erro de tabela inexistente (comum em projetos novos)
-      // Adicionado PGRST205 que é o erro específico relatado
-      if (err.code === '42P01' || err.code === 'PGRST205') { 
-         setError('Banco de dados ainda não configurado (Tabelas não encontradas). Usando dados locais.');
-      } else if (err.message && (err.message.includes('fetch') || err.message.includes('network'))) {
+      if (err.message && (err.message.includes('fetch') || err.message.includes('network'))) {
          setError('Erro de conexão. Usando dados offline.');
       } else {
-         setError('Usando dados locais devido a erro no servidor.');
+         setError('Usando dados locais temporariamente.');
       }
     } finally {
       setLoading(false);
@@ -354,9 +360,9 @@ function App() {
      } catch (err: any) {
         console.error('Erro ao salvar configurações:', err);
         if (err.code === '42P01' || err.code === 'PGRST205') {
-            alert('Erro: A tabela de configurações não existe no banco de dados. Crie a tabela "settings" no Supabase.');
+            alert('Erro: A tabela de configurações não existe no banco de dados. Execute o script SQL no Supabase.');
         } else {
-            alert('Ocorreu um erro ao salvar as configurações. Verifique o console.');
+            alert('Ocorreu um erro ao salvar as configurações.');
         }
      }
   };
