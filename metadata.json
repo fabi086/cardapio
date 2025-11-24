@@ -1,0 +1,5 @@
+{
+  "name": "Spagnolli Pizzaria Digital",
+  "description": "Cardápio digital interativo para a Spagnolli Pizzaria com carrinho de compras e integração direta com WhatsApp para pedidos.",
+  "requestFramePermissions": []
+}
