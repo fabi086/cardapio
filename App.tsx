@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MENU_DATA, DEFAULT_SETTINGS } from './data';
+import { MENU_DATA, DEFAULT_SETTINGS, CATEGORY_IMAGES } from './data';
 import { Product, CartItem, Category, StoreSettings } from './types';
 import { Header } from './components/Header';
 import { CategoryNav } from './components/CategoryNav';
@@ -8,7 +8,8 @@ import { CartDrawer } from './components/CartDrawer';
 import { Footer } from './components/Footer';
 import { AdminPanel } from './components/AdminPanel';
 import { PromoBanner } from './components/PromoBanner';
-import { ShoppingBag, Check, Loader2 } from 'lucide-react';
+import { InfoModal } from './components/InfoModal';
+import { ShoppingBag, Check, Loader2, Search, X, Filter, Clock, AlertCircle } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 const isValidCartItem = (item: any): item is CartItem => {
@@ -22,12 +23,53 @@ const isValidCartItem = (item: any): item is CartItem => {
   );
 };
 
+// Helper to parse opening hours loosely (e.g. "18h às 23h")
+const checkStoreOpen = (hoursString: string): { isOpen: boolean, message: string } => {
+  const now = new Date();
+  const currentHour = now.getHours();
+  
+  // Extract numbers using regex (looks for patterns like 18h, 18:00, etc)
+  const times = hoursString.match(/(\d{1,2})/g);
+  
+  if (times && times.length >= 2) {
+    const startHour = parseInt(times[0]);
+    const endHour = parseInt(times[1]);
+    
+    // Simple logic for same-day shifts (e.g. 18 to 23)
+    // Does not handle cross-midnight shifts perfectly (e.g. 18 to 02) without more logic
+    // but serves for the default "18h às 23h"
+    if (endHour > startHour) {
+       if (currentHour >= startHour && currentHour < endHour) {
+         return { isOpen: true, message: 'Aberto Agora' };
+       }
+    } else {
+       // Cross midnight (e.g. 18 to 02)
+       if (currentHour >= startHour || currentHour < endHour) {
+         return { isOpen: true, message: 'Aberto Agora' };
+       }
+    }
+    
+    return { isOpen: false, message: `Fechado no momento. Abrimos às ${startHour}h.` };
+  }
+  
+  // Fallback if format is not understandable
+  return { isOpen: true, message: '' };
+};
+
 function App() {
   const [menuData, setMenuData] = useState<Category[]>([]);
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(DEFAULT_SETTINGS);
   const [settingsId, setSettingsId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Search State
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchScope, setSearchScope] = useState('all'); // 'all' or categoryId
+
+  // Info Modal State
+  const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
+  const [storeStatus, setStoreStatus] = useState({ isOpen: true, message: '' });
 
   // Theme State
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -51,6 +93,13 @@ function App() {
   }, [isDarkMode]);
 
   const toggleTheme = () => setIsDarkMode(!isDarkMode);
+
+  // Check store status when settings load
+  useEffect(() => {
+     if (storeSettings.openingHours) {
+        setStoreStatus(checkStoreOpen(storeSettings.openingHours));
+     }
+  }, [storeSettings.openingHours]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -88,6 +137,7 @@ function App() {
         const structuredMenu: Category[] = categories.map((cat: any) => ({
           id: cat.id,
           name: cat.name,
+          image: cat.image || CATEGORY_IMAGES[cat.id] || null, // Fallback image logic
           items: products
             .filter((prod: any) => prod.category_id === cat.id)
             .sort((a: any, b: any) => a.id - b.id)
@@ -255,6 +305,7 @@ function App() {
         image: updates.image,
         category_id: updates.category,
         code: updates.code,
+        subcategory: updates.subcategory
       };
 
       if (updates.options) {
@@ -293,6 +344,7 @@ function App() {
           image: product.image,
           category_id: categoryId,
           code: product.code,
+          subcategory: product.subcategory,
           options: product.options ? JSON.stringify(product.options) : '[]'
        };
 
@@ -432,6 +484,11 @@ function App() {
   };
 
   const addToCart = (product: Product, quantity: number = 1, observation: string = '', selectedOptions?: CartItem['selectedOptions']) => {
+    if (!storeStatus.isOpen && view === 'customer') {
+       alert(`A loja está fechada no momento. Horário: ${storeSettings.openingHours}`);
+       return;
+    }
+
     const normalizedObservation = (observation || '').trim();
     
     // Create a unique key based on options to separate items
@@ -505,7 +562,7 @@ function App() {
     setActiveCategory(id);
     const element = document.getElementById(`category-${id}`);
     if (element) {
-      const headerOffset = 120;
+      const headerOffset = 200; // Adjusted offset for larger nav
       const elementPosition = element.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.scrollY - headerOffset;
       window.scrollTo({ top: offsetPosition, behavior: "smooth" });
@@ -521,6 +578,37 @@ function App() {
   // Extract promotions for the banner
   const promoCategory = menuData.find(c => c.id === 'promocoes');
   const activePromotions = promoCategory ? promoCategory.items : [];
+
+  // FILTERING LOGIC
+  const displayCategories = menuData
+    .map(cat => {
+      // 1. Filter items by Search Term
+      const filteredItems = cat.items.filter(item => {
+         if (searchTerm) {
+            const term = searchTerm.toLowerCase();
+            const matchName = item.name.toLowerCase().includes(term);
+            const matchDesc = item.description?.toLowerCase().includes(term);
+            const matchCode = item.code?.toLowerCase().includes(term);
+            const matchSub = item.subcategory?.toLowerCase().includes(term);
+            if (!matchName && !matchDesc && !matchCode && !matchSub) return false;
+         }
+         return true;
+      });
+      return { ...cat, items: filteredItems };
+    })
+    .filter(cat => {
+       // 2. Scope Filter: If a scope is selected, ONLY show that category
+       if (searchScope !== 'all' && cat.id !== searchScope) return false;
+       
+       // 3. Hide 'promocoes' from main list (banner handles it)
+       if (cat.id === 'promocoes') return false;
+       
+       return true;
+    });
+
+  const navCategories = menuData
+    .filter(cat => cat.id !== 'promocoes')
+    .filter(cat => searchScope === 'all' || cat.id === searchScope);
 
   if (loading) {
     return (
@@ -548,11 +636,17 @@ function App() {
     );
   }
 
-  // Filter out empty categories for the view
-  const visibleCategories = menuData.filter(c => c.id !== 'promocoes' && c.items.length > 0);
-
   return (
     <div className="min-h-screen bg-stone-100 dark:bg-stone-900 pb-24 md:pb-0 font-sans relative transition-colors duration-300">
+      
+      {/* CLOSED STORE BANNER */}
+      {!storeStatus.isOpen && (
+        <div className="bg-red-600 text-white px-4 py-2 text-center text-sm font-bold flex items-center justify-center gap-2 animate-in slide-in-from-top sticky top-0 z-50">
+          <Clock className="w-4 h-4" />
+          {storeStatus.message}
+        </div>
+      )}
+
       <Header 
         cartCount={totalItems} 
         onOpenCart={() => setIsCartOpen(true)} 
@@ -561,6 +655,9 @@ function App() {
         logoUrl={storeSettings.logoUrl}
         isDarkMode={isDarkMode}
         onToggleTheme={toggleTheme}
+        whatsapp={storeSettings.whatsapp}
+        phone={storeSettings.phones[0] || ''}
+        onOpenInfo={() => setIsInfoModalOpen(true)}
       />
       
       {error && (
@@ -570,23 +667,64 @@ function App() {
       )}
       
       <CategoryNav 
-        categories={visibleCategories} 
+        categories={navCategories} 
         activeCategory={activeCategory}
         onSelectCategory={handleCategorySelect}
       />
 
       <main className="max-w-5xl mx-auto px-4 pt-6">
         
-        {/* Banner de Promoções (Carrossel) */}
-        {activePromotions.length > 0 && (
+        {/* Search Bar & Scope Selector */}
+        <div className="relative w-full max-w-2xl mx-auto mb-6 flex flex-col md:flex-row gap-3">
+           <div className="relative flex-1">
+              <input 
+                 type="text"
+                 value={searchTerm}
+                 onChange={(e) => setSearchTerm(e.target.value)}
+                 placeholder="Buscar por nome, ingrediente ou código..."
+                 className="w-full pl-10 pr-10 py-3 bg-white border border-stone-200 rounded-xl shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-italian-green dark:bg-stone-800 dark:border-stone-700 dark:text-white"
+              />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+              {searchTerm && (
+                 <button 
+                   onClick={() => setSearchTerm('')}
+                   className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"
+                 >
+                   <X className="w-4 h-4" />
+                 </button>
+              )}
+           </div>
+           
+           <div className="relative min-w-[160px]">
+             <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                <Filter className="w-4 h-4 text-stone-500" />
+             </div>
+             <select
+                value={searchScope}
+                onChange={(e) => setSearchScope(e.target.value)}
+                className="w-full h-full pl-9 pr-8 py-3 bg-white border border-stone-200 rounded-xl shadow-sm text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-italian-green dark:bg-stone-800 dark:border-stone-700 dark:text-white cursor-pointer"
+             >
+                <option value="all">Todas Categorias</option>
+                {menuData.filter(c => c.id !== 'promocoes').map(cat => (
+                   <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+             </select>
+             <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                <svg className="w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+             </div>
+           </div>
+        </div>
+
+        {/* Banner de Promoções */}
+        {!searchTerm && searchScope === 'all' && activePromotions.length > 0 && (
           <PromoBanner 
             promotions={activePromotions}
             onAddToCart={(p) => addToCart(p, 1, '')}
           />
         )}
 
-        {/* Fallback Banner se não tiver promoções (opcional, ou remove se quiser) */}
-        {activePromotions.length === 0 && (
+        {/* Fallback Banner */}
+        {!searchTerm && searchScope === 'all' && activePromotions.length === 0 && (
           <div className="bg-gradient-to-r from-stone-900 to-stone-800 text-white rounded-2xl p-6 mb-8 shadow-lg flex flex-col md:flex-row items-center justify-between gap-6 dark:from-black dark:to-stone-900 dark:border dark:border-stone-800">
             <div className="space-y-2 text-center md:text-left">
               <span className="bg-italian-red text-xs font-bold px-2 py-1 rounded uppercase tracking-wide">Bem-vindo</span>
@@ -595,31 +733,103 @@ function App() {
                 Escolha sua pizza favorita e receba no conforto da sua casa. 
               </p>
             </div>
+            {storeStatus.isOpen ? (
+               <button onClick={() => {
+                  const el = document.getElementById(displayCategories[0]?.items.length ? `category-${displayCategories[0].id}` : 'root');
+                  el?.scrollIntoView({ behavior: 'smooth' });
+               }} className="bg-white text-stone-900 px-6 py-2 rounded-full font-bold hover:scale-105 transition-transform">
+                  Ver Cardápio
+               </button>
+            ) : (
+               <div className="bg-red-500/20 border border-red-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2">
+                 <AlertCircle className="w-4 h-4" /> {storeStatus.message}
+               </div>
+            )}
           </div>
         )}
 
+        {/* Content Loop */}
         <div className="space-y-10">
-          {visibleCategories.map((category) => (
-            <section 
-              key={category.id} 
-              id={`category-${category.id}`}
-              className="scroll-mt-32"
-            >
-              <h2 className="text-2xl font-bold text-stone-800 dark:text-stone-100 mb-4 pl-2 border-l-4 border-italian-red">
-                {category.name}
-              </h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {category.items.map((product) => (
-                  <ProductCard 
-                    key={product.id} 
-                    product={product} 
-                    onAddToCart={addToCart} 
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
+          {displayCategories.map((category) => {
+            // Group items by subcategory
+            const hasSubcategories = category.items.some(item => !!item.subcategory);
+            const groupedItems: Record<string, Product[]> = {};
+            let ungroupedItems: Product[] = [];
+
+            if (hasSubcategories) {
+               category.items.forEach(item => {
+                  if (item.subcategory) {
+                     if (!groupedItems[item.subcategory]) groupedItems[item.subcategory] = [];
+                     groupedItems[item.subcategory].push(item);
+                  } else {
+                     ungroupedItems.push(item);
+                  }
+               });
+            }
+
+            return (
+              <section 
+                key={category.id} 
+                id={`category-${category.id}`}
+                className="scroll-mt-64"
+              >
+                <h2 className="text-2xl font-bold text-stone-800 dark:text-stone-100 mb-4 pl-2 border-l-4 border-italian-red flex items-center gap-2">
+                  {category.name}
+                  {searchTerm && category.items.length > 0 && (
+                    <span className="text-xs bg-italian-green text-white px-2 py-0.5 rounded-full font-normal">
+                        {category.items.length} resultados
+                    </span>
+                  )}
+                </h2>
+                
+                {category.items.length > 0 ? (
+                   hasSubcategories ? (
+                      <div className="space-y-6">
+                         {/* Ungrouped Items First */}
+                         {ungroupedItems.length > 0 && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                              {ungroupedItems.map((product) => (
+                                <ProductCard key={product.id} product={product} onAddToCart={addToCart} />
+                              ))}
+                            </div>
+                         )}
+                         
+                         {/* Grouped Items */}
+                         {Object.entries(groupedItems).map(([sub, products]) => (
+                            <div key={sub}>
+                               <h3 className="text-lg font-bold text-stone-600 dark:text-stone-400 mb-3 ml-1 flex items-center gap-2">
+                                  <span className="w-1.5 h-1.5 bg-stone-400 rounded-full"></span>
+                                  {sub}
+                               </h3>
+                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                  {products.map((product) => (
+                                    <ProductCard key={product.id} product={product} onAddToCart={addToCart} />
+                                  ))}
+                               </div>
+                            </div>
+                         ))}
+                      </div>
+                   ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {category.items.map((product) => (
+                          <ProductCard 
+                            key={product.id} 
+                            product={product} 
+                            onAddToCart={addToCart} 
+                          />
+                        ))}
+                      </div>
+                   )
+                ) : (
+                   <div className="bg-stone-50 border border-stone-200 rounded-lg p-6 text-center dark:bg-stone-800 dark:border-stone-700">
+                      <p className="text-stone-500 font-medium dark:text-stone-400">
+                         Nenhum produto encontrado nesta categoria para "{searchTerm}".
+                      </p>
+                   </div>
+                )}
+              </section>
+            );
+          })}
         </div>
       </main>
 
@@ -639,6 +849,13 @@ function App() {
         whatsappNumber={storeSettings.whatsapp}
         storeName={storeSettings.name}
         deliveryRegions={storeSettings.deliveryRegions || []}
+      />
+
+      <InfoModal 
+        isOpen={isInfoModalOpen}
+        onClose={() => setIsInfoModalOpen(false)}
+        settings={storeSettings}
+        isOpenNow={storeStatus.isOpen}
       />
 
       {showToast && (

@@ -40,10 +40,22 @@ const IMG_SWEET = 'https://images.unsplash.com/photo-1605436247078-f0ef43ee8d5c?
 const IMG_SWEET_PIZZA = 'https://images.unsplash.com/photo-1588315029754-2dd089d39a1a?q=80&w=800&auto=format&fit=crop';
 const IMG_DRINKS = 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?q=80&w=800&auto=format&fit=crop';
 
+// Fallback images for categories
+export const CATEGORY_IMAGES: Record<string, string> = {
+  'promocoes': 'https://cdn-icons-png.flaticon.com/512/726/726476.png', // Ou uma foto de oferta
+  'esfihas': IMG_ESFIHA_MEAT,
+  'esfihas-doces': IMG_SWEET,
+  'beirutes': IMG_BEIRUTE,
+  'pizzas-salgadas': IMG_PIZZA_PEPPERONI,
+  'pizzas-doces': IMG_SWEET_PIZZA,
+  'bebidas': IMG_DRINKS
+};
+
 export const MENU_DATA: Category[] = [
   {
     id: 'promocoes',
     name: 'Promoções',
+    image: 'https://images.unsplash.com/photo-1607082349566-187342175e2f?q=80&w=400&auto=format&fit=crop', // Gift/Promo box
     items: [
       {
         id: 999,
@@ -58,6 +70,7 @@ export const MENU_DATA: Category[] = [
   {
     id: 'esfihas',
     name: 'Esfihas',
+    image: IMG_ESFIHA_MEAT,
     items: [
       { id: 901, code: '901', name: 'Carne', description: 'Tradicional de carne', price: 8.00, category: 'esfihas', image: IMG_ESFIHA_MEAT },
       { id: 902, code: '902', name: 'Carne e Mussarela', description: 'Carne com cobertura de mussarela', price: 9.00, category: 'esfihas', image: IMG_ESFIHA_MEAT },
@@ -82,6 +95,7 @@ export const MENU_DATA: Category[] = [
   {
     id: 'esfihas-doces',
     name: 'Esfihas Doces',
+    image: IMG_SWEET,
     items: [
       { id: 920, code: '920', name: 'Chocolate', description: 'Esfiha de chocolate', price: 10.00, category: 'esfihas-doces', image: IMG_SWEET },
       { id: 921, code: '921', name: 'Chocolate c/ Confete', description: 'Chocolate com confetes coloridos', price: 10.00, category: 'esfihas-doces', image: IMG_SWEET },
@@ -96,6 +110,7 @@ export const MENU_DATA: Category[] = [
   {
     id: 'beirutes',
     name: 'Beirutes',
+    image: IMG_BEIRUTE,
     items: [
       { id: 94, code: '94', name: 'Calabresa', description: 'Calabresa, ovo, alface, tomate, mussarela e catupiry', price: 54.00, category: 'beirutes', image: IMG_BEIRUTE },
       { id: 95, code: '95', name: 'Peito de Peru', description: 'Peito de peru, ovo, alface, tomate, mussarela e catupiry', price: 54.00, category: 'beirutes', image: IMG_BEIRUTE },
@@ -108,6 +123,7 @@ export const MENU_DATA: Category[] = [
   {
     id: 'pizzas-salgadas',
     name: 'Pizzas Salgadas',
+    image: IMG_PIZZA_PEPPERONI,
     items: [
       // Queijos
       { id: 2, code: '02', name: 'Mussarela', description: 'Mussarela e orégano', price: 57.00, category: 'pizzas-salgadas', image: IMG_PIZZA_TRADITIONAL },
@@ -151,6 +167,7 @@ export const MENU_DATA: Category[] = [
   {
     id: 'pizzas-doces',
     name: 'Pizzas Doces',
+    image: IMG_SWEET_PIZZA,
     items: [
       { id: 56, code: '56', name: 'Chocolate', description: 'Creme de chocolate coberto com chocolate granulado', price: 67.00, category: 'pizzas-doces', image: IMG_SWEET_PIZZA },
       { id: 57, code: '57', name: 'Chocolate com Morango', description: 'Creme de chocolate coberto com morangos (da época)', price: 67.00, category: 'pizzas-doces', image: IMG_SWEET_PIZZA },
@@ -165,6 +182,7 @@ export const MENU_DATA: Category[] = [
   {
     id: 'bebidas',
     name: 'Bebidas',
+    image: IMG_DRINKS,
     items: [
       { id: 1001, name: 'Refrigerante 2L', description: 'Coca-Cola, Guaraná, Fanta (Sabor a escolher)', price: 16.00, category: 'bebidas', image: IMG_DRINKS },
       { id: 1002, name: 'Refrigerante Lata', description: '350ml - Variados', price: 7.00, category: 'bebidas', image: IMG_DRINKS },

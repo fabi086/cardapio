@@ -21,11 +21,29 @@ export const Footer: React.FC<FooterProps> = ({ onOpenAdmin, settings }) => {
           <h4 className="text-white font-bold mb-3 flex items-center gap-2">
             <Phone className="w-4 h-4" /> Contato
           </h4>
-          <ul className="space-y-1 text-sm">
+          <ul className="space-y-2 text-sm">
             {settings.phones.map((phone, idx) => (
-              <li key={idx}>{phone}</li>
+              <li key={idx}>
+                <a 
+                  href={`tel:${phone.replace(/[^\d+]/g, '')}`}
+                  className="hover:text-white hover:underline transition-colors flex items-center gap-2"
+                >
+                  {phone}
+                </a>
+              </li>
             ))}
-            {settings.whatsapp && <li>WhatsApp: {settings.whatsapp}</li>}
+            {settings.whatsapp && (
+              <li>
+                <a 
+                  href={`https://wa.me/${settings.whatsapp.replace(/\D/g, '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-white hover:underline transition-colors flex items-center gap-2"
+                >
+                  WhatsApp: {settings.whatsapp}
+                </a>
+              </li>
+            )}
           </ul>
         </div>
 

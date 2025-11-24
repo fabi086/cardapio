@@ -19,6 +19,7 @@ export interface Product {
   price: number;
   category: string;
   category_id?: string;
+  subcategory?: string; // New field for grouping (e.g. "Long Neck", "Lata")
   image?: string;
   options?: ProductOption[]; // New field for customization
 }
@@ -27,6 +28,7 @@ export interface Category {
   id: string;
   name: string;
   items: Product[];
+  image?: string; // New field for category navigation image
 }
 
 export interface CartItem extends Product {
