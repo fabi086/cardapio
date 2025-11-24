@@ -9,10 +9,18 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   openingHours: 'Aberto todos os dias das 18h às 23h',
   phones: ['4496-4188', '4496-4186', '(11) 99914-7399'],
   deliveryRegions: [
-    { id: 'centro', name: 'Centro', price: 5.00 },
-    { id: 'pq-das-vinhas', name: 'Parque das Vinhas', price: 7.00 },
-    { id: 'jardim-brasil', name: 'Jardim Brasil', price: 8.00 },
-    { id: 'outros', name: 'Outros Bairros (Consultar)', price: 10.00 }
+    { 
+      id: 'itupeva-geral', 
+      name: 'Itupeva (Geral)', 
+      price: 7.00, 
+      zipPrefixes: ['13295', '13295000', '13295-000'] 
+    },
+    { 
+      id: 'centro', 
+      name: 'Centro (Itupeva)', 
+      price: 5.00,
+      zipPrefixes: ['13295000'] // Exemplo específico
+    }
   ]
 };
 

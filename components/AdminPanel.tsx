@@ -42,6 +42,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [settingsForm, setSettingsForm] = useState<StoreSettings>(settings);
   const [newRegionName, setNewRegionName] = useState('');
   const [newRegionPrice, setNewRegionPrice] = useState('');
+  const [newRegionZips, setNewRegionZips] = useState('');
 
   // SINCRONIZAÇÃO IMPORTANTE: Atualiza o formulário quando os dados externos mudam
   useEffect(() => {
@@ -108,10 +109,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleAddRegion = () => {
     if (!newRegionName || !newRegionPrice) return;
     
+    // Process ZIPs
+    const zipArray = newRegionZips
+      ? newRegionZips.split(',').map(z => z.trim().replace(/\D/g, '')).filter(z => z.length > 0)
+      : [];
+
     const newRegion = {
       id: newRegionName.toLowerCase().replace(/\s+/g, '-'),
       name: newRegionName,
-      price: parseFloat(newRegionPrice)
+      price: parseFloat(newRegionPrice),
+      zipPrefixes: zipArray
     };
     
     setSettingsForm({
@@ -121,6 +128,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     
     setNewRegionName('');
     setNewRegionPrice('');
+    setNewRegionZips('');
   };
 
   const handleRemoveRegion = (id: string) => {
@@ -296,47 +304,78 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               {/* Delivery Regions */}
               <div>
                 <h2 className="text-xl font-bold text-stone-800 mb-6 flex items-center gap-2">
-                   <MapPin className="w-5 h-5 text-italian-red" /> Taxas de Entrega por Região
+                   <MapPin className="w-5 h-5 text-italian-red" /> Taxas de Entrega por CEP
                 </h2>
                 
                 <div className="bg-stone-50 p-4 rounded-lg border border-stone-200 mb-4">
-                  <div className="grid grid-cols-12 gap-3 items-end">
-                    <div className="col-span-7">
-                      <label className="block text-xs font-bold text-stone-500 mb-1">Nome do Bairro/Região</label>
-                      <input 
-                        type="text" 
-                        value={newRegionName}
-                        onChange={(e) => setNewRegionName(e.target.value)}
-                        placeholder="Ex: Centro"
-                        className="w-full p-2 bg-white border border-stone-300 rounded-md text-sm"
-                      />
-                    </div>
-                    <div className="col-span-3">
-                      <label className="block text-xs font-bold text-stone-500 mb-1">Taxa (R$)</label>
-                      <input 
-                        type="number" 
-                        value={newRegionPrice}
-                        onChange={(e) => setNewRegionPrice(e.target.value)}
-                        placeholder="0.00"
-                        className="w-full p-2 bg-white border border-stone-300 rounded-md text-sm"
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <button 
-                        onClick={handleAddRegion}
-                        className="w-full p-2 bg-italian-green text-white rounded-md text-sm font-bold hover:bg-green-700 flex items-center justify-center"
-                      >
-                        <Plus className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
+                   <div className="space-y-3">
+                      <div className="grid grid-cols-12 gap-3 items-end">
+                        <div className="col-span-8 md:col-span-9">
+                           <label className="block text-xs font-bold text-stone-500 mb-1">Nome da Região/Bairro</label>
+                           <input 
+                              type="text" 
+                              value={newRegionName}
+                              onChange={(e) => setNewRegionName(e.target.value)}
+                              placeholder="Ex: Centro"
+                              className="w-full p-2 bg-white border border-stone-300 rounded-md text-sm"
+                           />
+                        </div>
+                        <div className="col-span-4 md:col-span-3">
+                           <label className="block text-xs font-bold text-stone-500 mb-1">Taxa (R$)</label>
+                           <input 
+                              type="number" 
+                              value={newRegionPrice}
+                              onChange={(e) => setNewRegionPrice(e.target.value)}
+                              placeholder="0.00"
+                              className="w-full p-2 bg-white border border-stone-300 rounded-md text-sm"
+                           />
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-12 gap-3 items-end">
+                         <div className="col-span-10">
+                           <label className="block text-xs font-bold text-stone-500 mb-1">CEPs (Prefixos ou Completos - Separados por vírgula)</label>
+                           <input 
+                              type="text" 
+                              value={newRegionZips}
+                              onChange={(e) => setNewRegionZips(e.target.value)}
+                              placeholder="Ex: 13295-000, 13200, 13295-100"
+                              className="w-full p-2 bg-white border border-stone-300 rounded-md text-sm"
+                           />
+                           <p className="text-[10px] text-stone-400 mt-1">O sistema verificará se o CEP do cliente começa com um destes números.</p>
+                         </div>
+                         <div className="col-span-2">
+                           <button 
+                              onClick={handleAddRegion}
+                              className="w-full p-2 bg-italian-green text-white rounded-md text-sm font-bold hover:bg-green-700 flex items-center justify-center h-[38px]"
+                           >
+                              <Plus className="w-4 h-4" />
+                           </button>
+                         </div>
+                      </div>
+                   </div>
                 </div>
 
                 <div className="space-y-2">
                   {(settingsForm.deliveryRegions || []).map((region, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-3 bg-white border border-stone-200 rounded-lg shadow-sm">
-                      <span className="font-medium text-stone-800">{region.name}</span>
-                      <div className="flex items-center gap-4">
+                    <div key={idx} className="flex flex-col md:flex-row items-start md:items-center justify-between p-3 bg-white border border-stone-200 rounded-lg shadow-sm gap-2">
+                      <div className="flex-1">
+                         <div className="flex items-center gap-2">
+                            <span className="font-bold text-stone-800">{region.name}</span>
+                            <span className="text-xs bg-stone-100 text-stone-600 px-2 py-0.5 rounded-full border border-stone-200">
+                               {region.zipPrefixes && region.zipPrefixes.length > 0 
+                                  ? `${region.zipPrefixes.length} CEPs` 
+                                  : 'Sem restrição de CEP'}
+                            </span>
+                         </div>
+                         {region.zipPrefixes && region.zipPrefixes.length > 0 && (
+                            <p className="text-xs text-stone-500 mt-1 truncate max-w-md">
+                               CEPs: {region.zipPrefixes.join(', ')}
+                            </p>
+                         )}
+                      </div>
+                      
+                      <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
                         <span className="font-bold text-green-600">R$ {region.price.toFixed(2)}</span>
                         <button 
                           onClick={() => handleRemoveRegion(region.id)}

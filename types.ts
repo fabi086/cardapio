@@ -29,6 +29,7 @@ export interface DeliveryRegion {
   id: string;
   name: string;
   price: number;
+  zipPrefixes?: string[]; // Array of CEPs or prefixes (e.g., "13295", "13295-000")
 }
 
 export interface StoreSettings {

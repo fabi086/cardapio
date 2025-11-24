@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { CartItem, DeliveryRegion } from '../types';
-import { X, Trash2, ShoppingBag, Plus, Minus, Edit2, MapPin, CreditCard, User } from 'lucide-react';
+import { X, Trash2, ShoppingBag, Plus, Minus, Edit2, MapPin, CreditCard, User, Search, Loader2 } from 'lucide-react';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -33,11 +33,18 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const [paymentMethod, setPaymentMethod] = useState('');
   
   // Address State
+  const [cep, setCep] = useState('');
   const [addressStreet, setAddressStreet] = useState('');
   const [addressNumber, setAddressNumber] = useState('');
-  const [addressDistrict, setAddressDistrict] = useState(''); // Bairro (Manual)
+  const [addressDistrict, setAddressDistrict] = useState(''); // Bairro
+  const [addressCity, setAddressCity] = useState('');
   const [addressComplement, setAddressComplement] = useState('');
-  const [selectedRegionId, setSelectedRegionId] = useState('');
+  
+  // Fee Calculation State
+  const [calculatedFee, setCalculatedFee] = useState<number | null>(null);
+  const [matchedRegionName, setMatchedRegionName] = useState('');
+  const [isFetchingCep, setIsFetchingCep] = useState(false);
+  const [cepError, setCepError] = useState('');
 
   const subtotal = useMemo(() => {
     return items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
@@ -45,11 +52,74 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
   const deliveryFee = useMemo(() => {
     if (deliveryType === 'pickup') return 0;
-    const region = deliveryRegions.find(r => r.id === selectedRegionId);
-    return region ? region.price : 0;
-  }, [deliveryType, selectedRegionId, deliveryRegions]);
+    return calculatedFee !== null ? calculatedFee : 0;
+  }, [deliveryType, calculatedFee]);
 
   const total = subtotal + deliveryFee;
+
+  // --- CEP LOGIC ---
+  const handleCepSearch = async () => {
+    const cleanCep = cep.replace(/\D/g, '');
+    
+    if (cleanCep.length !== 8) {
+      setCepError('CEP deve ter 8 dígitos');
+      return;
+    }
+
+    setIsFetchingCep(true);
+    setCepError('');
+    setCalculatedFee(null);
+    setMatchedRegionName('');
+
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+      const data = await response.json();
+
+      if (data.erro) {
+        setCepError('CEP não encontrado.');
+        setAddressStreet('');
+        setAddressDistrict('');
+        setAddressCity('');
+        return;
+      }
+
+      // Fill address fields
+      setAddressStreet(data.logradouro || '');
+      setAddressDistrict(data.bairro || '');
+      setAddressCity(data.localidade || '');
+
+      // Calculate Fee based on CEP prefix match
+      let foundRegion: DeliveryRegion | undefined;
+
+      // 1. Try to find a match in the backend settings
+      foundRegion = deliveryRegions.find(region => {
+         if (!region.zipPrefixes || region.zipPrefixes.length === 0) return false;
+         
+         // Check if the clean CEP starts with any of the configured prefixes
+         return region.zipPrefixes.some(prefix => {
+            const cleanPrefix = prefix.replace(/\D/g, '');
+            return cleanCep.startsWith(cleanPrefix);
+         });
+      });
+
+      // 2. Fallback: If no ZIP match, maybe there's a "Default" or wildcard region configured? 
+      // For now, if no match, we don't deliver.
+      
+      if (foundRegion) {
+         setCalculatedFee(foundRegion.price);
+         setMatchedRegionName(foundRegion.name);
+      } else {
+         setCepError('Não realizamos entregas para esta região/CEP no momento.');
+         setCalculatedFee(null);
+      }
+
+    } catch (error) {
+      setCepError('Erro ao buscar CEP. Verifique sua conexão.');
+      console.error(error);
+    } finally {
+      setIsFetchingCep(false);
+    }
+  };
 
   const handleCheckout = () => {
     if (items.length === 0) return;
@@ -64,8 +134,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       return;
     }
     if (deliveryType === 'delivery') {
-      if (!selectedRegionId) {
-        alert('Por favor, selecione a região de entrega para calcular a taxa.');
+      if (calculatedFee === null) {
+        alert('Por favor, informe um CEP válido para calcular a entrega.');
         return;
       }
       if (!addressStreet.trim() || !addressNumber.trim() || !addressDistrict.trim()) {
@@ -92,8 +162,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     message += `*Subtotal:* R$ ${subtotal.toFixed(2).replace('.', ',')}\n`;
     
     if (deliveryType === 'delivery') {
-      const regionName = deliveryRegions.find(r => r.id === selectedRegionId)?.name || 'Entrega';
-      message += `*Taxa de Entrega (${regionName}):* R$ ${deliveryFee.toFixed(2).replace('.', ',')}\n`;
+      message += `*Entrega (${matchedRegionName}):* R$ ${deliveryFee.toFixed(2).replace('.', ',')}\n`;
     } else {
       message += `*Retirada no Balcão*\n`;
     }
@@ -106,9 +175,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     message += `👤 Nome: ${customerName}\n`;
     
     if (deliveryType === 'delivery') {
-      message += `📍 Endereço:\n`;
+      message += `📍 Endereço de Entrega:\n`;
+      message += `   CEP: ${cep}\n`;
       message += `   ${addressStreet}, ${addressNumber}\n`;
       message += `   Bairro: ${addressDistrict}\n`;
+      message += `   Cidade: ${addressCity}\n`;
       if (addressComplement) message += `   Comp: ${addressComplement}\n`;
     } else {
       message += `📍 *Vou retirar no local*\n`;
@@ -293,22 +364,44 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
                    {deliveryType === 'delivery' && (
                       <div className="bg-white p-3 rounded-lg border border-stone-200 space-y-3 animate-in fade-in slide-in-from-top-2">
-                         <div>
-                            <label className="block text-xs font-bold text-stone-600 mb-1">Região de Entrega</label>
-                            <select 
-                               value={selectedRegionId}
-                               onChange={(e) => setSelectedRegionId(e.target.value)}
-                               className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-lg text-sm outline-none focus:border-italian-green"
-                            >
-                               <option value="">Selecione seu bairro/região...</option>
-                               {deliveryRegions.map(region => (
-                                  <option key={region.id} value={region.id}>
-                                     {region.name} (+ R$ {region.price.toFixed(2)})
-                                  </option>
-                               ))}
-                            </select>
-                         </div>
                          
+                         {/* CEP SEARCH */}
+                         <div>
+                            <label className="block text-xs font-bold text-stone-600 mb-1">CEP</label>
+                            <div className="flex gap-2">
+                               <input 
+                                  type="text" 
+                                  value={cep}
+                                  onChange={(e) => {
+                                     // Only allow numbers and hyphen
+                                     const val = e.target.value.replace(/[^0-9-]/g, '');
+                                     if (val.length <= 9) setCep(val);
+                                  }}
+                                  onBlur={() => {
+                                     if(cep.length >= 8) handleCepSearch();
+                                  }}
+                                  placeholder="00000-000"
+                                  className={`flex-1 p-2.5 bg-stone-50 border rounded-lg text-sm outline-none focus:border-italian-green ${cepError ? 'border-red-300 bg-red-50' : 'border-stone-300'}`}
+                               />
+                               <button 
+                                  onClick={handleCepSearch}
+                                  disabled={isFetchingCep}
+                                  className="bg-italian-green text-white px-3 rounded-lg flex items-center justify-center hover:bg-green-700 disabled:opacity-50"
+                               >
+                                  {isFetchingCep ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
+                               </button>
+                            </div>
+                            {cepError && (
+                               <p className="text-xs text-red-500 mt-1 font-medium">{cepError}</p>
+                            )}
+                            {calculatedFee !== null && !cepError && (
+                               <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs text-green-800 flex items-center gap-1">
+                                  <span className="font-bold">Região Atendida:</span> {matchedRegionName} (Taxa: R$ {calculatedFee.toFixed(2)})
+                               </div>
+                            )}
+                         </div>
+
+                         {/* ADDRESS FIELDS (Auto-filled) */}
                          <div className="grid grid-cols-3 gap-3">
                             <div className="col-span-2">
                                <label className="block text-xs font-bold text-stone-600 mb-1">Rua</label>
@@ -325,7 +418,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                                  type="text" 
                                  value={addressNumber}
                                  onChange={(e) => setAddressNumber(e.target.value)}
-                                 className="w-full p-2 bg-stone-50 border border-stone-300 rounded-lg text-sm outline-none" 
+                                 className="w-full p-2 bg-stone-50 border border-stone-300 rounded-lg text-sm outline-none focus:bg-white focus:border-italian-green" 
+                                 placeholder="Nº"
                                />
                             </div>
                          </div>
@@ -336,6 +430,15 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                                value={addressDistrict}
                                onChange={(e) => setAddressDistrict(e.target.value)}
                                className="w-full p-2 bg-stone-50 border border-stone-300 rounded-lg text-sm outline-none" 
+                             />
+                         </div>
+                         <div>
+                             <label className="block text-xs font-bold text-stone-600 mb-1">Cidade</label>
+                             <input 
+                               type="text" 
+                               value={addressCity}
+                               readOnly
+                               className="w-full p-2 bg-stone-100 border border-stone-200 rounded-lg text-sm outline-none text-stone-500 cursor-not-allowed" 
                              />
                          </div>
                          <div>
@@ -404,7 +507,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                <div className="flex justify-between items-center text-sm text-stone-500">
                   <span>Taxa de Entrega</span>
                   <span>
-                     {deliveryFee > 0 ? `R$ ${deliveryFee.toFixed(2).replace('.', ',')}` : 'Selecione a região'}
+                     {calculatedFee !== null ? `R$ ${calculatedFee.toFixed(2).replace('.', ',')}` : 'Calcule pelo CEP'}
                   </span>
                </div>
              )}
@@ -418,9 +521,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
           <button
             onClick={handleCheckout}
-            disabled={items.length === 0}
+            disabled={items.length === 0 || (deliveryType === 'delivery' && calculatedFee === null)}
             className={`w-full py-3.5 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all transform active:scale-95 ${
-              items.length === 0 
+              items.length === 0 || (deliveryType === 'delivery' && calculatedFee === null)
                 ? 'bg-stone-300 text-stone-500 cursor-not-allowed'
                 : 'bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/30'
             }`}
