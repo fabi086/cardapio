@@ -22,6 +22,7 @@ export interface Product {
   subcategory?: string; // New field for grouping (e.g. "Long Neck", "Lata")
   image?: string;
   options?: ProductOption[]; // New field for customization
+  ingredients?: string[]; // New field for product ingredients
 }
 
 export interface Category {

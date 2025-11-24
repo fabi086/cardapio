@@ -146,6 +146,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
             {product.name}
           </h3>
         </div>
+        
+        {/* Ingredients Display */}
+        {product.ingredients && product.ingredients.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-2">
+            {product.ingredients.map((ing, idx) => (
+              <span key={idx} className="text-[10px] bg-stone-50 text-stone-600 border border-stone-100 px-1.5 py-0.5 rounded dark:bg-stone-800 dark:text-stone-400 dark:border-stone-700">
+                {ing}
+              </span>
+            ))}
+          </div>
+        )}
+
         <p className="text-stone-500 text-xs md:text-sm leading-relaxed mb-4 line-clamp-3 dark:text-stone-400">
           {product.description}
         </p>

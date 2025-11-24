@@ -169,7 +169,9 @@ function App() {
               if (typeof opts === 'string') {
                 try { opts = JSON.parse(opts); } catch(e) { opts = []; }
               }
-              return { ...prod, options: opts || [] };
+              // Ensure ingredients is an array
+              const ingredients = Array.isArray(prod.ingredients) ? prod.ingredients : [];
+              return { ...prod, options: opts || [], ingredients };
             })
         }));
         setMenuData(structuredMenu);
@@ -328,7 +330,8 @@ function App() {
         image: updates.image,
         category_id: updates.category,
         code: updates.code,
-        subcategory: updates.subcategory
+        subcategory: updates.subcategory,
+        ingredients: updates.ingredients
       };
 
       if (updates.options) {
@@ -369,7 +372,8 @@ function App() {
           category_id: categoryId,
           code: product.code,
           subcategory: product.subcategory,
-          options: product.options ? JSON.stringify(product.options) : '[]'
+          options: product.options ? JSON.stringify(product.options) : '[]',
+          ingredients: product.ingredients || []
        };
 
        const { data, error } = await supabase
