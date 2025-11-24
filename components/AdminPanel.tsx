@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Category, Product, StoreSettings, ProductOption, ProductChoice } from '../types';
-import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Layers, Megaphone, Tag, List, HelpCircle, Utensils } from 'lucide-react';
+import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Layers, Megaphone, Tag, List, HelpCircle, Utensils, Phone, CreditCard } from 'lucide-react';
 
 interface AdminPanelProps {
   menuData: Category[];
@@ -57,6 +57,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // Settings State
   const [settingsForm, setSettingsForm] = useState<StoreSettings>(settings);
   
+  // Settings List Helpers
+  const [tempPhone, setTempPhone] = useState('');
+  const [tempPayment, setTempPayment] = useState('');
+
   // Region Management State
   const [editingRegionId, setEditingRegionId] = useState<string | null>(null);
   const [newRegionName, setNewRegionName] = useState('');
@@ -81,6 +85,41 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     } else {
       alert('Senha incorreta (Dica: admin123)');
     }
+  };
+
+  // --- SETTINGS HELPER FUNCTIONS ---
+  const addPhone = () => {
+    if (tempPhone.trim()) {
+      setSettingsForm(prev => ({
+        ...prev,
+        phones: [...prev.phones, tempPhone.trim()]
+      }));
+      setTempPhone('');
+    }
+  };
+
+  const removePhone = (index: number) => {
+    setSettingsForm(prev => ({
+      ...prev,
+      phones: prev.phones.filter((_, i) => i !== index)
+    }));
+  };
+
+  const addPaymentMethod = () => {
+    if (tempPayment.trim()) {
+      setSettingsForm(prev => ({
+        ...prev,
+        paymentMethods: [...(prev.paymentMethods || []), tempPayment.trim()]
+      }));
+      setTempPayment('');
+    }
+  };
+
+  const removePaymentMethod = (index: number) => {
+    setSettingsForm(prev => ({
+      ...prev,
+      paymentMethods: (prev.paymentMethods || []).filter((_, i) => i !== index)
+    }));
   };
 
   // --- INGREDIENTS HELPERS ---
@@ -281,18 +320,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             ...opt,
             choices: opt.choices.filter((_, idx) => idx !== choiceIndex)
           };
-        }
-        return opt;
-      })
-    }));
-  };
-
-  const handleToggleRequired = (groupId: string) => {
-    setEditForm(prev => ({
-      ...prev,
-      options: (prev.options || []).map(opt => {
-        if (opt.id === groupId) {
-          return { ...opt, required: !opt.required };
         }
         return opt;
       })
@@ -553,7 +580,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         type="text" 
                         value={settingsForm.name} 
                         onChange={(e) => setSettingsForm({...settingsForm, name: e.target.value})} 
-                        className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 dark:text-stone-900"
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 text-sm"
                       />
                    </div>
                    <div>
@@ -562,44 +589,92 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         type="text" 
                         value={settingsForm.whatsapp} 
                         onChange={(e) => setSettingsForm({...settingsForm, whatsapp: e.target.value})} 
-                        className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 dark:text-stone-900"
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 text-sm"
                       />
                    </div>
                    <div className="md:col-span-2">
                       <label className="block text-sm font-bold text-stone-700 mb-1">Endereço</label>
                       <textarea 
-                        rows={2} 
+                        rows={3} 
                         value={settingsForm.address} 
                         onChange={(e) => setSettingsForm({...settingsForm, address: e.target.value})} 
-                        className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 dark:text-stone-900"
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 text-sm"
                       />
                    </div>
-                   <div>
+                   <div className="md:col-span-2">
                       <label className="block text-sm font-bold text-stone-700 mb-1">Horário de Funcionamento</label>
-                      <input 
-                        type="text" 
+                      <textarea 
+                        rows={2}
                         value={settingsForm.openingHours} 
                         onChange={(e) => setSettingsForm({...settingsForm, openingHours: e.target.value})} 
-                        className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 dark:text-stone-900"
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 text-sm"
+                        placeholder="Ex: Aberto todos os dias das 18h às 23h"
                       />
                    </div>
-                   <div>
-                      <label className="block text-sm font-bold text-stone-700 mb-1">Telefones (separados por vírgula)</label>
-                      <input 
-                        type="text" 
-                        value={settingsForm.phones.join(', ')} 
-                        onChange={(e) => setSettingsForm({...settingsForm, phones: e.target.value.split(',').map(p => p.trim())})} 
-                        className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 dark:text-stone-900"
-                      />
+                   
+                   {/* Phone Management */}
+                   <div className="md:col-span-2">
+                      <label className="block text-sm font-bold text-stone-700 mb-2 flex items-center gap-2">
+                        <Phone className="w-4 h-4 text-italian-red" /> Telefones
+                      </label>
+                      <div className="flex gap-2 mb-2">
+                        <input 
+                          type="text" 
+                          className="flex-1 p-2 bg-stone-50 border border-stone-300 rounded-lg text-sm text-stone-900"
+                          placeholder="Ex: (11) 99999-9999"
+                          value={tempPhone}
+                          onChange={(e) => setTempPhone(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && addPhone()}
+                        />
+                        <button onClick={addPhone} className="bg-stone-200 hover:bg-stone-300 text-stone-700 px-3 rounded-lg text-sm font-bold"><Plus className="w-4 h-4"/></button>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                         {settingsForm.phones.map((ph, i) => (
+                           <span key={i} className="bg-stone-100 text-stone-600 text-sm px-3 py-1.5 rounded-full border border-stone-200 flex items-center gap-2">
+                             {ph} <button onClick={() => removePhone(i)} className="hover:text-red-500"><X className="w-4 h-4"/></button>
+                           </span>
+                         ))}
+                      </div>
                    </div>
+
+                   {/* Payment Methods Management */}
+                   <div className="md:col-span-2">
+                      <label className="block text-sm font-bold text-stone-700 mb-2 flex items-center gap-2">
+                        <CreditCard className="w-4 h-4 text-italian-red" /> Formas de Pagamento
+                      </label>
+                      <div className="flex gap-2 mb-2">
+                        <input 
+                          type="text" 
+                          className="flex-1 p-2 bg-stone-50 border border-stone-300 rounded-lg text-sm text-stone-900"
+                          placeholder="Ex: Vale Refeição, Pix, etc."
+                          value={tempPayment}
+                          onChange={(e) => setTempPayment(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && addPaymentMethod()}
+                        />
+                        <button onClick={addPaymentMethod} className="bg-stone-200 hover:bg-stone-300 text-stone-700 px-3 rounded-lg text-sm font-bold"><Plus className="w-4 h-4"/></button>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                         {(settingsForm.paymentMethods || []).map((pm, i) => (
+                           <span key={i} className="bg-green-50 text-green-800 text-sm px-3 py-1.5 rounded-full border border-green-200 flex items-center gap-2">
+                             {pm} <button onClick={() => removePaymentMethod(i)} className="hover:text-red-500"><X className="w-4 h-4"/></button>
+                           </span>
+                         ))}
+                      </div>
+                   </div>
+
                    <div className="md:col-span-2">
                       <label className="block text-sm font-bold text-stone-700 mb-1">URL do Logo</label>
                       <input 
                         type="text" 
                         value={settingsForm.logoUrl} 
                         onChange={(e) => setSettingsForm({...settingsForm, logoUrl: e.target.value})} 
-                        className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 dark:text-stone-900"
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 text-sm"
                       />
+                      {settingsForm.logoUrl && (
+                        <div className="mt-2 h-16 w-full flex items-center">
+                          <img src={settingsForm.logoUrl} alt="Preview" className="h-full object-contain" />
+                        </div>
+                      )}
                    </div>
                 </div>
               </div>

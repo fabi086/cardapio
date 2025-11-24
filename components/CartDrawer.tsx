@@ -13,6 +13,7 @@ interface CartDrawerProps {
   whatsappNumber: string;
   storeName: string;
   deliveryRegions?: DeliveryRegion[];
+  paymentMethods?: string[];
 }
 
 export const CartDrawer: React.FC<CartDrawerProps> = ({ 
@@ -25,7 +26,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onUpdateObservation,
   whatsappNumber,
   storeName,
-  deliveryRegions = []
+  deliveryRegions = [],
+  paymentMethods = []
 }) => {
   // Checkout State
   const [deliveryType, setDeliveryType] = useState<'delivery' | 'pickup'>('delivery');
@@ -45,6 +47,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const [matchedRegionName, setMatchedRegionName] = useState('');
   const [isFetchingCep, setIsFetchingCep] = useState(false);
   const [cepError, setCepError] = useState('');
+
+  // Fallback payment methods if none provided
+  const availablePaymentMethods = paymentMethods.length > 0 
+    ? paymentMethods 
+    : ['Dinheiro', 'Cartão de Crédito', 'Cartão de Débito', 'PIX'];
 
   // Calculate Subtotal including options
   const subtotal = useMemo(() => {
@@ -479,7 +486,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                       <CreditCard className="w-4 h-4" /> Pagamento
                    </h3>
                    <div className="grid grid-cols-1 gap-2">
-                      {['Dinheiro', 'Cartão de Crédito', 'Cartão de Débito', 'PIX'].map(method => (
+                      {availablePaymentMethods.map(method => (
                          <label key={method} className={`flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors ${paymentMethod === method ? 'bg-green-50 dark:bg-green-900/30 border-italian-green' : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-700'}`}>
                             <input 
                                type="radio" 

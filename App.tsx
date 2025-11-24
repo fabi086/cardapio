@@ -196,6 +196,7 @@ function App() {
             address: settingsData.address || DEFAULT_SETTINGS.address,
             openingHours: settingsData.opening_hours || DEFAULT_SETTINGS.openingHours,
             phones: (settingsData.phones && Array.isArray(settingsData.phones)) ? settingsData.phones : DEFAULT_SETTINGS.phones,
+            paymentMethods: (settingsData.payment_methods && Array.isArray(settingsData.payment_methods)) ? settingsData.payment_methods : DEFAULT_SETTINGS.paymentMethods,
             deliveryRegions: Array.isArray(deliveryRegions) ? deliveryRegions : DEFAULT_SETTINGS.deliveryRegions,
             enableGuide: settingsData.enable_guide ?? true
         });
@@ -480,7 +481,8 @@ function App() {
           phones: newSettings.phones,
           logo_url: newSettings.logoUrl,
           delivery_regions: deliveryRegionsJson,
-          enable_guide: newSettings.enableGuide
+          enable_guide: newSettings.enableGuide,
+          payment_methods: newSettings.paymentMethods
        };
 
         if (settingsId) {
@@ -924,6 +926,7 @@ function App() {
         whatsappNumber={storeSettings.whatsapp}
         storeName={storeSettings.name}
         deliveryRegions={storeSettings.deliveryRegions || []}
+        paymentMethods={storeSettings.paymentMethods}
       />
 
       <InfoModal 

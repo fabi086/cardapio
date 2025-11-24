@@ -18,6 +18,10 @@ export const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose, settings,
   const getPhoneLink = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`;
   const getWhatsLink = (phone: string) => `https://wa.me/${phone.replace(/\D/g, '')}`;
 
+  const paymentMethods = settings.paymentMethods && settings.paymentMethods.length > 0
+    ? settings.paymentMethods
+    : ['Dinheiro', 'PIX', 'Cartão de Crédito', 'Cartão de Débito'];
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div 
@@ -141,7 +145,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose, settings,
                <CreditCard className="w-4 h-4 text-stone-400" /> Formas de Pagamento
             </h3>
             <div className="flex flex-wrap gap-2">
-               {['Dinheiro', 'PIX', 'Cartão de Crédito', 'Cartão de Débito'].map(method => (
+               {paymentMethods.map(method => (
                   <span key={method} className="px-3 py-1 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 text-xs font-medium rounded-full border border-stone-200 dark:border-stone-700">
                      {method}
                   </span>

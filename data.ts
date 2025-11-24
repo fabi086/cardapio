@@ -8,6 +8,7 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   address: 'Av. Itália, 112 - Centro, Itupeva - SP',
   openingHours: 'Aberto todos os dias das 18h às 23h',
   phones: ['4496-4188', '4496-4186', '(11) 99914-7399'],
+  paymentMethods: ['Dinheiro', 'PIX', 'Cartão de Crédito', 'Cartão de Débito'],
   deliveryRegions: [
     { 
       id: 'itupeva-geral', 

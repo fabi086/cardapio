@@ -61,6 +61,7 @@ export interface StoreSettings {
   address: string;
   openingHours: string;
   phones: string[];
+  paymentMethods: string[]; // New field for dynamic payment methods
   deliveryRegions?: DeliveryRegion[];
   enableGuide?: boolean; // New field to toggle onboarding tour
 }
