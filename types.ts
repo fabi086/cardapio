@@ -1,12 +1,26 @@
+export interface ProductChoice {
+  name: string;
+  price: number;
+}
+
+export interface ProductOption {
+  id: string; // unique internal id for keying
+  name: string; // e.g. "Escolha a Borda"
+  type: 'single' | 'multiple'; // single (radio) or multiple (checkbox)
+  required: boolean;
+  choices: ProductChoice[];
+}
+
 export interface Product {
   id: number;
-  code?: string; // The number on the menu (e.g., 901, 12)
+  code?: string;
   name: string;
   description: string;
   price: number;
   category: string;
-  category_id?: string; // Para compatibilidade com banco de dados
+  category_id?: string;
   image?: string;
+  options?: ProductOption[]; // New field for customization
 }
 
 export interface Category {
@@ -18,6 +32,11 @@ export interface Category {
 export interface CartItem extends Product {
   quantity: number;
   observation?: string;
+  selectedOptions?: { // Store what the user actually picked
+    groupName: string;
+    choiceName: string;
+    price: number;
+  }[];
 }
 
 export interface CartState {
@@ -29,7 +48,7 @@ export interface DeliveryRegion {
   id: string;
   name: string;
   price: number;
-  zipPrefixes?: string[]; // Array of CEPs or prefixes (e.g., "13295", "13295-000")
+  zipPrefixes?: string[];
 }
 
 export interface StoreSettings {

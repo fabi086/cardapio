@@ -10,7 +10,6 @@ import { AdminPanel } from './components/AdminPanel';
 import { ShoppingBag, Check, Loader2 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
-// Helper to validate loaded cart items
 const isValidCartItem = (item: any): item is CartItem => {
   return (
     item &&
@@ -23,41 +22,33 @@ const isValidCartItem = (item: any): item is CartItem => {
 };
 
 function App() {
-  // --- STATE MANAGEMENT ---
   const [menuData, setMenuData] = useState<Category[]>([]);
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(DEFAULT_SETTINGS);
   const [settingsId, setSettingsId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch Menu and Settings
   const fetchData = async () => {
     setLoading(true);
 
     if (!supabase) {
-      console.log('Modo Offline: Carregando dados locais.');
       setMenuData(MENU_DATA);
       setStoreSettings(DEFAULT_SETTINGS);
-      // Silently handle offline mode without scary errors
       setError(null);
       setLoading(false);
       return;
     }
 
     try {
-      // 1. Fetch Categories
       const { data: categories, error: catError } = await supabase
         .from('categories')
         .select('*')
         .order('order_index');
       
-      // 2. Fetch Products
       const { data: products, error: prodError } = await supabase
         .from('products')
         .select('*');
 
-      // 3. Fetch Settings 
-      // IMPORTANTE: Ordenamos por ID ascendente para garantir que sempre pegamos a configuração principal (a primeira criada)
       const { data: settingsData, error: settingsError } = await supabase
         .from('settings')
         .select('*')
@@ -69,21 +60,28 @@ function App() {
       if (prodError) throw prodError;
       if (settingsError) throw settingsError;
 
-      // Process Menu
       if (categories && products) {
         const structuredMenu: Category[] = categories.map((cat: any) => ({
           id: cat.id,
           name: cat.name,
-          items: products.filter((prod: any) => prod.category_id === cat.id).sort((a: any, b: any) => a.id - b.id)
+          items: products
+            .filter((prod: any) => prod.category_id === cat.id)
+            .sort((a: any, b: any) => a.id - b.id)
+            .map((prod: any) => {
+              // Parse options if string, or keep as is
+              let opts = prod.options;
+              if (typeof opts === 'string') {
+                try { opts = JSON.parse(opts); } catch(e) { opts = []; }
+              }
+              return { ...prod, options: opts || [] };
+            })
         }));
         setMenuData(structuredMenu);
       }
 
-      // Process Settings
       if (settingsData) {
         setSettingsId(settingsData.id);
         
-        // Parse delivery regions if it's a string, or use directly if it's already an object (Supabase client sometimes autoparses JSON)
         let deliveryRegions = settingsData.delivery_regions;
         if (typeof deliveryRegions === 'string') {
           try {
@@ -103,16 +101,13 @@ function App() {
             deliveryRegions: Array.isArray(deliveryRegions) ? deliveryRegions : DEFAULT_SETTINGS.deliveryRegions
         });
       } else {
-        // If table empty, use default but don't error out
         setStoreSettings(DEFAULT_SETTINGS);
       }
       
       setError(null);
 
     } catch (err: any) {
-      // Tratamento silencioso para erro de tabela inexistente (comum em configurações iniciais)
       if (err.code === '42P01' || err.code === 'PGRST205') { 
-         console.warn('Supabase: Tabelas ainda não criadas. Usando dados locais de exemplo.');
          setMenuData(MENU_DATA);
          setStoreSettings(DEFAULT_SETTINGS);
          setError(null);
@@ -120,10 +115,8 @@ function App() {
          return;
       }
 
-      // Log detalhado para outros erros reais
       console.error('Erro ao buscar dados:', JSON.stringify(err, null, 2));
 
-      // Fallback to local data on error
       setMenuData(MENU_DATA);
       setStoreSettings(DEFAULT_SETTINGS);
 
@@ -141,7 +134,6 @@ function App() {
     fetchData();
   }, []);
 
-  // --- APP STATE ---
   const [view, setView] = useState<'customer' | 'admin'>('customer');
   const [cartItems, setCartItems] = useState<CartItem[]>(() => {
     try {
@@ -152,12 +144,12 @@ function App() {
       if (Array.isArray(parsed)) {
         return parsed.filter(isValidCartItem).map(item => ({
           ...item,
-          observation: item.observation || ''
+          observation: item.observation || '',
+          selectedOptions: item.selectedOptions || []
         }));
       }
       return [];
     } catch (error) {
-      console.error("Error loading cart from localStorage:", error);
       try { localStorage.removeItem('spagnolli_cart'); } catch(e) {}
       return [];
     }
@@ -168,14 +160,12 @@ function App() {
   const [showToast, setShowToast] = useState(false);
   const [isCartAnimating, setIsCartAnimating] = useState(false);
 
-  // Set initial active category once menu loads
   useEffect(() => {
     if (menuData.length > 0 && !activeCategory) {
       setActiveCategory(menuData[0].id);
     }
   }, [menuData]);
 
-  // Save cart to localStorage
   useEffect(() => {
     try {
       localStorage.setItem('spagnolli_cart', JSON.stringify(cartItems));
@@ -184,7 +174,6 @@ function App() {
     }
   }, [cartItems]);
 
-  // Hide toast
   useEffect(() => {
     if (showToast) {
       const timer = setTimeout(() => setShowToast(false), 3000);
@@ -194,15 +183,10 @@ function App() {
 
   // --- ADMIN ACTIONS ---
   
-  // 1. UPDATE PRODUCT (And potentially move category)
   const handleUpdateProduct = async (originalCategoryId: string, productId: number, updates: Partial<Product>) => {
-    // Optimistic Update
     setMenuData(prevMenu => {
-      // If category changed, we need to remove from old and add to new
       if (updates.category && updates.category !== originalCategoryId) {
         let productToMove: Product | undefined;
-        
-        // Remove from old
         const menuWithoutProduct = prevMenu.map(cat => {
            if (cat.id === originalCategoryId) {
               const prod = cat.items.find(p => p.id === productId);
@@ -211,8 +195,6 @@ function App() {
            }
            return cat;
         });
-
-        // Add to new
         if (productToMove) {
            return menuWithoutProduct.map(cat => {
               if (cat.id === updates.category) {
@@ -221,10 +203,9 @@ function App() {
               return cat;
            });
         }
-        return prevMenu; // Fallback should unlikely happen
+        return prevMenu;
       } 
       
-      // Simple update (same category)
       return prevMenu.map(cat => {
         if (cat.id !== originalCategoryId) return cat;
         return {
@@ -240,30 +221,35 @@ function App() {
     if (!supabase) return;
 
     try {
+      // Stringify JSON fields for Supabase
+      const payload: any = {
+        name: updates.name,
+        price: updates.price,
+        description: updates.description,
+        image: updates.image,
+        category_id: updates.category,
+        code: updates.code,
+      };
+
+      if (updates.options) {
+        payload.options = JSON.stringify(updates.options);
+      }
+
       const { error } = await supabase
         .from('products')
-        .update({
-          name: updates.name,
-          price: updates.price,
-          description: updates.description,
-          image: updates.image,
-          category_id: updates.category, // Assuming DB uses category_id
-          code: updates.code
-        })
+        .update(payload)
         .eq('id', productId);
 
       if (error) throw error;
     } catch (err) {
       console.error('Erro ao salvar no Supabase:', err);
-      fetchData(); // Revert
+      fetchData();
     }
   };
 
-  // 2. ADD PRODUCT
   const handleAddProduct = async (categoryId: string, product: Omit<Product, 'id'>) => {
-    const tempId = Date.now(); // Temp ID for UI
+    const tempId = Date.now();
     
-    // Optimistic
     setMenuData(prev => prev.map(cat => {
        if (cat.id === categoryId) {
           return { ...cat, items: [...cat.items, { ...product, id: tempId, category: categoryId }]};
@@ -274,21 +260,23 @@ function App() {
     if (!supabase) return;
 
     try {
+       const payload: any = {
+          name: product.name,
+          description: product.description,
+          price: product.price,
+          image: product.image,
+          category_id: categoryId,
+          code: product.code,
+          options: product.options ? JSON.stringify(product.options) : '[]'
+       };
+
        const { data, error } = await supabase
          .from('products')
-         .insert([{
-            name: product.name,
-            description: product.description,
-            price: product.price,
-            image: product.image,
-            category_id: categoryId,
-            code: product.code
-         }])
+         .insert([payload])
          .select();
          
        if(error) throw error;
        
-       // Replace temp ID with real ID
        if (data && data[0]) {
           const realId = data[0].id;
           setMenuData(prev => prev.map(cat => {
@@ -307,9 +295,7 @@ function App() {
     }
   };
 
-  // 3. DELETE PRODUCT
   const handleDeleteProduct = async (categoryId: string, productId: number) => {
-     // Optimistic
      setMenuData(prev => prev.map(cat => {
         if (cat.id === categoryId) {
            return { ...cat, items: cat.items.filter(i => i.id !== productId) };
@@ -331,46 +317,35 @@ function App() {
      }
   };
 
-  // 4. UPDATE SETTINGS
   const handleUpdateSettings = async (newSettings: StoreSettings) => {
-     // Atualiza estado local IMEDIATAMENTE para refletir no frontend (White-label)
      setStoreSettings(newSettings);
 
      if (!supabase) return;
 
      try {
-        // Convert deliveryRegions to JSON for DB
         const deliveryRegionsJson = JSON.stringify(newSettings.deliveryRegions || []);
 
+        const payload = { 
+          name: newSettings.name,
+          whatsapp: newSettings.whatsapp,
+          address: newSettings.address,
+          opening_hours: newSettings.openingHours,
+          phones: newSettings.phones,
+          logo_url: newSettings.logoUrl,
+          delivery_regions: deliveryRegionsJson
+       };
+
         if (settingsId) {
-            // Atualizar configuração existente usando o ID capturado no carregamento
             const { error } = await supabase
                .from('settings')
-               .update({ 
-                  name: newSettings.name,
-                  whatsapp: newSettings.whatsapp,
-                  address: newSettings.address,
-                  opening_hours: newSettings.openingHours,
-                  phones: newSettings.phones,
-                  logo_url: newSettings.logoUrl,
-                  delivery_regions: deliveryRegionsJson
-               })
+               .update(payload)
                .eq('id', settingsId);
             
             if (error) throw error;
         } else {
-            // Se não houver ID (primeira vez), inserir e pegar o novo ID
             const { data, error } = await supabase
                .from('settings')
-               .insert([{ 
-                  name: newSettings.name,
-                  whatsapp: newSettings.whatsapp,
-                  address: newSettings.address,
-                  opening_hours: newSettings.openingHours,
-                  phones: newSettings.phones,
-                  logo_url: newSettings.logoUrl,
-                  delivery_regions: deliveryRegionsJson
-               }])
+               .insert([payload])
                .select();
             
             if (error) throw error;
@@ -379,7 +354,7 @@ function App() {
      } catch (err: any) {
         console.error('Erro ao salvar configurações:', err);
         if (err.code === '42P01' || err.code === 'PGRST205') {
-            alert('Erro: A tabela de configurações não existe no banco de dados. Execute o script SQL no Supabase.');
+            alert('Erro: Tabelas não encontradas.');
         } else {
             alert('Ocorreu um erro ao salvar as configurações.');
         }
@@ -387,19 +362,29 @@ function App() {
   };
 
   const handleResetMenu = () => {
-      // Recarrega os dados do banco para limpar alterações locais não salvas
       fetchData();
       alert("Dados recarregados do servidor.");
   };
 
-  // --- CART ACTIONS ---
-  const addToCart = (product: Product, quantity: number, observation: string) => {
+  const addToCart = (product: Product, quantity: number, observation: string, selectedOptions?: CartItem['selectedOptions']) => {
     const normalizedObservation = (observation || '').trim();
+    
+    // Create a unique key based on options to separate items (e.g., Pizza w/ Bacon vs Pizza w/o Bacon)
+    const optionsKey = selectedOptions 
+        ? JSON.stringify(selectedOptions.sort((a,b) => a.choiceName.localeCompare(b.choiceName))) 
+        : '';
 
     setCartItems(prev => {
-      const existingItemIndex = prev.findIndex(
-        item => item.id === product.id && (item.observation || '').trim() === normalizedObservation
-      );
+      // Find exact match (same id, same observation, same options)
+      const existingItemIndex = prev.findIndex(item => {
+        const itemOptionsKey = item.selectedOptions 
+            ? JSON.stringify(item.selectedOptions.sort((a,b) => a.choiceName.localeCompare(b.choiceName))) 
+            : '';
+        
+        return item.id === product.id && 
+               (item.observation || '').trim() === normalizedObservation &&
+               itemOptionsKey === optionsKey;
+      });
 
       if (existingItemIndex >= 0) {
         const newItems = [...prev];
@@ -410,7 +395,7 @@ function App() {
         };
         return newItems;
       } else {
-        return [...prev, { ...product, quantity, observation: normalizedObservation }];
+        return [...prev, { ...product, quantity, observation: normalizedObservation, selectedOptions }];
       }
     });
     
@@ -464,9 +449,10 @@ function App() {
   };
 
   const totalItems = cartItems.reduce((acc, item) => acc + (item.quantity || 0), 0);
-  const totalPrice = cartItems.reduce((acc, item) => acc + (item.price * (item.quantity || 0)), 0);
-
-  // --- RENDER ---
+  const totalPrice = cartItems.reduce((acc, item) => {
+     const optionsPrice = item.selectedOptions ? item.selectedOptions.reduce((s,o) => s + o.price, 0) : 0;
+     return acc + ((item.price + optionsPrice) * (item.quantity || 0));
+  }, 0);
 
   if (loading) {
     return (
@@ -515,14 +501,12 @@ function App() {
       />
 
       <main className="max-w-5xl mx-auto px-4 pt-6">
-        {/* Banner Area */}
         <div className="bg-gradient-to-r from-stone-900 to-stone-800 text-white rounded-2xl p-6 mb-8 shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="space-y-2 text-center md:text-left">
              <span className="bg-italian-red text-xs font-bold px-2 py-1 rounded uppercase tracking-wide">Novidade</span>
              <h2 className="text-3xl font-display">Bateu a fome?</h2>
              <p className="text-stone-300 max-w-md">
                Escolha sua pizza favorita e receba no conforto da sua casa. 
-               Tradição e qualidade em cada pedaço.
              </p>
           </div>
           <div className="w-32 h-32 md:w-40 md:h-40 bg-orange-100 rounded-full flex items-center justify-center border-4 border-white/10 shadow-inner relative overflow-hidden">
@@ -573,7 +557,6 @@ function App() {
         deliveryRegions={storeSettings.deliveryRegions || []}
       />
 
-      {/* Toast Notification */}
       {showToast && (
         <div className="fixed top-20 right-4 z-50 animate-in fade-in slide-in-from-right duration-300 pointer-events-none">
           <div className="bg-italian-green text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2">
@@ -585,10 +568,8 @@ function App() {
         </div>
       )}
 
-      {/* Floating Cart Button */}
       {totalItems > 0 && !isCartOpen && (
         <>
-          {/* Mobile Bottom Bar */}
           <div className="fixed bottom-4 left-4 right-4 md:hidden z-40">
             <button 
               onClick={() => setIsCartOpen(true)}
@@ -605,7 +586,6 @@ function App() {
             </button>
           </div>
 
-          {/* Desktop Floating Button */}
           <div className="hidden md:block fixed bottom-8 right-8 z-40">
             <button
               onClick={() => setIsCartOpen(true)}
