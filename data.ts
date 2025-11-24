@@ -7,7 +7,13 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   whatsapp: '5511999147399',
   address: 'Av. Itália, 112 - Centro, Itupeva - SP',
   openingHours: 'Aberto todos os dias das 18h às 23h',
-  phones: ['4496-4188', '4496-4186', '(11) 99914-7399']
+  phones: ['4496-4188', '4496-4186', '(11) 99914-7399'],
+  deliveryRegions: [
+    { id: 'centro', name: 'Centro', price: 5.00 },
+    { id: 'pq-das-vinhas', name: 'Parque das Vinhas', price: 7.00 },
+    { id: 'jardim-brasil', name: 'Jardim Brasil', price: 8.00 },
+    { id: 'outros', name: 'Outros Bairros (Consultar)', price: 10.00 }
+  ]
 };
 
 export const WHATSAPP_NUMBER = DEFAULT_SETTINGS.whatsapp; // Legacy support if needed

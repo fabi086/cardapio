@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Category, Product, StoreSettings } from '../types';
-import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid } from 'lucide-react';
+import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin } from 'lucide-react';
 
 interface AdminPanelProps {
   menuData: Category[];
@@ -40,6 +40,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   // Settings State
   const [settingsForm, setSettingsForm] = useState<StoreSettings>(settings);
+  const [newRegionName, setNewRegionName] = useState('');
+  const [newRegionPrice, setNewRegionPrice] = useState('');
 
   // SINCRONIZAÇÃO IMPORTANTE: Atualiza o formulário quando os dados externos mudam
   useEffect(() => {
@@ -101,6 +103,31 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleSaveSettings = () => {
     onUpdateSettings(settingsForm);
     alert('Configurações salvas e atualizadas no site!');
+  };
+
+  const handleAddRegion = () => {
+    if (!newRegionName || !newRegionPrice) return;
+    
+    const newRegion = {
+      id: newRegionName.toLowerCase().replace(/\s+/g, '-'),
+      name: newRegionName,
+      price: parseFloat(newRegionPrice)
+    };
+    
+    setSettingsForm({
+      ...settingsForm,
+      deliveryRegions: [...(settingsForm.deliveryRegions || []), newRegion]
+    });
+    
+    setNewRegionName('');
+    setNewRegionPrice('');
+  };
+
+  const handleRemoveRegion = (id: string) => {
+    setSettingsForm({
+      ...settingsForm,
+      deliveryRegions: (settingsForm.deliveryRegions || []).filter(r => r.id !== id)
+    });
   };
 
   // --- IMAGE UTILS ---
@@ -190,84 +217,150 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-4">
         {/* --- TAB: SETTINGS --- */}
         {activeTab === 'settings' && (
-           <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200 animate-in fade-in slide-in-from-bottom-2">
-              <h2 className="text-xl font-bold text-stone-800 mb-6 flex items-center gap-2">
-                 <Settings className="w-5 h-5 text-italian-red" /> Dados do Estabelecimento
-              </h2>
+           <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200 animate-in fade-in slide-in-from-bottom-2 space-y-8">
+              
+              {/* Basic Info */}
+              <div>
+                <h2 className="text-xl font-bold text-stone-800 mb-6 flex items-center gap-2">
+                  <Settings className="w-5 h-5 text-italian-red" /> Dados do Estabelecimento
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="md:col-span-2 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800 mb-2">
+                      <strong>Dica:</strong> As alterações feitas aqui atualizam o nome, logo e rodapé do site instantaneamente. Use esta área para personalizar a marca do seu negócio.
+                  </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <div className="md:col-span-2 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800 mb-2">
-                    <strong>Dica:</strong> As alterações feitas aqui atualizam o nome, logo e rodapé do site instantaneamente. Use esta área para personalizar a marca do seu negócio.
-                 </div>
+                  <div>
+                      <label className="block text-sm font-bold text-stone-700 mb-1">Nome do Estabelecimento</label>
+                      <input 
+                        type="text" 
+                        value={settingsForm.name} 
+                        onChange={(e) => setSettingsForm({...settingsForm, name: e.target.value})}
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 focus:ring-1 focus:ring-italian-green"
+                      />
+                  </div>
+                  <div>
+                      <label className="block text-sm font-bold text-stone-700 mb-1">WhatsApp de Pedidos</label>
+                      <input 
+                        type="text" 
+                        value={settingsForm.whatsapp} 
+                        onChange={(e) => setSettingsForm({...settingsForm, whatsapp: e.target.value})}
+                        placeholder="Ex: 5511999999999"
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 focus:ring-1 focus:ring-italian-green"
+                      />
+                      <p className="text-[10px] text-stone-500 mt-1">
+                        Preferência: Apenas números com DDD (ex: 5511999999999).
+                      </p>
+                  </div>
+                  <div className="md:col-span-2">
+                      <label className="block text-sm font-bold text-stone-700 mb-1">Logo URL (Link da Imagem)</label>
+                      <input 
+                        type="text" 
+                        value={settingsForm.logoUrl} 
+                        onChange={(e) => setSettingsForm({...settingsForm, logoUrl: e.target.value})}
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 focus:ring-1 focus:ring-italian-green"
+                        placeholder="/logo.png ou https://..."
+                      />
+                  </div>
+                  <div className="md:col-span-2">
+                      <label className="block text-sm font-bold text-stone-700 mb-1">Endereço Completo</label>
+                      <input 
+                        type="text" 
+                        value={settingsForm.address} 
+                        onChange={(e) => setSettingsForm({...settingsForm, address: e.target.value})}
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 focus:ring-1 focus:ring-italian-green"
+                      />
+                  </div>
+                  <div className="md:col-span-2">
+                      <label className="block text-sm font-bold text-stone-700 mb-1">Horário de Funcionamento</label>
+                      <input 
+                        type="text" 
+                        value={settingsForm.openingHours} 
+                        onChange={(e) => setSettingsForm({...settingsForm, openingHours: e.target.value})}
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 focus:ring-1 focus:ring-italian-green"
+                      />
+                  </div>
+                  <div className="md:col-span-2">
+                      <label className="block text-sm font-bold text-stone-700 mb-1">Telefones (Separar por vírgula)</label>
+                      <input 
+                        type="text" 
+                        value={settingsForm.phones.join(', ')} 
+                        onChange={(e) => setSettingsForm({...settingsForm, phones: e.target.value.split(',').map(s => s.trim())})}
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 focus:ring-1 focus:ring-italian-green"
+                      />
+                  </div>
+                </div>
+              </div>
 
-                 <div>
-                    <label className="block text-sm font-bold text-stone-700 mb-1">Nome do Estabelecimento</label>
-                    <input 
-                       type="text" 
-                       value={settingsForm.name} 
-                       onChange={(e) => setSettingsForm({...settingsForm, name: e.target.value})}
-                       className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 focus:ring-1 focus:ring-italian-green"
-                    />
-                 </div>
-                 <div>
-                    <label className="block text-sm font-bold text-stone-700 mb-1">WhatsApp de Pedidos</label>
-                    <input 
-                       type="text" 
-                       value={settingsForm.whatsapp} 
-                       onChange={(e) => setSettingsForm({...settingsForm, whatsapp: e.target.value})}
-                       placeholder="Ex: 5511999999999"
-                       className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 focus:ring-1 focus:ring-italian-green"
-                    />
-                    <p className="text-[10px] text-stone-500 mt-1">
-                      Preferência: Apenas números com DDD (ex: 5511999999999).
-                    </p>
-                 </div>
-                 <div className="md:col-span-2">
-                    <label className="block text-sm font-bold text-stone-700 mb-1">Logo URL (Link da Imagem)</label>
-                    <input 
-                       type="text" 
-                       value={settingsForm.logoUrl} 
-                       onChange={(e) => setSettingsForm({...settingsForm, logoUrl: e.target.value})}
-                       className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 focus:ring-1 focus:ring-italian-green"
-                       placeholder="/logo.png ou https://..."
-                    />
-                 </div>
-                 <div className="md:col-span-2">
-                    <label className="block text-sm font-bold text-stone-700 mb-1">Endereço Completo</label>
-                    <input 
-                       type="text" 
-                       value={settingsForm.address} 
-                       onChange={(e) => setSettingsForm({...settingsForm, address: e.target.value})}
-                       className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 focus:ring-1 focus:ring-italian-green"
-                    />
-                 </div>
-                 <div className="md:col-span-2">
-                    <label className="block text-sm font-bold text-stone-700 mb-1">Horário de Funcionamento</label>
-                    <input 
-                       type="text" 
-                       value={settingsForm.openingHours} 
-                       onChange={(e) => setSettingsForm({...settingsForm, openingHours: e.target.value})}
-                       className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 focus:ring-1 focus:ring-italian-green"
-                    />
-                 </div>
-                 <div className="md:col-span-2">
-                    <label className="block text-sm font-bold text-stone-700 mb-1">Telefones (Separar por vírgula)</label>
-                    <input 
-                       type="text" 
-                       value={settingsForm.phones.join(', ')} 
-                       onChange={(e) => setSettingsForm({...settingsForm, phones: e.target.value.split(',').map(s => s.trim())})}
-                       className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 focus:ring-1 focus:ring-italian-green"
-                    />
-                 </div>
-                 
-                 <div className="md:col-span-2 flex justify-end pt-4 border-t border-stone-100">
-                    <button 
-                       onClick={handleSaveSettings}
-                       className="px-6 py-2.5 bg-italian-green text-white rounded-lg font-bold shadow-md hover:bg-green-700 flex items-center gap-2"
-                    >
-                       <Save className="w-5 h-5" /> Salvar Configurações
-                    </button>
-                 </div>
+              <hr className="border-stone-200" />
+
+              {/* Delivery Regions */}
+              <div>
+                <h2 className="text-xl font-bold text-stone-800 mb-6 flex items-center gap-2">
+                   <MapPin className="w-5 h-5 text-italian-red" /> Taxas de Entrega por Região
+                </h2>
+                
+                <div className="bg-stone-50 p-4 rounded-lg border border-stone-200 mb-4">
+                  <div className="grid grid-cols-12 gap-3 items-end">
+                    <div className="col-span-7">
+                      <label className="block text-xs font-bold text-stone-500 mb-1">Nome do Bairro/Região</label>
+                      <input 
+                        type="text" 
+                        value={newRegionName}
+                        onChange={(e) => setNewRegionName(e.target.value)}
+                        placeholder="Ex: Centro"
+                        className="w-full p-2 bg-white border border-stone-300 rounded-md text-sm"
+                      />
+                    </div>
+                    <div className="col-span-3">
+                      <label className="block text-xs font-bold text-stone-500 mb-1">Taxa (R$)</label>
+                      <input 
+                        type="number" 
+                        value={newRegionPrice}
+                        onChange={(e) => setNewRegionPrice(e.target.value)}
+                        placeholder="0.00"
+                        className="w-full p-2 bg-white border border-stone-300 rounded-md text-sm"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <button 
+                        onClick={handleAddRegion}
+                        className="w-full p-2 bg-italian-green text-white rounded-md text-sm font-bold hover:bg-green-700 flex items-center justify-center"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  {(settingsForm.deliveryRegions || []).map((region, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 bg-white border border-stone-200 rounded-lg shadow-sm">
+                      <span className="font-medium text-stone-800">{region.name}</span>
+                      <div className="flex items-center gap-4">
+                        <span className="font-bold text-green-600">R$ {region.price.toFixed(2)}</span>
+                        <button 
+                          onClick={() => handleRemoveRegion(region.id)}
+                          className="text-stone-400 hover:text-red-500 p-1"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {(!settingsForm.deliveryRegions || settingsForm.deliveryRegions.length === 0) && (
+                    <p className="text-center text-sm text-stone-400 italic py-4">Nenhuma região cadastrada.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Save Button */}
+              <div className="flex justify-end pt-4 border-t border-stone-100">
+                  <button 
+                      onClick={handleSaveSettings}
+                      className="px-6 py-2.5 bg-italian-green text-white rounded-lg font-bold shadow-md hover:bg-green-700 flex items-center gap-2"
+                  >
+                      <Save className="w-5 h-5" /> Salvar Configurações
+                  </button>
               </div>
            </div>
         )}

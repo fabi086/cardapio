@@ -82,13 +82,25 @@ function App() {
       // Process Settings
       if (settingsData) {
         setSettingsId(settingsData.id);
+        
+        // Parse delivery regions if it's a string, or use directly if it's already an object (Supabase client sometimes autoparses JSON)
+        let deliveryRegions = settingsData.delivery_regions;
+        if (typeof deliveryRegions === 'string') {
+          try {
+            deliveryRegions = JSON.parse(deliveryRegions);
+          } catch (e) {
+            deliveryRegions = DEFAULT_SETTINGS.deliveryRegions;
+          }
+        }
+
         setStoreSettings({
             name: settingsData.name || DEFAULT_SETTINGS.name,
             whatsapp: settingsData.whatsapp || DEFAULT_SETTINGS.whatsapp,
             logoUrl: settingsData.logo_url || DEFAULT_SETTINGS.logoUrl,
             address: settingsData.address || DEFAULT_SETTINGS.address,
             openingHours: settingsData.opening_hours || DEFAULT_SETTINGS.openingHours,
-            phones: (settingsData.phones && Array.isArray(settingsData.phones)) ? settingsData.phones : DEFAULT_SETTINGS.phones
+            phones: (settingsData.phones && Array.isArray(settingsData.phones)) ? settingsData.phones : DEFAULT_SETTINGS.phones,
+            deliveryRegions: Array.isArray(deliveryRegions) ? deliveryRegions : DEFAULT_SETTINGS.deliveryRegions
         });
       } else {
         // If table empty, use default but don't error out
@@ -327,6 +339,9 @@ function App() {
      if (!supabase) return;
 
      try {
+        // Convert deliveryRegions to JSON for DB
+        const deliveryRegionsJson = JSON.stringify(newSettings.deliveryRegions || []);
+
         if (settingsId) {
             // Atualizar configuração existente usando o ID capturado no carregamento
             const { error } = await supabase
@@ -337,7 +352,8 @@ function App() {
                   address: newSettings.address,
                   opening_hours: newSettings.openingHours,
                   phones: newSettings.phones,
-                  logo_url: newSettings.logoUrl
+                  logo_url: newSettings.logoUrl,
+                  delivery_regions: deliveryRegionsJson
                })
                .eq('id', settingsId);
             
@@ -352,7 +368,8 @@ function App() {
                   address: newSettings.address,
                   opening_hours: newSettings.openingHours,
                   phones: newSettings.phones,
-                  logo_url: newSettings.logoUrl
+                  logo_url: newSettings.logoUrl,
+                  delivery_regions: deliveryRegionsJson
                }])
                .select();
             
@@ -553,6 +570,7 @@ function App() {
         onUpdateObservation={updateObservation}
         whatsappNumber={storeSettings.whatsapp}
         storeName={storeSettings.name}
+        deliveryRegions={storeSettings.deliveryRegions || []}
       />
 
       {/* Toast Notification */}

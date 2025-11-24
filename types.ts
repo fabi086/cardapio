@@ -25,6 +25,12 @@ export interface CartState {
   isOpen: boolean;
 }
 
+export interface DeliveryRegion {
+  id: string;
+  name: string;
+  price: number;
+}
+
 export interface StoreSettings {
   name: string;
   logoUrl: string;
@@ -32,4 +38,5 @@ export interface StoreSettings {
   address: string;
   openingHours: string;
   phones: string[];
+  deliveryRegions?: DeliveryRegion[];
 }
