@@ -5,6 +5,7 @@ export interface Product {
   description: string;
   price: number;
   category: string;
+  category_id?: string; // Para compatibilidade com banco de dados
   image?: string;
 }
 
@@ -22,4 +23,13 @@ export interface CartItem extends Product {
 export interface CartState {
   items: CartItem[];
   isOpen: boolean;
+}
+
+export interface StoreSettings {
+  name: string;
+  logoUrl: string;
+  whatsapp: string;
+  address: string;
+  openingHours: string;
+  phones: string[];
 }

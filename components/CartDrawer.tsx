@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { CartItem } from '../types';
-import { WHATSAPP_NUMBER } from '../data';
 import { X, Trash2, MessageCircle, ShoppingBag, Plus, Minus, Edit2 } from 'lucide-react';
 
 interface CartDrawerProps {
@@ -11,6 +10,8 @@ interface CartDrawerProps {
   onClearCart?: () => void;
   onUpdateQuantity?: (index: number, newQuantity: number) => void;
   onUpdateObservation?: (index: number, newObservation: string) => void;
+  whatsappNumber: string;
+  storeName: string;
 }
 
 export const CartDrawer: React.FC<CartDrawerProps> = ({ 
@@ -20,7 +21,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onRemoveItem, 
   onClearCart,
   onUpdateQuantity,
-  onUpdateObservation
+  onUpdateObservation,
+  whatsappNumber,
+  storeName
 }) => {
   const total = useMemo(() => {
     return items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
@@ -29,7 +32,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const handleCheckout = () => {
     if (items.length === 0) return;
 
-    let message = `*Olá, Spagnolli Pizzaria! Gostaria de fazer um pedido:*\n\n`;
+    let message = `*Olá, ${storeName}! Gostaria de fazer um pedido:*\n\n`;
     
     items.forEach((item) => {
       message += `▪️ ${item.quantity}x *${item.name}*`;
@@ -45,7 +48,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     message += `\n\n_Aguardo a confirmação!_`;
 
     const encodedMessage = encodeURIComponent(message);
-    const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
+    // Remove non-numeric characters from WhatsApp number
+    const cleanNumber = whatsappNumber.replace(/\D/g, '');
+    const url = `https://wa.me/${cleanNumber}?text=${encodedMessage}`;
     
     window.open(url, '_blank');
   };
@@ -125,7 +130,16 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     {/* Quantity Controls */}
                     <div className="flex items-center border border-stone-200 rounded-lg bg-stone-50 h-8 shadow-sm">
                        <button 
-                         onClick={() => onUpdateQuantity ? onUpdateQuantity(index, item.quantity - 1) : null}
+                         onClick={() => {
+                           if (!onUpdateQuantity) return;
+                           if (item.quantity <= 1) {
+                             if (window.confirm('Remover este item do carrinho?')) {
+                               onRemoveItem(index);
+                             }
+                           } else {
+                             onUpdateQuantity(index, item.quantity - 1);
+                           }
+                         }}
                          className="w-9 h-full flex items-center justify-center text-stone-500 hover:bg-red-50 hover:text-red-600 rounded-l-lg transition-colors active:bg-red-100"
                          disabled={!onUpdateQuantity}
                        >

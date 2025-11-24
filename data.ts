@@ -1,6 +1,17 @@
-import { Category } from './types';
+import { Category, StoreSettings } from './types';
 
-export const WHATSAPP_NUMBER = '5511999147399';
+// Default Settings (Fallback)
+export const DEFAULT_SETTINGS: StoreSettings = {
+  name: 'Spagnolli Pizzaria',
+  logoUrl: '/logo.png',
+  whatsapp: '5511999147399',
+  address: 'Av. Itália, 112 - Centro, Itupeva - SP',
+  openingHours: 'Aberto todos os dias das 18h às 23h',
+  phones: ['4496-4188', '4496-4186', '(11) 99914-7399']
+};
+
+export const WHATSAPP_NUMBER = DEFAULT_SETTINGS.whatsapp; // Legacy support if needed
+export const LOGO_URL = DEFAULT_SETTINGS.logoUrl; // Legacy support
 
 // Image Constants
 const IMG_PROMO = 'https://images.unsplash.com/photo-1604382354936-07c5d9983bd3?q=80&w=800&auto=format&fit=crop';
@@ -13,6 +24,7 @@ const IMG_PIZZA_CHICKEN = 'https://images.unsplash.com/photo-1513104890138-7c749
 const IMG_BEIRUTE = 'https://images.unsplash.com/photo-1559466273-d95e71deb17d?q=80&w=800&auto=format&fit=crop';
 const IMG_SWEET = 'https://images.unsplash.com/photo-1605436247078-f0ef43ee8d5c?q=80&w=800&auto=format&fit=crop';
 const IMG_SWEET_PIZZA = 'https://images.unsplash.com/photo-1588315029754-2dd089d39a1a?q=80&w=800&auto=format&fit=crop';
+const IMG_DRINKS = 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?q=80&w=800&auto=format&fit=crop';
 
 export const MENU_DATA: Category[] = [
   {
@@ -134,6 +146,16 @@ export const MENU_DATA: Category[] = [
       { id: 73, code: '73', name: 'Chocolate com Banana', description: 'Creme de chocolate com banana', price: 67.00, category: 'pizzas-doces', image: IMG_SWEET_PIZZA },
       { id: 74, code: '74', name: 'Chocolate com Confete', description: 'Creme de chocolate com confetes', price: 67.00, category: 'pizzas-doces', image: IMG_SWEET_PIZZA },
       { id: 67, code: '67', name: 'Chocolate com Avelã', description: 'Creme de chocolate com avelã e leite ninho', price: 72.00, category: 'pizzas-doces', image: IMG_SWEET_PIZZA },
+    ]
+  },
+  {
+    id: 'bebidas',
+    name: 'Bebidas',
+    items: [
+      { id: 1001, name: 'Refrigerante 2L', description: 'Coca-Cola, Guaraná, Fanta (Sabor a escolher)', price: 16.00, category: 'bebidas', image: IMG_DRINKS },
+      { id: 1002, name: 'Refrigerante Lata', description: '350ml - Variados', price: 7.00, category: 'bebidas', image: IMG_DRINKS },
+      { id: 1003, name: 'Água Mineral', description: '500ml', price: 4.00, category: 'bebidas', image: IMG_DRINKS },
+      { id: 1004, name: 'Cerveja Lata', description: '350ml - Variadas', price: 8.00, category: 'bebidas', image: IMG_DRINKS },
     ]
   }
 ];

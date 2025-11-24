@@ -1,21 +1,45 @@
-
 import React, { useState } from 'react';
-import { Category, Product } from '../types';
-import { Save, ArrowLeft, RefreshCw, Edit3, X, Check, ChevronDown, ChevronRight, Image as ImageIcon, Upload, Trash2 } from 'lucide-react';
+import { Category, Product, StoreSettings } from '../types';
+import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid } from 'lucide-react';
 
 interface AdminPanelProps {
   menuData: Category[];
+  settings: StoreSettings;
   onUpdateProduct: (categoryId: string, productId: number, updates: Partial<Product>) => void;
+  onAddProduct: (categoryId: string, product: Omit<Product, 'id'>) => void;
+  onDeleteProduct: (categoryId: string, productId: number) => void;
+  onUpdateSettings: (settings: StoreSettings) => void;
   onResetMenu: () => void;
   onBack: () => void;
 }
 
-export const AdminPanel: React.FC<AdminPanelProps> = ({ menuData, onUpdateProduct, onResetMenu, onBack }) => {
+export const AdminPanel: React.FC<AdminPanelProps> = ({ 
+  menuData, 
+  settings, 
+  onUpdateProduct, 
+  onAddProduct,
+  onDeleteProduct,
+  onUpdateSettings,
+  onResetMenu, 
+  onBack 
+}) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
+  const [activeTab, setActiveTab] = useState<'menu' | 'settings'>('menu');
+  
+  // Menu State
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [editingProduct, setEditingProduct] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<Partial<Product>>({});
+  const [isAddingNew, setIsAddingNew] = useState(false);
+  const [newProductForm, setNewProductForm] = useState<Partial<Product>>({ 
+    category: menuData[0]?.id || 'pizzas-salgadas',
+    image: '',
+    price: 0
+  });
+
+  // Settings State
+  const [settingsForm, setSettingsForm] = useState<StoreSettings>(settings);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,37 +50,68 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ menuData, onUpdateProduc
     }
   };
 
+  // --- MENU ACTIONS ---
   const startEditing = (product: Product) => {
     setEditingProduct(product.id);
     setEditForm(product);
   };
 
-  const saveEdit = (categoryId: string) => {
-    if (editingProduct) {
-      onUpdateProduct(categoryId, editingProduct, editForm);
+  const saveEdit = (originalCategoryId: string) => {
+    if (editingProduct && editForm) {
+      onUpdateProduct(originalCategoryId, editingProduct, editForm);
       setEditingProduct(null);
       setEditForm({});
     }
   };
 
-  const cancelEdit = () => {
-    setEditingProduct(null);
-    setEditForm({});
+  const handleDelete = (categoryId: string, productId: number) => {
+    if (window.confirm('Tem certeza que deseja excluir este produto?')) {
+      onDeleteProduct(categoryId, productId);
+    }
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAddNew = () => {
+    if (!newProductForm.name || !newProductForm.price) {
+      alert('Preencha pelo menos nome e preço.');
+      return;
+    }
+
+    const categoryId = newProductForm.category || menuData[0].id;
+    
+    onAddProduct(categoryId, {
+      name: newProductForm.name,
+      description: newProductForm.description || '',
+      price: Number(newProductForm.price),
+      category: categoryId,
+      image: newProductForm.image,
+      code: newProductForm.code
+    });
+
+    setIsAddingNew(false);
+    setNewProductForm({ category: menuData[0]?.id, image: '', price: 0 });
+    alert('Produto adicionado!');
+  };
+
+  // --- SETTINGS ACTIONS ---
+  const handleSaveSettings = () => {
+    onUpdateSettings(settingsForm);
+    alert('Configurações salvas!');
+  };
+
+  // --- IMAGE UTILS ---
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, isNew = false) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setEditForm({ ...editForm, image: reader.result as string });
+        if (isNew) {
+          setNewProductForm({ ...newProductForm, image: reader.result as string });
+        } else {
+          setEditForm({ ...editForm, image: reader.result as string });
+        }
       };
       reader.readAsDataURL(file);
     }
-  };
-
-  const removeImage = () => {
-    setEditForm({ ...editForm, image: '' });
   };
 
   if (!isAuthenticated) {
@@ -90,158 +145,324 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ menuData, onUpdateProduc
   return (
     <div className="min-h-screen bg-stone-100 pb-20">
       <header className="bg-stone-900 text-white sticky top-0 z-30 shadow-md">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <button onClick={onBack} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-              <ArrowLeft className="w-5 h-5" />
+        <div className="max-w-5xl mx-auto px-4 py-4">
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center gap-3">
+              <button onClick={onBack} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              <h1 className="font-bold text-lg hidden md:block">Gerenciar Sistema</h1>
+            </div>
+            <button 
+              onClick={() => {
+                if(window.confirm('Isso irá restaurar o cardápio original e apagar todas as suas alterações. Continuar?')) {
+                  onResetMenu();
+                }
+              }}
+              className="flex items-center gap-2 text-xs bg-red-900/50 hover:bg-red-900 px-3 py-1.5 rounded border border-red-800 transition-colors"
+            >
+              <RefreshCw className="w-3 h-3" /> Resetar Tudo
             </button>
-            <h1 className="font-bold text-lg">Gerenciar Cardápio</h1>
           </div>
-          <button 
-            onClick={() => {
-              if(window.confirm('Isso irá restaurar o cardápio original e apagar todas as suas alterações. Continuar?')) {
-                onResetMenu();
-              }
-            }}
-            className="flex items-center gap-2 text-xs bg-red-900/50 hover:bg-red-900 px-3 py-1.5 rounded border border-red-800 transition-colors"
-          >
-            <RefreshCw className="w-3 h-3" /> Resetar
-          </button>
+
+          <div className="flex space-x-4 border-b border-stone-700">
+             <button 
+                onClick={() => setActiveTab('menu')}
+                className={`pb-2 px-2 flex items-center gap-2 text-sm font-bold transition-colors ${activeTab === 'menu' ? 'text-italian-green border-b-2 border-italian-green' : 'text-stone-400 hover:text-white'}`}
+             >
+                <Grid className="w-4 h-4" /> Cardápio
+             </button>
+             <button 
+                onClick={() => setActiveTab('settings')}
+                className={`pb-2 px-2 flex items-center gap-2 text-sm font-bold transition-colors ${activeTab === 'settings' ? 'text-italian-green border-b-2 border-italian-green' : 'text-stone-400 hover:text-white'}`}
+             >
+                <Settings className="w-4 h-4" /> Configurações
+             </button>
+          </div>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-4">
-        {menuData.map((category) => (
-          <div key={category.id} className="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden">
+        {/* --- TAB: SETTINGS --- */}
+        {activeTab === 'settings' && (
+           <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200 animate-in fade-in slide-in-from-bottom-2">
+              <h2 className="text-xl font-bold text-stone-800 mb-6 flex items-center gap-2">
+                 <Settings className="w-5 h-5 text-italian-red" /> Dados da Pizzaria
+              </h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <div>
+                    <label className="block text-sm font-bold text-stone-700 mb-1">Nome do Estabelecimento</label>
+                    <input 
+                       type="text" 
+                       value={settingsForm.name} 
+                       onChange={(e) => setSettingsForm({...settingsForm, name: e.target.value})}
+                       className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 focus:ring-1 focus:ring-italian-green"
+                    />
+                 </div>
+                 <div>
+                    <label className="block text-sm font-bold text-stone-700 mb-1">WhatsApp (Apenas números)</label>
+                    <input 
+                       type="text" 
+                       value={settingsForm.whatsapp} 
+                       onChange={(e) => setSettingsForm({...settingsForm, whatsapp: e.target.value})}
+                       placeholder="5511999999999"
+                       className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 focus:ring-1 focus:ring-italian-green"
+                    />
+                 </div>
+                 <div className="md:col-span-2">
+                    <label className="block text-sm font-bold text-stone-700 mb-1">Endereço Completo</label>
+                    <input 
+                       type="text" 
+                       value={settingsForm.address} 
+                       onChange={(e) => setSettingsForm({...settingsForm, address: e.target.value})}
+                       className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 focus:ring-1 focus:ring-italian-green"
+                    />
+                 </div>
+                 <div className="md:col-span-2">
+                    <label className="block text-sm font-bold text-stone-700 mb-1">Horário de Funcionamento</label>
+                    <input 
+                       type="text" 
+                       value={settingsForm.openingHours} 
+                       onChange={(e) => setSettingsForm({...settingsForm, openingHours: e.target.value})}
+                       className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 focus:ring-1 focus:ring-italian-green"
+                    />
+                 </div>
+                 <div className="md:col-span-2">
+                    <label className="block text-sm font-bold text-stone-700 mb-1">Telefones (Separar por vírgula)</label>
+                    <input 
+                       type="text" 
+                       value={settingsForm.phones.join(', ')} 
+                       onChange={(e) => setSettingsForm({...settingsForm, phones: e.target.value.split(',').map(s => s.trim())})}
+                       className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 focus:ring-1 focus:ring-italian-green"
+                    />
+                 </div>
+                 
+                 <div className="md:col-span-2 flex justify-end pt-4 border-t border-stone-100">
+                    <button 
+                       onClick={handleSaveSettings}
+                       className="px-6 py-2.5 bg-italian-green text-white rounded-lg font-bold shadow-md hover:bg-green-700 flex items-center gap-2"
+                    >
+                       <Save className="w-5 h-5" /> Salvar Configurações
+                    </button>
+                 </div>
+              </div>
+           </div>
+        )}
+
+        {/* --- TAB: MENU --- */}
+        {activeTab === 'menu' && (
+          <>
             <button 
-              onClick={() => setExpandedCategory(expandedCategory === category.id ? null : category.id)}
-              className="w-full px-4 py-4 flex items-center justify-between bg-white hover:bg-stone-50 transition-colors text-left border-b border-stone-100"
+               onClick={() => setIsAddingNew(!isAddingNew)}
+               className="w-full py-3 bg-white border-2 border-dashed border-stone-300 text-stone-500 rounded-xl hover:border-italian-green hover:text-italian-green transition-colors font-bold flex items-center justify-center gap-2 mb-6"
             >
-              <h3 className="font-bold text-lg text-stone-800">{category.name}</h3>
-              {expandedCategory === category.id ? <ChevronDown className="w-5 h-5 text-stone-400" /> : <ChevronRight className="w-5 h-5 text-stone-400" />}
+               {isAddingNew ? <Trash2 className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+               {isAddingNew ? 'Cancelar Adição' : 'Adicionar Novo Produto'}
             </button>
 
-            {expandedCategory === category.id && (
-              <div className="divide-y divide-stone-100">
-                {category.items.map((item) => (
-                  <div key={item.id} className="p-4 bg-stone-50/50">
-                    {editingProduct === item.id ? (
-                      <div className="space-y-4 bg-white p-4 rounded-lg border border-italian-green shadow-md animate-in fade-in zoom-in-95 duration-200">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div className="md:col-span-2">
-                            <label className="block text-xs font-bold text-stone-700 mb-1">Nome do Produto</label>
-                            <input 
-                              type="text" 
-                              value={editForm.name || ''} 
-                              onChange={(e) => setEditForm({...editForm, name: e.target.value})}
-                              className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 text-sm focus:ring-1 focus:ring-italian-green outline-none"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-bold text-stone-700 mb-1">Preço (R$)</label>
-                            <input 
-                              type="number" 
-                              step="0.01"
-                              value={editForm.price || 0} 
-                              onChange={(e) => setEditForm({...editForm, price: parseFloat(e.target.value)})}
-                              className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 text-sm focus:ring-1 focus:ring-italian-green outline-none"
-                            />
-                          </div>
-                        </div>
-                        
-                        <div>
-                          <label className="block text-xs font-bold text-stone-700 mb-1">Descrição</label>
-                          <textarea 
-                            value={editForm.description || ''} 
-                            onChange={(e) => setEditForm({...editForm, description: e.target.value})}
-                            className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 text-sm h-24 resize-none focus:ring-1 focus:ring-italian-green outline-none"
-                          />
-                        </div>
+            {isAddingNew && (
+               <div className="bg-white p-6 rounded-xl shadow-lg border border-italian-green mb-6 animate-in slide-in-from-top-4">
+                  <h3 className="font-bold text-lg mb-4 text-stone-800">Novo Produto</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <div>
+                        <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Categoria</label>
+                        <select 
+                           value={newProductForm.category}
+                           onChange={(e) => setNewProductForm({...newProductForm, category: e.target.value})}
+                           className="w-full p-2 bg-stone-50 border border-stone-300 rounded-lg"
+                        >
+                           {menuData.map(cat => (
+                              <option key={cat.id} value={cat.id}>{cat.name}</option>
+                           ))}
+                        </select>
+                     </div>
+                     <div>
+                        <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Código (Opcional)</label>
+                        <input type="text" className="w-full p-2 bg-stone-50 border border-stone-300 rounded-lg" 
+                           value={newProductForm.code || ''} onChange={e => setNewProductForm({...newProductForm, code: e.target.value})} />
+                     </div>
+                     <div className="md:col-span-2">
+                        <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Nome</label>
+                        <input type="text" className="w-full p-2 bg-stone-50 border border-stone-300 rounded-lg" 
+                           value={newProductForm.name || ''} onChange={e => setNewProductForm({...newProductForm, name: e.target.value})} />
+                     </div>
+                     <div className="md:col-span-2">
+                        <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Descrição</label>
+                        <textarea className="w-full p-2 bg-stone-50 border border-stone-300 rounded-lg h-20 resize-none" 
+                           value={newProductForm.description || ''} onChange={e => setNewProductForm({...newProductForm, description: e.target.value})} />
+                     </div>
+                     <div>
+                        <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Preço (R$)</label>
+                        <input type="number" step="0.01" className="w-full p-2 bg-stone-50 border border-stone-300 rounded-lg" 
+                           value={newProductForm.price} onChange={e => setNewProductForm({...newProductForm, price: parseFloat(e.target.value)})} />
+                     </div>
+                     <div>
+                        <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Imagem</label>
+                        <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, true)} className="w-full text-xs" />
+                     </div>
+                  </div>
+                  <button onClick={handleAddNew} className="mt-4 w-full bg-italian-green text-white py-2 rounded-lg font-bold hover:bg-green-700">
+                     Confirmar e Adicionar
+                  </button>
+               </div>
+            )}
 
-                        <div>
-                          <label className="block text-xs font-bold text-stone-700 mb-2 flex items-center gap-1">
-                            <ImageIcon className="w-4 h-4" /> Imagem do Produto
-                          </label>
-                          
-                          <div className="flex items-start gap-4 p-3 bg-stone-50 rounded-lg border border-stone-200 border-dashed">
-                            {editForm.image ? (
-                              <div className="relative group shrink-0">
-                                <div className="h-24 w-24 rounded-lg overflow-hidden border border-stone-300 shadow-sm">
-                                  <img src={editForm.image} alt="Preview" className="w-full h-full object-cover" />
-                                </div>
-                                <button 
-                                  onClick={removeImage}
-                                  className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow-md hover:bg-red-600 transition-colors"
-                                  title="Remover imagem"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="h-24 w-24 rounded-lg bg-stone-200 flex items-center justify-center text-stone-400 border border-stone-300 shrink-0">
-                                <ImageIcon className="w-8 h-8 opacity-50" />
-                              </div>
-                            )}
+            {menuData.map((category) => (
+              <div key={category.id} className="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden mb-4">
+                <button 
+                  onClick={() => setExpandedCategory(expandedCategory === category.id ? null : category.id)}
+                  className="w-full px-4 py-4 flex items-center justify-between bg-white hover:bg-stone-50 transition-colors text-left border-b border-stone-100"
+                >
+                  <h3 className="font-bold text-lg text-stone-800">{category.name} <span className="text-xs text-stone-400 font-normal ml-2">({category.items.length} itens)</span></h3>
+                </button>
 
-                            <div className="flex-1">
-                              <label className="cursor-pointer flex flex-col items-center justify-center w-full h-24 border-2 border-stone-300 border-dashed rounded-lg bg-white hover:bg-stone-50 transition-colors group">
-                                <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                  <Upload className="w-6 h-6 text-stone-400 group-hover:text-italian-green mb-1" />
-                                  <p className="mb-1 text-xs text-stone-500"><span className="font-semibold">Clique para enviar</span></p>
-                                  <p className="text-[10px] text-stone-400">JPG, PNG (Max 2MB)</p>
-                                </div>
+                {expandedCategory === category.id && (
+                  <div className="divide-y divide-stone-100">
+                    {category.items.map((item) => (
+                      <div key={item.id} className="p-4 bg-stone-50/50">
+                        {editingProduct === item.id ? (
+                          <div className="space-y-4 bg-white p-4 rounded-lg border border-italian-green shadow-md animate-in fade-in zoom-in-95 duration-200">
+                            {/* CATEGORY SELECTOR IN EDIT */}
+                            <div className="mb-2">
+                               <label className="block text-xs font-bold text-italian-red mb-1">Mover para Categoria</label>
+                               <select 
+                                  value={editForm.category}
+                                  onChange={(e) => setEditForm({...editForm, category: e.target.value})}
+                                  className="w-full p-2 bg-red-50 border border-red-200 rounded-md text-stone-800 text-sm focus:ring-1 focus:ring-italian-red"
+                               >
+                                  {menuData.map(cat => (
+                                     <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                  ))}
+                               </select>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div className="md:col-span-2">
+                                <label className="block text-xs font-bold text-stone-700 mb-1">Nome</label>
                                 <input 
-                                  type="file" 
-                                  className="hidden" 
-                                  accept="image/*"
-                                  onChange={handleImageUpload}
+                                  type="text" 
+                                  value={editForm.name || ''} 
+                                  onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+                                  className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 text-sm focus:ring-1 focus:ring-italian-green outline-none"
                                 />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-bold text-stone-700 mb-1">Preço (R$)</label>
+                                <input 
+                                  type="number" 
+                                  step="0.01"
+                                  value={editForm.price || 0} 
+                                  onChange={(e) => setEditForm({...editForm, price: parseFloat(e.target.value)})}
+                                  className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 text-sm focus:ring-1 focus:ring-italian-green outline-none"
+                                />
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <label className="block text-xs font-bold text-stone-700 mb-1">Descrição</label>
+                              <textarea 
+                                value={editForm.description || ''} 
+                                onChange={(e) => setEditForm({...editForm, description: e.target.value})}
+                                className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 text-sm h-24 resize-none focus:ring-1 focus:ring-italian-green outline-none"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-xs font-bold text-stone-700 mb-2 flex items-center gap-1">
+                                <ImageIcon className="w-4 h-4" /> Imagem
                               </label>
+                              
+                              <div className="flex items-start gap-4 p-3 bg-stone-50 rounded-lg border border-stone-200 border-dashed">
+                                {editForm.image ? (
+                                  <div className="relative group shrink-0">
+                                    <div className="h-16 w-16 rounded-lg overflow-hidden border border-stone-300 shadow-sm">
+                                      <img src={editForm.image} alt="Preview" className="w-full h-full object-cover" />
+                                    </div>
+                                    <button 
+                                      onClick={() => setEditForm({...editForm, image: ''})}
+                                      className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow-md hover:bg-red-600 transition-colors"
+                                      title="Remover imagem"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="h-16 w-16 rounded-lg bg-stone-200 flex items-center justify-center text-stone-400 border border-stone-300 shrink-0">
+                                    <ImageIcon className="w-6 h-6 opacity-50" />
+                                  </div>
+                                )}
+
+                                <div className="flex-1">
+                                  <label className="cursor-pointer flex flex-col items-center justify-center w-full h-16 border-2 border-stone-300 border-dashed rounded-lg bg-white hover:bg-stone-50 transition-colors group">
+                                    <div className="flex flex-col items-center justify-center">
+                                      <p className="text-[10px] text-stone-500">Clique para enviar</p>
+                                    </div>
+                                    <input 
+                                      type="file" 
+                                      className="hidden" 
+                                      accept="image/*"
+                                      onChange={(e) => handleImageUpload(e)}
+                                    />
+                                  </label>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex justify-between gap-3 pt-2 border-t border-stone-100">
+                              <button 
+                                onClick={() => handleDelete(category.id, item.id)}
+                                className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg text-sm font-bold flex items-center gap-1"
+                              >
+                                <Trash2 className="w-4 h-4" /> Excluir
+                              </button>
+                              <div className="flex gap-2">
+                                 <button onClick={() => setEditingProduct(null)} className="px-4 py-2 text-stone-700 bg-white border border-stone-300 rounded-lg hover:bg-stone-50 text-sm font-bold shadow-sm">
+                                    Cancelar
+                                 </button>
+                                 <button onClick={() => saveEdit(category.id)} className="px-4 py-2 text-white bg-italian-green rounded-lg hover:bg-green-700 text-sm font-bold shadow-sm flex items-center gap-2">
+                                    <Save className="w-4 h-4" /> Salvar
+                                 </button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-
-                        <div className="flex justify-end gap-3 pt-2 border-t border-stone-100">
-                          <button onClick={cancelEdit} className="px-4 py-2 text-stone-700 bg-white border border-stone-300 rounded-lg hover:bg-stone-50 text-sm font-bold shadow-sm">
-                            Cancelar
-                          </button>
-                          <button onClick={() => saveEdit(category.id)} className="px-4 py-2 text-white bg-italian-green rounded-lg hover:bg-green-700 text-sm font-bold shadow-sm flex items-center gap-2">
-                            <Save className="w-4 h-4" /> Salvar Alterações
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between gap-4 bg-white p-3 rounded-lg border border-stone-100 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-center gap-4 flex-1 min-w-0">
-                          <div className="h-14 w-14 rounded-lg bg-stone-100 shrink-0 overflow-hidden border border-stone-200">
-                            {item.image ? (
-                              <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-stone-300">
-                                <ImageIcon className="w-6 h-6" />
+                        ) : (
+                          <div className="flex items-center justify-between gap-4 bg-white p-3 rounded-lg border border-stone-100 shadow-sm hover:shadow-md transition-shadow group">
+                            <div className="flex items-center gap-4 flex-1 min-w-0">
+                              <div className="h-14 w-14 rounded-lg bg-stone-100 shrink-0 overflow-hidden border border-stone-200">
+                                {item.image ? (
+                                  <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-stone-300">
+                                    <ImageIcon className="w-6 h-6" />
+                                  </div>
+                                )}
                               </div>
-                            )}
+                              <div className="min-w-0">
+                                <h4 className="font-bold text-stone-800 truncate text-base">{item.name}</h4>
+                                <div className="flex items-center gap-2">
+                                   <p className="text-sm font-semibold text-italian-green mt-0.5">R$ {item.price.toFixed(2)}</p>
+                                   {item.code && <span className="text-[10px] bg-stone-100 text-stone-500 px-1 rounded">{item.code}</span>}
+                                </div>
+                              </div>
+                            </div>
+                            <button 
+                              onClick={() => startEditing(item)}
+                              className="p-2.5 text-stone-400 hover:text-italian-green hover:bg-green-50 rounded-lg transition-colors"
+                              title="Editar produto"
+                            >
+                              <Edit3 className="w-5 h-5" />
+                            </button>
                           </div>
-                          <div className="min-w-0">
-                            <h4 className="font-bold text-stone-800 truncate text-base">{item.name}</h4>
-                            <p className="text-sm font-semibold text-italian-green mt-0.5">R$ {item.price.toFixed(2)}</p>
-                          </div>
-                        </div>
-                        <button 
-                          onClick={() => startEditing(item)}
-                          className="p-2.5 text-stone-500 hover:text-italian-red hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
-                          title="Editar produto"
-                        >
-                          <Edit3 className="w-5 h-5" />
-                        </button>
+                        )}
                       </div>
-                    )}
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
-            )}
-          </div>
-        ))}
+            ))}
+          </>
+        )}
       </main>
     </div>
   );

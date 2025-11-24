@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { MENU_DATA } from './data'; // Fallback data
-import { Product, CartItem, Category } from './types';
+import React, { useState, useEffect } from 'react';
+import { MENU_DATA, DEFAULT_SETTINGS } from './data';
+import { Product, CartItem, Category, StoreSettings } from './types';
 import { Header } from './components/Header';
 import { CategoryNav } from './components/CategoryNav';
 import { ProductCard } from './components/ProductCard';
@@ -23,41 +23,48 @@ const isValidCartItem = (item: any): item is CartItem => {
 };
 
 function App() {
-  // --- STATE MANAGEMENT FOR MENU DATA (Supabase Backend) ---
+  // --- STATE MANAGEMENT ---
   const [menuData, setMenuData] = useState<Category[]>([]);
+  const [storeSettings, setStoreSettings] = useState<StoreSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch menu from Supabase or Fallback
-  const fetchMenu = async () => {
+  // Fetch Menu and Settings
+  const fetchData = async () => {
     setLoading(true);
 
-    // MODO OFFLINE / FALLBACK
     if (!supabase) {
       console.log('Modo Offline: Carregando dados locais.');
       setMenuData(MENU_DATA);
+      setStoreSettings(DEFAULT_SETTINGS);
       setError('Modo Offline (Configure o Supabase para salvar na nuvem)');
       setLoading(false);
       return;
     }
 
     try {
-      // 1. Buscar Categorias
+      // 1. Fetch Categories
       const { data: categories, error: catError } = await supabase
         .from('categories')
         .select('*')
         .order('order_index');
-
-      if (catError) throw catError;
-
-      // 2. Buscar Produtos
+      
+      // 2. Fetch Products
       const { data: products, error: prodError } = await supabase
         .from('products')
         .select('*');
 
+      // 3. Fetch Settings (Assuming a table 'settings' exists, or fallback)
+      const { data: settingsData, error: settingsError } = await supabase
+        .from('settings')
+        .select('*')
+        .limit(1)
+        .single();
+
+      if (catError) throw catError;
       if (prodError) throw prodError;
 
-      // 3. Estruturar os dados (Relacionar Produtos às Categorias)
+      // Process Menu
       if (categories && products) {
         const structuredMenu: Category[] = categories.map((cat: any) => ({
           id: cat.id,
@@ -65,20 +72,38 @@ function App() {
           items: products.filter((prod: any) => prod.category_id === cat.id).sort((a: any, b: any) => a.id - b.id)
         }));
         setMenuData(structuredMenu);
-        setError(null);
       }
+
+      // Process Settings
+      if (settingsData) {
+        setStoreSettings({
+            name: settingsData.name || DEFAULT_SETTINGS.name,
+            whatsapp: settingsData.whatsapp || DEFAULT_SETTINGS.whatsapp,
+            logoUrl: settingsData.logo_url || DEFAULT_SETTINGS.logoUrl,
+            address: settingsData.address || DEFAULT_SETTINGS.address,
+            openingHours: settingsData.opening_hours || DEFAULT_SETTINGS.openingHours,
+            phones: settingsData.phones || DEFAULT_SETTINGS.phones
+        });
+      } else {
+        // If table empty or doesn't exist, use default
+        setStoreSettings(DEFAULT_SETTINGS);
+      }
+      
+      setError(null);
+
     } catch (err: any) {
-      console.error('Erro ao buscar cardápio:', err);
-      // Se falhar (ex: credenciais erradas mesmo com URL válida), usa o local
+      console.error('Erro ao buscar dados:', err);
+      // Fallback to local data on error
       setMenuData(MENU_DATA);
-      setError('Erro de conexão. Exibindo dados locais.');
+      setStoreSettings(DEFAULT_SETTINGS);
+      setError('Usando dados locais (Erro de conexão).');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchMenu();
+    fetchData();
   }, []);
 
   // --- APP STATE ---
@@ -133,11 +158,40 @@ function App() {
   }, [showToast]);
 
   // --- ADMIN ACTIONS ---
-  const handleUpdateProduct = async (categoryId: string, productId: number, updates: Partial<Product>) => {
-    // Otimista: Atualiza a UI imediatamente
+  
+  // 1. UPDATE PRODUCT (And potentially move category)
+  const handleUpdateProduct = async (originalCategoryId: string, productId: number, updates: Partial<Product>) => {
+    // Optimistic Update
     setMenuData(prevMenu => {
+      // If category changed, we need to remove from old and add to new
+      if (updates.category && updates.category !== originalCategoryId) {
+        let productToMove: Product | undefined;
+        
+        // Remove from old
+        const menuWithoutProduct = prevMenu.map(cat => {
+           if (cat.id === originalCategoryId) {
+              const prod = cat.items.find(p => p.id === productId);
+              if (prod) productToMove = { ...prod, ...updates };
+              return { ...cat, items: cat.items.filter(p => p.id !== productId) };
+           }
+           return cat;
+        });
+
+        // Add to new
+        if (productToMove) {
+           return menuWithoutProduct.map(cat => {
+              if (cat.id === updates.category) {
+                 return { ...cat, items: [...cat.items, productToMove!] };
+              }
+              return cat;
+           });
+        }
+        return prevMenu; // Fallback should unlikely happen
+      } 
+      
+      // Simple update (same category)
       return prevMenu.map(cat => {
-        if (cat.id !== categoryId) return cat;
+        if (cat.id !== originalCategoryId) return cat;
         return {
           ...cat,
           items: cat.items.map(prod => {
@@ -148,37 +202,129 @@ function App() {
       });
     });
 
-    if (!supabase) {
-      alert('Modo Offline: Alteração realizada apenas localmente (temporário).');
-      return;
-    }
+    if (!supabase) return;
 
     try {
-      // Persiste no Supabase
       const { error } = await supabase
         .from('products')
         .update({
           name: updates.name,
           price: updates.price,
           description: updates.description,
-          image: updates.image
+          image: updates.image,
+          category_id: updates.category, // Assuming DB uses category_id
+          code: updates.code
         })
         .eq('id', productId);
 
       if (error) throw error;
-      
-      alert('Produto salvo na nuvem com sucesso!');
     } catch (err) {
       console.error('Erro ao salvar no Supabase:', err);
-      alert('Erro ao salvar online. Verifique sua conexão ou credenciais.');
-      fetchMenu(); // Reverte para o estado do servidor em caso de erro
+      fetchData(); // Revert
     }
   };
 
-  const handleResetMenu = () => {
-    if(window.confirm('Recarregar dados originais?')) {
-      fetchMenu();
+  // 2. ADD PRODUCT
+  const handleAddProduct = async (categoryId: string, product: Omit<Product, 'id'>) => {
+    const tempId = Date.now(); // Temp ID for UI
+    
+    // Optimistic
+    setMenuData(prev => prev.map(cat => {
+       if (cat.id === categoryId) {
+          return { ...cat, items: [...cat.items, { ...product, id: tempId, category: categoryId }]};
+       }
+       return cat;
+    }));
+
+    if (!supabase) return;
+
+    try {
+       const { data, error } = await supabase
+         .from('products')
+         .insert([{
+            name: product.name,
+            description: product.description,
+            price: product.price,
+            image: product.image,
+            category_id: categoryId,
+            code: product.code
+         }])
+         .select();
+         
+       if(error) throw error;
+       
+       // Replace temp ID with real ID
+       if (data && data[0]) {
+          const realId = data[0].id;
+          setMenuData(prev => prev.map(cat => {
+             if (cat.id === categoryId) {
+                return { 
+                   ...cat, 
+                   items: cat.items.map(item => item.id === tempId ? { ...item, id: realId } : item)
+                };
+             }
+             return cat;
+          }));
+       }
+    } catch(err) {
+       console.error(err);
+       fetchData();
     }
+  };
+
+  // 3. DELETE PRODUCT
+  const handleDeleteProduct = async (categoryId: string, productId: number) => {
+     // Optimistic
+     setMenuData(prev => prev.map(cat => {
+        if (cat.id === categoryId) {
+           return { ...cat, items: cat.items.filter(i => i.id !== productId) };
+        }
+        return cat;
+     }));
+
+     if (!supabase) return;
+     
+     try {
+        const { error } = await supabase
+          .from('products')
+          .delete()
+          .eq('id', productId);
+        if(error) throw error;
+     } catch(err) {
+        console.error(err);
+        fetchData();
+     }
+  };
+
+  // 4. UPDATE SETTINGS
+  const handleUpdateSettings = async (newSettings: StoreSettings) => {
+     setStoreSettings(newSettings);
+
+     if (!supabase) return;
+
+     try {
+        // Upsert settings (assuming ID 1 for single row config)
+        const { error } = await supabase
+           .from('settings')
+           .upsert({ 
+              id: 1,
+              name: newSettings.name,
+              whatsapp: newSettings.whatsapp,
+              address: newSettings.address,
+              opening_hours: newSettings.openingHours,
+              phones: newSettings.phones,
+              logo_url: newSettings.logoUrl
+           });
+        
+        if (error) throw error;
+     } catch (err) {
+        console.error(err);
+        // Don't revert immediately to keep UI snappy, but maybe show error toast
+     }
+  };
+
+  const handleResetMenu = () => {
+      fetchData();
   };
 
   // --- CART ACTIONS ---
@@ -270,7 +416,11 @@ function App() {
     return (
       <AdminPanel 
         menuData={menuData}
+        settings={storeSettings}
         onUpdateProduct={handleUpdateProduct}
+        onAddProduct={handleAddProduct}
+        onDeleteProduct={handleDeleteProduct}
+        onUpdateSettings={handleUpdateSettings}
         onResetMenu={handleResetMenu}
         onBack={() => setView('customer')}
       />
@@ -283,6 +433,8 @@ function App() {
         cartCount={totalItems} 
         onOpenCart={() => setIsCartOpen(true)} 
         animateCart={isCartAnimating}
+        storeName={storeSettings.name}
+        logoUrl={storeSettings.logoUrl}
       />
       
       {error && (
@@ -305,7 +457,7 @@ function App() {
              <h2 className="text-3xl font-display">Bateu a fome?</h2>
              <p className="text-stone-300 max-w-md">
                Escolha sua pizza favorita e receba no conforto da sua casa. 
-               A verdadeira tradição italiana em Itupeva.
+               Tradição e qualidade em cada pedaço.
              </p>
           </div>
           <div className="w-32 h-32 md:w-40 md:h-40 bg-orange-100 rounded-full flex items-center justify-center border-4 border-white/10 shadow-inner relative overflow-hidden">
@@ -338,7 +490,10 @@ function App() {
         </div>
       </main>
 
-      <Footer onOpenAdmin={() => setView('admin')} />
+      <Footer 
+        onOpenAdmin={() => setView('admin')} 
+        settings={storeSettings}
+      />
 
       <CartDrawer 
         isOpen={isCartOpen} 
@@ -348,6 +503,8 @@ function App() {
         onClearCart={clearCart}
         onUpdateQuantity={updateQuantity}
         onUpdateObservation={updateObservation}
+        whatsappNumber={storeSettings.whatsapp}
+        storeName={storeSettings.name}
       />
 
       {/* Toast Notification */}
