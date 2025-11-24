@@ -7,6 +7,7 @@ import { ProductCard } from './components/ProductCard';
 import { CartDrawer } from './components/CartDrawer';
 import { Footer } from './components/Footer';
 import { AdminPanel } from './components/AdminPanel';
+import { PromoBanner } from './components/PromoBanner';
 import { ShoppingBag, Check, Loader2 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
@@ -184,8 +185,10 @@ function App() {
   const [isCartAnimating, setIsCartAnimating] = useState(false);
 
   useEffect(() => {
+    // If promocoes exists, don't set it as default active, pick the second one if available
     if (menuData.length > 0 && !activeCategory) {
-      setActiveCategory(menuData[0].id);
+      const firstContentCategory = menuData.find(c => c.id !== 'promocoes') || menuData[0];
+      setActiveCategory(firstContentCategory.id);
     }
   }, [menuData]);
 
@@ -340,6 +343,45 @@ function App() {
      }
   };
 
+  // --- CATEGORY ACTIONS ---
+  const handleAddCategory = async (name: string) => {
+    const id = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const newCategory: Category = { id, name, items: [] };
+
+    setMenuData(prev => [...prev, newCategory]);
+
+    if (!supabase) return;
+
+    try {
+      const { error } = await supabase
+        .from('categories')
+        .insert([{ id, name, order_index: menuData.length + 1 }]);
+      
+      if (error) throw error;
+    } catch (err) {
+      console.error(err);
+      fetchData();
+    }
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    if (window.confirm('Tem certeza? Isso apagará a categoria e TODOS os produtos nela.')) {
+      setMenuData(prev => prev.filter(c => c.id !== id));
+      
+      if (!supabase) return;
+      
+      try {
+        // Products cascade delete usually, but let's be safe if FK set
+        await supabase.from('products').delete().eq('category_id', id);
+        const { error } = await supabase.from('categories').delete().eq('id', id);
+        if (error) throw error;
+      } catch (err) {
+        console.error(err);
+        fetchData();
+      }
+    }
+  };
+
   const handleUpdateSettings = async (newSettings: StoreSettings) => {
      setStoreSettings(newSettings);
 
@@ -389,16 +431,15 @@ function App() {
       alert("Dados recarregados do servidor.");
   };
 
-  const addToCart = (product: Product, quantity: number, observation: string, selectedOptions?: CartItem['selectedOptions']) => {
+  const addToCart = (product: Product, quantity: number = 1, observation: string = '', selectedOptions?: CartItem['selectedOptions']) => {
     const normalizedObservation = (observation || '').trim();
     
-    // Create a unique key based on options to separate items (e.g., Pizza w/ Bacon vs Pizza w/o Bacon)
+    // Create a unique key based on options to separate items
     const optionsKey = selectedOptions 
         ? JSON.stringify(selectedOptions.sort((a,b) => a.choiceName.localeCompare(b.choiceName))) 
         : '';
 
     setCartItems(prev => {
-      // Find exact match (same id, same observation, same options)
       const existingItemIndex = prev.findIndex(item => {
         const itemOptionsKey = item.selectedOptions 
             ? JSON.stringify(item.selectedOptions.sort((a,b) => a.choiceName.localeCompare(b.choiceName))) 
@@ -477,6 +518,10 @@ function App() {
      return acc + ((item.price + optionsPrice) * (item.quantity || 0));
   }, 0);
 
+  // Extract promotions for the banner
+  const promoCategory = menuData.find(c => c.id === 'promocoes');
+  const activePromotions = promoCategory ? promoCategory.items : [];
+
   if (loading) {
     return (
       <div className="min-h-screen bg-stone-100 dark:bg-stone-900 flex items-center justify-center flex-col gap-4">
@@ -495,11 +540,16 @@ function App() {
         onAddProduct={handleAddProduct}
         onDeleteProduct={handleDeleteProduct}
         onUpdateSettings={handleUpdateSettings}
+        onAddCategory={handleAddCategory}
+        onDeleteCategory={handleDeleteCategory}
         onResetMenu={handleResetMenu}
         onBack={() => setView('customer')}
       />
     );
   }
+
+  // Filter out empty categories for the view
+  const visibleCategories = menuData.filter(c => c.id !== 'promocoes' && c.items.length > 0);
 
   return (
     <div className="min-h-screen bg-stone-100 dark:bg-stone-900 pb-24 md:pb-0 font-sans relative transition-colors duration-300">
@@ -520,27 +570,36 @@ function App() {
       )}
       
       <CategoryNav 
-        categories={menuData} 
+        categories={visibleCategories} 
         activeCategory={activeCategory}
         onSelectCategory={handleCategorySelect}
       />
 
       <main className="max-w-5xl mx-auto px-4 pt-6">
-        <div className="bg-gradient-to-r from-stone-900 to-stone-800 text-white rounded-2xl p-6 mb-8 shadow-lg flex flex-col md:flex-row items-center justify-between gap-6 dark:from-black dark:to-stone-900 dark:border dark:border-stone-800">
-          <div className="space-y-2 text-center md:text-left">
-             <span className="bg-italian-red text-xs font-bold px-2 py-1 rounded uppercase tracking-wide">Novidade</span>
-             <h2 className="text-3xl font-display">Bateu a fome?</h2>
-             <p className="text-stone-300 max-w-md">
-               Escolha sua pizza favorita e receba no conforto da sua casa. 
-             </p>
+        
+        {/* Banner de Promoções (Carrossel) */}
+        {activePromotions.length > 0 && (
+          <PromoBanner 
+            promotions={activePromotions}
+            onAddToCart={(p) => addToCart(p, 1, '')}
+          />
+        )}
+
+        {/* Fallback Banner se não tiver promoções (opcional, ou remove se quiser) */}
+        {activePromotions.length === 0 && (
+          <div className="bg-gradient-to-r from-stone-900 to-stone-800 text-white rounded-2xl p-6 mb-8 shadow-lg flex flex-col md:flex-row items-center justify-between gap-6 dark:from-black dark:to-stone-900 dark:border dark:border-stone-800">
+            <div className="space-y-2 text-center md:text-left">
+              <span className="bg-italian-red text-xs font-bold px-2 py-1 rounded uppercase tracking-wide">Bem-vindo</span>
+              <h2 className="text-3xl font-display">Bateu a fome?</h2>
+              <p className="text-stone-300 max-w-md">
+                Escolha sua pizza favorita e receba no conforto da sua casa. 
+              </p>
+            </div>
           </div>
-          <div className="w-32 h-32 md:w-40 md:h-40 bg-orange-100 rounded-full flex items-center justify-center border-4 border-white/10 shadow-inner relative overflow-hidden">
-             <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1513104890138-7c749659a591?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80')] bg-cover bg-center opacity-90"></div>
-          </div>
-        </div>
+        )}
 
         <div className="space-y-10">
-          {menuData.map((category) => (
+          {visibleCategories.map((category) => (
             <section 
               key={category.id} 
               id={`category-${category.id}`}

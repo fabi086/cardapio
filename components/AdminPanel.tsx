@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Category, Product, StoreSettings, ProductOption, ProductChoice } from '../types';
-import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Layers, Megaphone, Tag } from 'lucide-react';
+import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Layers, Megaphone, Tag, List } from 'lucide-react';
 
 interface AdminPanelProps {
   menuData: Category[];
@@ -11,6 +11,8 @@ interface AdminPanelProps {
   onUpdateSettings: (settings: StoreSettings) => void;
   onResetMenu: () => void;
   onBack: () => void;
+  onAddCategory?: (name: string) => void;
+  onDeleteCategory?: (id: string) => void;
 }
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ 
@@ -21,11 +23,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onDeleteProduct,
   onUpdateSettings,
   onResetMenu, 
-  onBack 
+  onBack,
+  onAddCategory,
+  onDeleteCategory
 }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
-  const [activeTab, setActiveTab] = useState<'menu' | 'settings'>('menu');
+  const [activeTab, setActiveTab] = useState<'menu' | 'settings' | 'categories'>('menu');
   
   // Menu State
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
@@ -57,6 +61,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // Option Management State
   const [newOptionName, setNewOptionName] = useState('');
   const [newOptionType, setNewOptionType] = useState<'single' | 'multiple'>('single');
+
+  // Category State
+  const [newCategoryName, setNewCategoryName] = useState('');
 
   useEffect(() => {
     setSettingsForm(settings);
@@ -325,6 +332,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
+  // --- CATEGORY ACTIONS ---
+  const triggerAddCategory = () => {
+    if (newCategoryName && onAddCategory) {
+      onAddCategory(newCategoryName);
+      setNewCategoryName('');
+      alert('Categoria adicionada!');
+    }
+  };
+
+  const triggerDeleteCategory = (id: string) => {
+    if (onDeleteCategory) {
+      onDeleteCategory(id);
+    }
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-stone-100 flex items-center justify-center p-4">
@@ -353,6 +375,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     );
   }
 
+  // Helper to list current promos
+  const currentPromos = menuData.find(c => c.id === 'promocoes')?.items || [];
+
   return (
     <div className="min-h-screen bg-stone-100 pb-20">
       <header className="bg-stone-900 text-white sticky top-0 z-30 shadow-md">
@@ -376,16 +401,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </button>
           </div>
 
-          <div className="flex space-x-4 border-b border-stone-700">
+          <div className="flex space-x-2 md:space-x-4 border-b border-stone-700 overflow-x-auto">
              <button 
                 onClick={() => setActiveTab('menu')}
-                className={`pb-2 px-2 flex items-center gap-2 text-sm font-bold transition-colors ${activeTab === 'menu' ? 'text-italian-green border-b-2 border-italian-green' : 'text-stone-400 hover:text-white'}`}
+                className={`pb-2 px-2 flex items-center gap-2 text-sm font-bold transition-colors whitespace-nowrap ${activeTab === 'menu' ? 'text-italian-green border-b-2 border-italian-green' : 'text-stone-400 hover:text-white'}`}
              >
                 <Grid className="w-4 h-4" /> Cardápio
              </button>
              <button 
+                onClick={() => setActiveTab('categories')}
+                className={`pb-2 px-2 flex items-center gap-2 text-sm font-bold transition-colors whitespace-nowrap ${activeTab === 'categories' ? 'text-italian-green border-b-2 border-italian-green' : 'text-stone-400 hover:text-white'}`}
+             >
+                <List className="w-4 h-4" /> Categorias
+             </button>
+             <button 
                 onClick={() => setActiveTab('settings')}
-                className={`pb-2 px-2 flex items-center gap-2 text-sm font-bold transition-colors ${activeTab === 'settings' ? 'text-italian-green border-b-2 border-italian-green' : 'text-stone-400 hover:text-white'}`}
+                className={`pb-2 px-2 flex items-center gap-2 text-sm font-bold transition-colors whitespace-nowrap ${activeTab === 'settings' ? 'text-italian-green border-b-2 border-italian-green' : 'text-stone-400 hover:text-white'}`}
              >
                 <Settings className="w-4 h-4" /> Configurações
              </button>
@@ -394,18 +425,73 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-4">
+        
+        {/* --- TAB: CATEGORIES --- */}
+        {activeTab === 'categories' && (
+           <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200 animate-in fade-in slide-in-from-bottom-2 space-y-8">
+              <h2 className="text-xl font-bold text-stone-800 flex items-center gap-2">
+                <List className="w-5 h-5 text-italian-red" /> Gerenciar Categorias
+              </h2>
+
+              <div className="bg-stone-50 p-4 rounded-lg border border-stone-200">
+                 <h3 className="font-bold text-sm text-stone-700 mb-2">Adicionar Nova Categoria</h3>
+                 <div className="flex gap-2">
+                   <input 
+                     type="text" 
+                     placeholder="Nome da categoria (ex: Vinhos)" 
+                     className="flex-1 p-2 bg-white border border-stone-300 rounded-lg text-sm"
+                     value={newCategoryName}
+                     onChange={(e) => setNewCategoryName(e.target.value)}
+                   />
+                   <button 
+                     onClick={triggerAddCategory}
+                     className="bg-italian-green text-white px-4 rounded-lg text-sm font-bold hover:bg-green-700"
+                   >
+                     Adicionar
+                   </button>
+                 </div>
+              </div>
+
+              <div className="space-y-2">
+                 <h3 className="font-bold text-sm text-stone-700">Categorias Existentes</h3>
+                 {menuData.filter(c => c.id !== 'promocoes').map((cat) => (
+                    <div key={cat.id} className="flex justify-between items-center p-3 bg-white border border-stone-200 rounded-lg">
+                       <div>
+                          <span className="font-bold text-stone-800">{cat.name}</span>
+                          <span className="text-xs text-stone-400 ml-2">({cat.items.length} produtos)</span>
+                       </div>
+                       <button 
+                         onClick={() => triggerDeleteCategory(cat.id)}
+                         className="p-2 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded"
+                         title="Excluir Categoria"
+                       >
+                          <Trash2 className="w-4 h-4" />
+                       </button>
+                    </div>
+                 ))}
+                 {menuData.filter(c => c.id !== 'promocoes').length === 0 && (
+                   <p className="text-sm text-stone-400 italic">Nenhuma categoria cadastrada.</p>
+                 )}
+              </div>
+              
+              <div className="p-3 bg-yellow-50 text-yellow-800 text-xs rounded border border-yellow-200">
+                Nota: A categoria "Promoções" é gerenciada automaticamente pelo sistema.
+              </div>
+           </div>
+        )}
+
+
+        {/* --- TAB: SETTINGS --- */}
         {activeTab === 'settings' && (
            <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200 animate-in fade-in slide-in-from-bottom-2 space-y-8">
               
+              {/* Settings Form Logic (Same as before) */}
               <div>
                 <h2 className="text-xl font-bold text-stone-800 mb-6 flex items-center gap-2">
                   <Settings className="w-5 h-5 text-italian-red" /> Dados do Estabelecimento
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="md:col-span-2 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800 mb-2">
-                      <strong>Dica:</strong> As alterações feitas aqui atualizam o nome, logo e rodapé do site instantaneamente.
-                  </div>
-
+                  {/* ... Inputs for Name, Whatsapp, etc ... */}
                   <div>
                       <label className="block text-sm font-bold text-stone-700 mb-1">Nome do Estabelecimento</label>
                       <input 
@@ -421,7 +507,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         type="text" 
                         value={settingsForm.whatsapp} 
                         onChange={(e) => setSettingsForm({...settingsForm, whatsapp: e.target.value})}
-                        placeholder="Ex: 5511999999999"
                         className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 focus:ring-1 focus:ring-italian-green"
                       />
                   </div>
@@ -453,7 +538,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       />
                   </div>
                   <div className="md:col-span-2">
-                      <label className="block text-sm font-bold text-stone-700 mb-1">Telefones (Separar por vírgula)</label>
+                      <label className="block text-sm font-bold text-stone-700 mb-1">Telefones</label>
                       <input 
                         type="text" 
                         value={settingsForm.phones.join(', ')} 
@@ -468,15 +553,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
               <div>
                 <h2 className="text-xl font-bold text-stone-800 mb-6 flex items-center gap-2">
-                   <MapPin className="w-5 h-5 text-italian-red" /> Taxas de Entrega por CEP
+                   <MapPin className="w-5 h-5 text-italian-red" /> Taxas de Entrega
                 </h2>
                 
+                {/* Region Edit Form */}
                 <div className={`p-4 rounded-lg border mb-4 transition-colors ${editingRegionId ? 'bg-orange-50 border-orange-200' : 'bg-stone-50 border-stone-200'}`}>
-                   {editingRegionId && (
-                      <div className="flex items-center gap-2 mb-3 text-orange-700 text-sm font-bold">
-                        <Edit3 className="w-4 h-4" /> Editando Região
-                      </div>
-                   )}
                    <div className="space-y-3">
                       <div className="grid grid-cols-12 gap-3 items-end">
                         <div className="col-span-8 md:col-span-9">
@@ -485,7 +566,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                               type="text" 
                               value={newRegionName}
                               onChange={(e) => setNewRegionName(e.target.value)}
-                              placeholder="Ex: Centro"
                               className="w-full p-2 bg-white border border-stone-300 rounded-md text-sm"
                            />
                         </div>
@@ -495,7 +575,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                               type="number" 
                               value={newRegionPrice}
                               onChange={(e) => setNewRegionPrice(e.target.value)}
-                              placeholder="0.00"
                               className="w-full p-2 bg-white border border-stone-300 rounded-md text-sm"
                            />
                         </div>
@@ -508,13 +587,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                               type="text" 
                               value={newRegionZips}
                               onChange={(e) => setNewRegionZips(e.target.value)}
-                              placeholder="Ex: 13295-000, 13200"
                               className="w-full p-2 bg-white border border-stone-300 rounded-md text-sm"
                            />
                          </div>
                          <div className="col-span-2 flex gap-1">
                            {editingRegionId && (
-                             <button onClick={cancelEditingRegion} className="flex-1 p-2 bg-white border border-stone-300 text-stone-500 rounded-md text-sm font-bold hover:bg-stone-100 flex items-center justify-center h-[38px]">
+                             <button onClick={cancelEditingRegion} className="flex-1 p-2 bg-white border border-stone-300 text-stone-500 rounded-md text-sm font-bold flex items-center justify-center h-[38px]">
                                 <X className="w-4 h-4" />
                              </button>
                            )}
@@ -574,15 +652,38 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                
                <div className="relative z-10">
                   <h3 className="text-xl font-display mb-4 flex items-center gap-2">
-                     <Tag className="w-5 h-5" /> Promoções do Dia
+                     <Tag className="w-5 h-5" /> Promoções do Dia (Banner)
                   </h3>
+                  
+                  {/* Lista de Promoções Ativas */}
+                  <div className="bg-black/20 rounded-lg p-4 mb-4">
+                     <h4 className="font-bold text-sm mb-2 opacity-80">Promoções Ativas:</h4>
+                     {currentPromos.length === 0 ? (
+                        <p className="text-xs italic opacity-60">Nenhuma promoção ativa. O banner ficará oculto.</p>
+                     ) : (
+                        <div className="space-y-2">
+                           {currentPromos.map(promo => (
+                              <div key={promo.id} className="flex justify-between items-center bg-white/10 p-2 rounded">
+                                 <span className="text-sm font-bold">{promo.name}</span>
+                                 <button 
+                                    onClick={() => handleDelete('promocoes', promo.id)}
+                                    className="bg-red-600 hover:bg-red-700 text-white p-1 rounded transition-colors"
+                                    title="Remover Promoção"
+                                 >
+                                    <Trash2 className="w-3 h-3" />
+                                 </button>
+                              </div>
+                           ))}
+                        </div>
+                     )}
+                  </div>
                   
                   {!isManagingPromos ? (
                      <button 
                        onClick={() => setIsManagingPromos(true)}
                        className="bg-white text-italian-red px-4 py-2 rounded-lg font-bold shadow-sm hover:bg-red-50 transition-colors flex items-center gap-2"
                      >
-                        <Plus className="w-4 h-4" /> Adicionar Promoção
+                        <Plus className="w-4 h-4" /> Adicionar Nova Promoção
                      </button>
                   ) : (
                      <div className="bg-white text-stone-800 rounded-lg p-4 animate-in fade-in slide-in-from-top-4">
@@ -621,9 +722,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                        </optgroup>
                                     ))}
                                  </select>
-                                 <p className="text-[10px] text-stone-400 mt-1">
-                                    *Isso copiará a imagem e as opções (bordas/adicionais) do produto.
-                                 </p>
                               </div>
                               <div>
                                  <label className="block text-xs font-bold text-stone-500 mb-1">Preço Promocional (R$)</label>
@@ -645,7 +743,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                     value={manualPromoForm.name}
                                     onChange={(e) => setManualPromoForm({...manualPromoForm, name: e.target.value})}
                                     className="w-full p-2 bg-stone-50 border border-stone-300 rounded-lg text-sm"
-                                    placeholder="Ex: Combo Família"
                                  />
                               </div>
                               <div>
@@ -655,7 +752,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                     value={manualPromoForm.description}
                                     onChange={(e) => setManualPromoForm({...manualPromoForm, description: e.target.value})}
                                     className="w-full p-2 bg-stone-50 border border-stone-300 rounded-lg text-sm"
-                                    placeholder="Descrição detalhada..."
                                  />
                               </div>
                               <div>
@@ -665,7 +761,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                     value={manualPromoForm.price}
                                     onChange={(e) => setManualPromoForm({...manualPromoForm, price: e.target.value})}
                                     className="w-full p-2 bg-stone-50 border border-stone-300 rounded-lg text-sm"
-                                    placeholder="0.00"
                                  />
                               </div>
                               <div>
@@ -696,7 +791,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                               onClick={handleAddPromo}
                               className="px-4 py-1.5 text-sm font-bold bg-italian-red text-white rounded-lg hover:bg-red-700"
                            >
-                              Adicionar Promoção
+                              Adicionar
                            </button>
                         </div>
                      </div>
@@ -715,7 +810,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             {isAddingNew && (
                <div className="bg-white p-6 rounded-xl shadow-lg border border-italian-green mb-6 animate-in slide-in-from-top-4">
                   <h3 className="font-bold text-lg mb-4 text-stone-800">Novo Produto</h3>
-                  {/* ... New Product Form Inputs (omitted for brevity, same as before) ... */}
+                  {/* ... New Product Form Inputs ... */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                      <div>
                         <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Categoria</label>
@@ -738,6 +833,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Nome</label>
                         <input type="text" className="w-full p-2 bg-stone-50 border border-stone-300 rounded-lg" 
                            value={newProductForm.name || ''} onChange={e => setNewProductForm({...newProductForm, name: e.target.value})} />
+                     </div>
+                     <div className="md:col-span-2">
+                        <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Descrição</label>
+                        <input type="text" className="w-full p-2 bg-stone-50 border border-stone-300 rounded-lg" 
+                           value={newProductForm.description || ''} onChange={e => setNewProductForm({...newProductForm, description: e.target.value})} />
                      </div>
                      <div>
                         <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Preço (R$)</label>
