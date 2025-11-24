@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Category, Product, StoreSettings, ProductOption, ProductChoice } from '../types';
-import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Layers } from 'lucide-react';
+import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Layers, Megaphone, Tag } from 'lucide-react';
 
 interface AdminPanelProps {
   menuData: Category[];
@@ -38,6 +38,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     price: 0
   });
 
+  // Promo State
+  const [isManagingPromos, setIsManagingPromos] = useState(false);
+  const [promoType, setPromoType] = useState<'existing' | 'manual'>('existing');
+  const [selectedPromoId, setSelectedPromoId] = useState(''); // ID-CatID string combo
+  const [promoPrice, setPromoPrice] = useState('');
+  const [manualPromoForm, setManualPromoForm] = useState({ name: '', description: '', price: '', image: '' });
+
   // Settings State
   const [settingsForm, setSettingsForm] = useState<StoreSettings>(settings);
   
@@ -61,6 +68,66 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       setIsAuthenticated(true);
     } else {
       alert('Senha incorreta (Dica: admin123)');
+    }
+  };
+
+  // --- PROMO ACTIONS ---
+  const handleAddPromo = () => {
+    if (promoType === 'existing') {
+      if (!selectedPromoId || !promoPrice) {
+        alert('Selecione um produto e defina o preço promocional.');
+        return;
+      }
+      
+      const [prodIdStr, catId] = selectedPromoId.split('|');
+      const prodId = parseInt(prodIdStr);
+      
+      const category = menuData.find(c => c.id === catId);
+      const product = category?.items.find(p => p.id === prodId);
+
+      if (!product) return;
+
+      onAddProduct('promocoes', {
+        name: `PROMO: ${product.name}`,
+        description: product.description,
+        price: parseFloat(promoPrice.replace(',', '.')),
+        category: 'promocoes',
+        image: product.image,
+        code: product.code,
+        options: product.options // Copy options/customizations
+      });
+
+    } else {
+      // Manual
+      if (!manualPromoForm.name || !manualPromoForm.price) {
+        alert('Preencha nome e preço.');
+        return;
+      }
+
+      onAddProduct('promocoes', {
+        name: manualPromoForm.name,
+        description: manualPromoForm.description,
+        price: parseFloat(manualPromoForm.price.replace(',', '.')),
+        category: 'promocoes',
+        image: manualPromoForm.image,
+      });
+    }
+
+    alert('Promoção adicionada!');
+    setIsManagingPromos(false);
+    setPromoPrice('');
+    setSelectedPromoId('');
+    setManualPromoForm({ name: '', description: '', price: '', image: '' });
+  };
+
+  const handleManualPromoImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setManualPromoForm({ ...manualPromoForm, image: reader.result as string });
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -499,6 +566,144 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         {/* --- TAB: MENU --- */}
         {activeTab === 'menu' && (
           <>
+            {/* --- DAILY PROMOS SECTION --- */}
+            <div className="bg-gradient-to-br from-italian-red to-red-700 p-6 rounded-xl shadow-lg mb-6 text-white relative overflow-hidden">
+               <div className="absolute right-0 top-0 opacity-10 transform translate-x-10 -translate-y-10">
+                  <Megaphone className="w-40 h-40" />
+               </div>
+               
+               <div className="relative z-10">
+                  <h3 className="text-xl font-display mb-4 flex items-center gap-2">
+                     <Tag className="w-5 h-5" /> Promoções do Dia
+                  </h3>
+                  
+                  {!isManagingPromos ? (
+                     <button 
+                       onClick={() => setIsManagingPromos(true)}
+                       className="bg-white text-italian-red px-4 py-2 rounded-lg font-bold shadow-sm hover:bg-red-50 transition-colors flex items-center gap-2"
+                     >
+                        <Plus className="w-4 h-4" /> Adicionar Promoção
+                     </button>
+                  ) : (
+                     <div className="bg-white text-stone-800 rounded-lg p-4 animate-in fade-in slide-in-from-top-4">
+                        <div className="flex gap-2 mb-4 border-b border-stone-200 pb-2">
+                           <button 
+                              onClick={() => setPromoType('existing')}
+                              className={`text-sm font-bold px-3 py-1.5 rounded-md transition-colors ${promoType === 'existing' ? 'bg-italian-red text-white' : 'text-stone-500 hover:bg-stone-100'}`}
+                           >
+                              Selecionar do Cardápio
+                           </button>
+                           <button 
+                              onClick={() => setPromoType('manual')}
+                              className={`text-sm font-bold px-3 py-1.5 rounded-md transition-colors ${promoType === 'manual' ? 'bg-italian-red text-white' : 'text-stone-500 hover:bg-stone-100'}`}
+                           >
+                              Criar Manualmente
+                           </button>
+                        </div>
+
+                        {promoType === 'existing' ? (
+                           <div className="space-y-3">
+                              <div>
+                                 <label className="block text-xs font-bold text-stone-500 mb-1">Produto Existente</label>
+                                 <select 
+                                    className="w-full p-2 bg-stone-50 border border-stone-300 rounded-lg text-sm"
+                                    value={selectedPromoId}
+                                    onChange={(e) => setSelectedPromoId(e.target.value)}
+                                 >
+                                    <option value="">Selecione um produto...</option>
+                                    {menuData.filter(c => c.id !== 'promocoes').map(cat => (
+                                       <optgroup key={cat.id} label={cat.name}>
+                                          {cat.items.map(prod => (
+                                             <option key={prod.id} value={`${prod.id}|${cat.id}`}>
+                                                {prod.name} (R$ {prod.price.toFixed(2)})
+                                             </option>
+                                          ))}
+                                       </optgroup>
+                                    ))}
+                                 </select>
+                                 <p className="text-[10px] text-stone-400 mt-1">
+                                    *Isso copiará a imagem e as opções (bordas/adicionais) do produto.
+                                 </p>
+                              </div>
+                              <div>
+                                 <label className="block text-xs font-bold text-stone-500 mb-1">Preço Promocional (R$)</label>
+                                 <input 
+                                    type="number" 
+                                    value={promoPrice}
+                                    onChange={(e) => setPromoPrice(e.target.value)}
+                                    className="w-full p-2 bg-stone-50 border border-stone-300 rounded-lg text-sm"
+                                    placeholder="0.00"
+                                 />
+                              </div>
+                           </div>
+                        ) : (
+                           <div className="space-y-3">
+                              <div>
+                                 <label className="block text-xs font-bold text-stone-500 mb-1">Nome da Promoção</label>
+                                 <input 
+                                    type="text" 
+                                    value={manualPromoForm.name}
+                                    onChange={(e) => setManualPromoForm({...manualPromoForm, name: e.target.value})}
+                                    className="w-full p-2 bg-stone-50 border border-stone-300 rounded-lg text-sm"
+                                    placeholder="Ex: Combo Família"
+                                 />
+                              </div>
+                              <div>
+                                 <label className="block text-xs font-bold text-stone-500 mb-1">Descrição</label>
+                                 <input 
+                                    type="text" 
+                                    value={manualPromoForm.description}
+                                    onChange={(e) => setManualPromoForm({...manualPromoForm, description: e.target.value})}
+                                    className="w-full p-2 bg-stone-50 border border-stone-300 rounded-lg text-sm"
+                                    placeholder="Descrição detalhada..."
+                                 />
+                              </div>
+                              <div>
+                                 <label className="block text-xs font-bold text-stone-500 mb-1">Preço (R$)</label>
+                                 <input 
+                                    type="number" 
+                                    value={manualPromoForm.price}
+                                    onChange={(e) => setManualPromoForm({...manualPromoForm, price: e.target.value})}
+                                    className="w-full p-2 bg-stone-50 border border-stone-300 rounded-lg text-sm"
+                                    placeholder="0.00"
+                                 />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-bold text-stone-500 mb-1">Imagem</label>
+                                <div className="flex gap-2">
+                                  <label className="cursor-pointer bg-stone-100 hover:bg-stone-200 text-stone-600 px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2 border border-stone-300">
+                                    <Upload className="w-4 h-4" /> Upload Foto
+                                    <input type="file" className="hidden" accept="image/*" onChange={handleManualPromoImage} />
+                                  </label>
+                                  {manualPromoForm.image && (
+                                    <div className="h-10 w-10 rounded overflow-hidden border border-stone-200">
+                                      <img src={manualPromoForm.image} alt="Preview" className="w-full h-full object-cover" />
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                           </div>
+                        )}
+
+                        <div className="flex justify-end gap-2 mt-4">
+                           <button 
+                              onClick={() => setIsManagingPromos(false)}
+                              className="px-3 py-1.5 text-sm font-bold text-stone-500 hover:bg-stone-100 rounded-lg"
+                           >
+                              Cancelar
+                           </button>
+                           <button 
+                              onClick={handleAddPromo}
+                              className="px-4 py-1.5 text-sm font-bold bg-italian-red text-white rounded-lg hover:bg-red-700"
+                           >
+                              Adicionar Promoção
+                           </button>
+                        </div>
+                     </div>
+                  )}
+               </div>
+            </div>
+
             <button 
                onClick={() => setIsAddingNew(!isAddingNew)}
                className="w-full py-3 bg-white border-2 border-dashed border-stone-300 text-stone-500 rounded-xl hover:border-italian-green hover:text-italian-green transition-colors font-bold flex items-center justify-center gap-2 mb-6"
@@ -538,6 +743,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Preço (R$)</label>
                         <input type="number" step="0.01" className="w-full p-2 bg-stone-50 border border-stone-300 rounded-lg" 
                            value={newProductForm.price} onChange={e => setNewProductForm({...newProductForm, price: parseFloat(e.target.value)})} />
+                     </div>
+                     <div>
+                        <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Imagem</label>
+                        <div className="flex gap-2">
+                           <label className="cursor-pointer bg-stone-100 hover:bg-stone-200 text-stone-600 px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2 border border-stone-300">
+                              <Upload className="w-4 h-4" /> Upload
+                              <input type="file" className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e, true)} />
+                           </label>
+                           {newProductForm.image && (
+                              <div className="h-10 w-10 rounded overflow-hidden border border-stone-200">
+                                 <img src={newProductForm.image} alt="Preview" className="w-full h-full object-cover" />
+                              </div>
+                           )}
+                        </div>
                      </div>
                   </div>
                   <button onClick={handleAddNew} className="mt-4 w-full bg-italian-green text-white py-2 rounded-lg font-bold hover:bg-green-700">
