@@ -12,6 +12,7 @@ interface HeaderProps {
   whatsapp: string;
   phone: string;
   onOpenInfo: () => void;
+  isOpenNow: boolean; // Propriedade nova
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
@@ -24,7 +25,8 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleTheme,
   whatsapp,
   phone,
-  onOpenInfo
+  onOpenInfo,
+  isOpenNow
 }) => {
   const [logoError, setLogoError] = useState(false);
 
@@ -37,14 +39,25 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="max-w-5xl mx-auto px-4 py-2 flex justify-between items-center h-[72px]">
         
         {/* Logo Section */}
-        <div className="flex items-center gap-2 h-full cursor-pointer" onClick={onOpenInfo}>
+        <div className="flex items-center gap-3 h-full cursor-pointer overflow-hidden" onClick={onOpenInfo}>
           {!logoError && logoUrl ? (
-             <img 
-               src={logoUrl} 
-               alt={storeName} 
-               className="h-full w-auto object-contain max-w-[180px] md:max-w-[220px] py-1"
-               onError={() => setLogoError(true)}
-             />
+             <div className="flex items-center gap-3">
+               <img 
+                 src={logoUrl} 
+                 alt={storeName} 
+                 className="h-[56px] w-auto object-contain py-1"
+                 onError={() => setLogoError(true)}
+               />
+               {/* Status Indicator for Logo Mode */}
+               <div className="hidden sm:flex flex-col justify-center">
+                  <div className="flex items-center gap-1.5 bg-white/10 px-2 py-0.5 rounded-full border border-white/10">
+                    <span className={`w-2 h-2 rounded-full ${isOpenNow ? 'bg-green-400 shadow-[0_0_5px_rgba(74,222,128,0.8)]' : 'bg-red-400'}`} />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-white">
+                      {isOpenNow ? 'Aberto' : 'Fechado'}
+                    </span>
+                  </div>
+               </div>
+             </div>
           ) : (
             <div className="flex items-center gap-2 animate-in fade-in">
                <div className="bg-white text-italian-red p-1 rounded-full border-2 border-italian-green shrink-0">
@@ -54,6 +67,13 @@ export const Header: React.FC<HeaderProps> = ({
                </div>
                <div className="flex flex-col justify-center">
                   <h1 className="font-display text-lg sm:text-2xl leading-none break-words max-w-[200px] sm:max-w-xs">{storeName}</h1>
+                  {/* Status Indicator for Text Mode */}
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className={`w-2 h-2 rounded-full ${isOpenNow ? 'bg-green-400 shadow-[0_0_5px_rgba(74,222,128,0.8)]' : 'bg-red-400'}`} />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-white/90">
+                      {isOpenNow ? 'Aberto' : 'Fechado'}
+                    </span>
+                  </div>
                </div>
             </div>
           )}

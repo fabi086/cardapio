@@ -699,6 +699,7 @@ function App() {
         whatsapp={storeSettings.whatsapp}
         phone={storeSettings.phones[0] || ''}
         onOpenInfo={() => setIsInfoModalOpen(true)}
+        isOpenNow={storeStatus.isOpen}
       />
       
       {error && (

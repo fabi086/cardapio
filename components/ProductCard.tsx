@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Product, CartItem } from '../types';
-import { Plus, Minus, ImageOff, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Minus, ImageOff, Check, ChevronDown, ChevronUp, Share2 } from 'lucide-react';
 
 interface ProductCardProps {
   product: Product;
@@ -14,6 +14,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
   const [observation, setObservation] = useState('');
   const [imageError, setImageError] = useState(false);
   const [isAdded, setIsAdded] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   
   // State for selected options: { [groupId]: [choiceName1, choiceName2] }
   const [selections, setSelections] = useState<Record<string, string[]>>({});
@@ -109,6 +110,19 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
     }, 600);
   };
 
+  const handleShare = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const url = window.location.href;
+    const text = `Confira ${product.name} - R$ ${product.price.toFixed(2).replace('.', ',')}\nVeja em: ${url}`;
+    
+    navigator.clipboard.writeText(text).then(() => {
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    }).catch(err => {
+      console.error('Failed to copy: ', err);
+    });
+  };
+
   const totalPrice = calculateTotal();
 
   return (
@@ -132,6 +146,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
           </div>
         )}
         
+        {/* Share Button */}
+        <button
+          onClick={handleShare}
+          className="absolute top-2 right-2 p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-sm hover:bg-white text-stone-600 transition-all z-10 dark:bg-stone-900/90 dark:text-stone-300 dark:hover:bg-stone-800"
+          title="Copiar link do produto"
+        >
+          {isCopied ? <Check className="w-4 h-4 text-green-600" /> : <Share2 className="w-4 h-4" />}
+        </button>
+
         <div className="absolute bottom-2 right-2 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm border border-stone-200 dark:bg-stone-900/90 dark:border-stone-700">
           <span className="font-bold text-italian-green text-sm">
             R$ {product.price.toFixed(2).replace('.', ',')}
