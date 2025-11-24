@@ -21,7 +21,8 @@ export const DEFAULT_SETTINGS: StoreSettings = {
       price: 5.00,
       zipPrefixes: ['13295000'] // Exemplo específico
     }
-  ]
+  ],
+  enableGuide: true
 };
 
 export const WHATSAPP_NUMBER = DEFAULT_SETTINGS.whatsapp; // Legacy support if needed

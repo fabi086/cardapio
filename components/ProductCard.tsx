@@ -5,9 +5,10 @@ import { Plus, Minus, ImageOff, Check, ChevronDown, ChevronUp } from 'lucide-rea
 interface ProductCardProps {
   product: Product;
   onAddToCart: (product: Product, quantity: number, observation: string, selectedOptions?: CartItem['selectedOptions']) => void;
+  id?: string; // Add optional ID prop for the tour
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
+export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, id }) => {
   const [quantity, setQuantity] = useState(1);
   const [isExpanded, setIsExpanded] = useState(false);
   const [observation, setObservation] = useState('');
@@ -111,7 +112,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
   const totalPrice = calculateTotal();
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-stone-100 overflow-hidden flex flex-col h-full hover:shadow-md transition-shadow dark:bg-stone-900 dark:border-stone-800">
+    <div id={id} className="bg-white rounded-xl shadow-sm border border-stone-100 overflow-hidden flex flex-col h-full hover:shadow-md transition-shadow dark:bg-stone-900 dark:border-stone-800">
       {/* Product Image */}
       <div 
         className="h-40 w-full bg-stone-100 relative overflow-hidden group cursor-pointer dark:bg-stone-800"

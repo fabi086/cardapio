@@ -20,7 +20,7 @@ export const CategoryNav: React.FC<CategoryNavProps> = ({ categories, activeCate
   };
 
   return (
-    <nav className="sticky top-[72px] z-30 bg-stone-100 dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 transition-colors duration-300 py-4">
+    <nav id="tour-categories" className="sticky top-[72px] z-30 bg-stone-100 dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 transition-colors duration-300 py-4">
       <div className="max-w-5xl mx-auto px-4 relative flex items-center group">
         
         {/* Left Arrow */}

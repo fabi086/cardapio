@@ -61,4 +61,5 @@ export interface StoreSettings {
   openingHours: string;
   phones: string[];
   deliveryRegions?: DeliveryRegion[];
+  enableGuide?: boolean; // New field to toggle onboarding tour
 }

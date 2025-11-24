@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Category, Product, StoreSettings, ProductOption, ProductChoice } from '../types';
-import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Layers, Megaphone, Tag, List } from 'lucide-react';
+import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Layers, Megaphone, Tag, List, HelpCircle } from 'lucide-react';
 
 interface AdminPanelProps {
   menuData: Category[];
@@ -492,6 +492,28 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <h2 className="text-xl font-bold text-stone-800 mb-6 flex items-center gap-2">
                   <Settings className="w-5 h-5 text-italian-red" /> Dados do Estabelecimento
                 </h2>
+                
+                {/* GUIDE TOGGLE SWITCH */}
+                <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-6 flex items-center justify-between">
+                   <div>
+                      <h3 className="font-bold text-blue-900 flex items-center gap-2">
+                         <HelpCircle className="w-5 h-5" /> Guia de Uso (Tour)
+                      </h3>
+                      <p className="text-xs text-blue-700 mt-1">
+                         Ative para mostrar um tutorial passo-a-passo para novos visitantes.
+                      </p>
+                   </div>
+                   <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer" 
+                        checked={settingsForm.enableGuide !== false} // Default true
+                        onChange={(e) => setSettingsForm({...settingsForm, enableGuide: e.target.checked})}
+                      />
+                      <div className="w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                   </label>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* ... Inputs for Name, Whatsapp, etc ... */}
                   <div>
@@ -645,7 +667,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
         {/* --- TAB: MENU --- */}
         {activeTab === 'menu' && (
+          // ... (Rest of the menu logic remains unchanged)
           <>
+            {/* ... (Keep existing promo and menu editing UI) ... */}
             {/* --- DAILY PROMOS SECTION --- */}
             <div className="bg-gradient-to-br from-italian-red to-red-700 p-6 rounded-xl shadow-lg mb-6 text-white relative overflow-hidden">
                {/* ... (Promo Content Omitted for brevity, kept same) ... */}

@@ -9,7 +9,8 @@ import { Footer } from './components/Footer';
 import { AdminPanel } from './components/AdminPanel';
 import { PromoBanner } from './components/PromoBanner';
 import { InfoModal } from './components/InfoModal';
-import { ShoppingBag, Check, Loader2, Search, X, Filter, Clock, AlertCircle } from 'lucide-react';
+import { OnboardingGuide } from './components/OnboardingGuide';
+import { ShoppingBag, Check, Loader2, Search, X, Filter, Clock, AlertCircle, HelpCircle } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 const isValidCartItem = (item: any): item is CartItem => {
@@ -71,6 +72,9 @@ function App() {
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
   const [storeStatus, setStoreStatus] = useState({ isOpen: true, message: '' });
 
+  // Guide State
+  const [showGuide, setShowGuide] = useState(false);
+
   // Theme State
   const [isDarkMode, setIsDarkMode] = useState(() => {
     // Check local storage or system preference
@@ -99,7 +103,25 @@ function App() {
      if (storeSettings.openingHours) {
         setStoreStatus(checkStoreOpen(storeSettings.openingHours));
      }
-  }, [storeSettings.openingHours]);
+     
+     // Check if guide should be shown
+     if (storeSettings.enableGuide !== false) {
+       const hasSeenGuide = localStorage.getItem('hasSeenGuide_v1');
+       if (!hasSeenGuide) {
+         // Small delay to let UI render
+         setTimeout(() => setShowGuide(true), 1500);
+       }
+     }
+  }, [storeSettings]);
+
+  const closeGuide = () => {
+    setShowGuide(false);
+    localStorage.setItem('hasSeenGuide_v1', 'true');
+  };
+
+  const restartGuide = () => {
+    setShowGuide(true);
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -172,7 +194,8 @@ function App() {
             address: settingsData.address || DEFAULT_SETTINGS.address,
             openingHours: settingsData.opening_hours || DEFAULT_SETTINGS.openingHours,
             phones: (settingsData.phones && Array.isArray(settingsData.phones)) ? settingsData.phones : DEFAULT_SETTINGS.phones,
-            deliveryRegions: Array.isArray(deliveryRegions) ? deliveryRegions : DEFAULT_SETTINGS.deliveryRegions
+            deliveryRegions: Array.isArray(deliveryRegions) ? deliveryRegions : DEFAULT_SETTINGS.deliveryRegions,
+            enableGuide: settingsData.enable_guide ?? true
         });
       } else {
         setStoreSettings(DEFAULT_SETTINGS);
@@ -260,6 +283,7 @@ function App() {
   // --- ADMIN ACTIONS ---
   
   const handleUpdateProduct = async (originalCategoryId: string, productId: number, updates: Partial<Product>) => {
+    // ... (Keep existing implementation)
     setMenuData(prevMenu => {
       if (updates.category && updates.category !== originalCategoryId) {
         let productToMove: Product | undefined;
@@ -297,7 +321,6 @@ function App() {
     if (!supabase) return;
 
     try {
-      // Stringify JSON fields for Supabase
       const payload: any = {
         name: updates.name,
         price: updates.price,
@@ -325,6 +348,7 @@ function App() {
   };
 
   const handleAddProduct = async (categoryId: string, product: Omit<Product, 'id'>) => {
+    // ... (Keep existing implementation)
     const tempId = Date.now();
     
     setMenuData(prev => prev.map(cat => {
@@ -374,6 +398,7 @@ function App() {
   };
 
   const handleDeleteProduct = async (categoryId: string, productId: number) => {
+    // ... (Keep existing implementation)
      setMenuData(prev => prev.map(cat => {
         if (cat.id === categoryId) {
            return { ...cat, items: cat.items.filter(i => i.id !== productId) };
@@ -397,6 +422,7 @@ function App() {
 
   // --- CATEGORY ACTIONS ---
   const handleAddCategory = async (name: string) => {
+    // ... (Keep existing implementation)
     const id = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     const newCategory: Category = { id, name, items: [] };
 
@@ -417,13 +443,13 @@ function App() {
   };
 
   const handleDeleteCategory = async (id: string) => {
+    // ... (Keep existing implementation)
     if (window.confirm('Tem certeza? Isso apagará a categoria e TODOS os produtos nela.')) {
       setMenuData(prev => prev.filter(c => c.id !== id));
       
       if (!supabase) return;
       
       try {
-        // Products cascade delete usually, but let's be safe if FK set
         await supabase.from('products').delete().eq('category_id', id);
         const { error } = await supabase.from('categories').delete().eq('id', id);
         if (error) throw error;
@@ -449,7 +475,8 @@ function App() {
           opening_hours: newSettings.openingHours,
           phones: newSettings.phones,
           logo_url: newSettings.logoUrl,
-          delivery_regions: deliveryRegionsJson
+          delivery_regions: deliveryRegionsJson,
+          enable_guide: newSettings.enableGuide
        };
 
         if (settingsId) {
@@ -526,6 +553,7 @@ function App() {
   };
 
   const updateQuantity = (index: number, newQuantity: number) => {
+    // ... (Keep existing implementation)
     if (newQuantity < 1) {
       if (window.confirm('Remover este item do carrinho?')) {
         removeFromCart(index);
@@ -540,6 +568,7 @@ function App() {
   };
 
   const updateObservation = (index: number, newObservation: string) => {
+    // ... (Keep existing implementation)
     setCartItems(prev => {
       const newItems = [...prev];
       newItems[index] = { ...newItems[index], observation: newObservation };
@@ -636,9 +665,15 @@ function App() {
     );
   }
 
+  // To highlight the first product card for the tour, we find the first available item in the filtered list
+  let firstProductFound = false;
+
   return (
     <div className="min-h-screen bg-stone-100 dark:bg-stone-900 pb-24 md:pb-0 font-sans relative transition-colors duration-300">
       
+      {/* ONBOARDING GUIDE */}
+      {showGuide && <OnboardingGuide onClose={closeGuide} />}
+
       {/* CLOSED STORE BANNER */}
       {!storeStatus.isOpen && (
         <div className="bg-red-600 text-white px-4 py-2 text-center text-sm font-bold flex items-center justify-center gap-2 animate-in slide-in-from-top sticky top-0 z-50">
@@ -675,7 +710,7 @@ function App() {
       <main className="max-w-5xl mx-auto px-4 pt-6">
         
         {/* Search Bar & Scope Selector */}
-        <div className="relative w-full max-w-2xl mx-auto mb-6 flex flex-col md:flex-row gap-3">
+        <div id="tour-search" className="relative w-full max-w-2xl mx-auto mb-6 flex flex-col md:flex-row gap-3">
            <div className="relative flex-1">
               <input 
                  type="text"
@@ -788,9 +823,18 @@ function App() {
                          {/* Ungrouped Items First */}
                          {ungroupedItems.length > 0 && (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                              {ungroupedItems.map((product) => (
-                                <ProductCard key={product.id} product={product} onAddToCart={addToCart} />
-                              ))}
+                              {ungroupedItems.map((product) => {
+                                const isFirst = !firstProductFound;
+                                if (isFirst) firstProductFound = true;
+                                return (
+                                  <ProductCard 
+                                    key={product.id} 
+                                    product={product} 
+                                    onAddToCart={addToCart} 
+                                    id={isFirst ? "tour-product-card" : undefined}
+                                  />
+                                );
+                              })}
                             </div>
                          )}
                          
@@ -802,22 +846,36 @@ function App() {
                                   {sub}
                                </h3>
                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                  {products.map((product) => (
-                                    <ProductCard key={product.id} product={product} onAddToCart={addToCart} />
-                                  ))}
+                                  {products.map((product) => {
+                                    const isFirst = !firstProductFound;
+                                    if (isFirst) firstProductFound = true;
+                                    return (
+                                      <ProductCard 
+                                        key={product.id} 
+                                        product={product} 
+                                        onAddToCart={addToCart} 
+                                        id={isFirst ? "tour-product-card" : undefined}
+                                      />
+                                    );
+                                  })}
                                </div>
                             </div>
                          ))}
                       </div>
                    ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {category.items.map((product) => (
-                          <ProductCard 
-                            key={product.id} 
-                            product={product} 
-                            onAddToCart={addToCart} 
-                          />
-                        ))}
+                        {category.items.map((product) => {
+                          const isFirst = !firstProductFound;
+                          if (isFirst) firstProductFound = true;
+                          return (
+                            <ProductCard 
+                              key={product.id} 
+                              product={product} 
+                              onAddToCart={addToCart} 
+                              id={isFirst ? "tour-product-card" : undefined}
+                            />
+                          );
+                        })}
                       </div>
                    )
                 ) : (
@@ -837,6 +895,19 @@ function App() {
         onOpenAdmin={() => setView('admin')} 
         settings={storeSettings}
       />
+      
+      {/* Help/Guide Button in Footer/Bottom area */}
+      {storeSettings.enableGuide && (
+         <div className="fixed bottom-24 left-4 md:bottom-8 md:left-8 z-30">
+             <button 
+               onClick={restartGuide}
+               className="bg-white text-italian-green p-2 rounded-full shadow-lg border border-stone-200 hover:scale-105 transition-transform"
+               title="Ajuda / Tutorial"
+             >
+                <HelpCircle className="w-6 h-6" />
+             </button>
+         </div>
+      )}
 
       <CartDrawer 
         isOpen={isCartOpen} 
