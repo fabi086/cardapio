@@ -201,14 +201,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     />
                  </div>
                  <div>
-                    <label className="block text-sm font-bold text-stone-700 mb-1">WhatsApp (Apenas números)</label>
+                    <label className="block text-sm font-bold text-stone-700 mb-1">WhatsApp de Pedidos</label>
                     <input 
                        type="text" 
                        value={settingsForm.whatsapp} 
                        onChange={(e) => setSettingsForm({...settingsForm, whatsapp: e.target.value})}
-                       placeholder="5511999999999"
+                       placeholder="Ex: 5511999999999"
                        className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 focus:ring-1 focus:ring-italian-green"
                     />
+                    <p className="text-[10px] text-stone-500 mt-1">
+                      Preferência: Apenas números com DDD (ex: 5511999999999).
+                    </p>
                  </div>
                  <div className="md:col-span-2">
                     <label className="block text-sm font-bold text-stone-700 mb-1">Endereço Completo</label>

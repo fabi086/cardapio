@@ -56,10 +56,12 @@ function App() {
         .from('products')
         .select('*');
 
-      // 3. Fetch Settings (Using maybeSingle to avoid error if table is empty)
+      // 3. Fetch Settings 
+      // IMPORTANTE: Ordenamos por ID ascendente para garantir que sempre pegamos a configuração principal (a primeira criada)
       const { data: settingsData, error: settingsError } = await supabase
         .from('settings')
         .select('*')
+        .order('id', { ascending: true }) 
         .limit(1)
         .maybeSingle();
 
@@ -319,6 +321,7 @@ function App() {
 
   // 4. UPDATE SETTINGS
   const handleUpdateSettings = async (newSettings: StoreSettings) => {
+     // Atualiza estado local IMEDIATAMENTE para refletir em toda a aplicação
      setStoreSettings(newSettings);
 
      if (!supabase) return;

@@ -48,8 +48,16 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     message += `\n\n_Aguardo a confirmação!_`;
 
     const encodedMessage = encodeURIComponent(message);
-    // Remove non-numeric characters from WhatsApp number
-    const cleanNumber = whatsappNumber.replace(/\D/g, '');
+    
+    // Tratamento robusto do número de WhatsApp
+    let cleanNumber = whatsappNumber.replace(/\D/g, ''); // Remove tudo que não é número
+    
+    // Se o número tiver entre 10 e 11 dígitos (típico celular BR sem DDI), adiciona o 55
+    // Isso previne links quebrados se o usuário esquecer o DDI no painel admin
+    if (cleanNumber.length >= 10 && cleanNumber.length <= 11) {
+      cleanNumber = '55' + cleanNumber;
+    }
+
     const url = `https://wa.me/${cleanNumber}?text=${encodedMessage}`;
     
     window.open(url, '_blank');
@@ -206,7 +214,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             Enviar Pedido no WhatsApp
           </button>
           <p className="text-center text-xs text-stone-400 mt-3">
-            O pedido será enviado para nosso WhatsApp para confirmação.
+            O pedido será enviado para o número {whatsappNumber}
           </p>
         </div>
       </div>
