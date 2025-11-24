@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShoppingBag } from 'lucide-react';
+import { ShoppingBag, Moon, Sun } from 'lucide-react';
 
 interface HeaderProps {
   cartCount: number;
@@ -7,13 +7,23 @@ interface HeaderProps {
   animateCart?: boolean;
   storeName: string;
   logoUrl: string;
+  isDarkMode: boolean;
+  onToggleTheme: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ cartCount, onOpenCart, animateCart, storeName, logoUrl }) => {
+export const Header: React.FC<HeaderProps> = ({ 
+  cartCount, 
+  onOpenCart, 
+  animateCart, 
+  storeName, 
+  logoUrl,
+  isDarkMode,
+  onToggleTheme
+}) => {
   const [logoError, setLogoError] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 bg-italian-red text-white shadow-md">
+    <header className="sticky top-0 z-40 bg-italian-red text-white shadow-md dark:bg-red-950 transition-colors duration-300">
       <div className="max-w-5xl mx-auto px-4 py-2 flex justify-between items-center h-[72px]">
         <div className="flex items-center gap-2 h-full">
           {!logoError && logoUrl ? (
@@ -39,19 +49,29 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, onOpenCart, animateCa
           )}
         </div>
 
-        <button 
-          onClick={onOpenCart}
-          className={`relative p-2 rounded-full transition-all duration-300 ${
-            animateCart ? 'bg-white/30 scale-110' : 'bg-white/10 hover:bg-white/20'
-          }`}
-        >
-          <ShoppingBag className={`w-6 h-6 ${animateCart ? 'animate-bounce' : ''}`} />
-          {cartCount > 0 && (
-            <span className={`absolute -top-1 -right-1 bg-italian-green text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-italian-red transition-transform duration-300 ${animateCart ? 'scale-125' : 'scale-100'}`}>
-              {cartCount}
-            </span>
-          )}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onToggleTheme}
+            className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white"
+            aria-label="Alternar tema"
+          >
+            {isDarkMode ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
+          </button>
+
+          <button 
+            onClick={onOpenCart}
+            className={`relative p-2 rounded-full transition-all duration-300 ${
+              animateCart ? 'bg-white/30 scale-110' : 'bg-white/10 hover:bg-white/20'
+            }`}
+          >
+            <ShoppingBag className={`w-6 h-6 ${animateCart ? 'animate-bounce' : ''}`} />
+            {cartCount > 0 && (
+              <span className={`absolute -top-1 -right-1 bg-italian-green text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-italian-red transition-transform duration-300 ${animateCart ? 'scale-125' : 'scale-100'}`}>
+                {cartCount}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
     </header>
   );

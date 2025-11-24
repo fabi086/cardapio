@@ -28,6 +28,29 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Theme State
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    // Check local storage or system preference
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('theme');
+      if (saved) return saved === 'dark';
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDarkMode]);
+
+  const toggleTheme = () => setIsDarkMode(!isDarkMode);
+
   const fetchData = async () => {
     setLoading(true);
 
@@ -456,9 +479,9 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-stone-100 flex items-center justify-center flex-col gap-4">
+      <div className="min-h-screen bg-stone-100 dark:bg-stone-900 flex items-center justify-center flex-col gap-4">
         <Loader2 className="w-10 h-10 text-italian-red animate-spin" />
-        <p className="text-stone-500 font-display">Carregando cardápio...</p>
+        <p className="text-stone-500 dark:text-stone-400 font-display">Carregando cardápio...</p>
       </div>
     );
   }
@@ -479,17 +502,19 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-100 pb-24 md:pb-0 font-sans relative">
+    <div className="min-h-screen bg-stone-100 dark:bg-stone-900 pb-24 md:pb-0 font-sans relative transition-colors duration-300">
       <Header 
         cartCount={totalItems} 
         onOpenCart={() => setIsCartOpen(true)} 
         animateCart={isCartAnimating}
         storeName={storeSettings.name}
         logoUrl={storeSettings.logoUrl}
+        isDarkMode={isDarkMode}
+        onToggleTheme={toggleTheme}
       />
       
       {error && (
-        <div className="bg-yellow-100 border-b border-yellow-200 text-yellow-800 px-4 py-2 text-xs text-center">
+        <div className="bg-yellow-100 border-b border-yellow-200 text-yellow-800 px-4 py-2 text-xs text-center dark:bg-yellow-900 dark:text-yellow-100 dark:border-yellow-800">
           {error}
         </div>
       )}
@@ -501,7 +526,7 @@ function App() {
       />
 
       <main className="max-w-5xl mx-auto px-4 pt-6">
-        <div className="bg-gradient-to-r from-stone-900 to-stone-800 text-white rounded-2xl p-6 mb-8 shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="bg-gradient-to-r from-stone-900 to-stone-800 text-white rounded-2xl p-6 mb-8 shadow-lg flex flex-col md:flex-row items-center justify-between gap-6 dark:from-black dark:to-stone-900 dark:border dark:border-stone-800">
           <div className="space-y-2 text-center md:text-left">
              <span className="bg-italian-red text-xs font-bold px-2 py-1 rounded uppercase tracking-wide">Novidade</span>
              <h2 className="text-3xl font-display">Bateu a fome?</h2>
@@ -521,7 +546,7 @@ function App() {
               id={`category-${category.id}`}
               className="scroll-mt-32"
             >
-              <h2 className="text-2xl font-bold text-stone-800 mb-4 pl-2 border-l-4 border-italian-red">
+              <h2 className="text-2xl font-bold text-stone-800 dark:text-stone-100 mb-4 pl-2 border-l-4 border-italian-red">
                 {category.name}
               </h2>
               
@@ -592,7 +617,7 @@ function App() {
               className={`bg-italian-green text-white w-16 h-16 rounded-full shadow-xl flex items-center justify-center hover:scale-110 transition-all hover:bg-green-700 group relative ${isCartAnimating ? 'scale-125 bg-green-600' : ''}`}
             >
               <ShoppingBag className={`w-8 h-8 group-hover:animate-pulse ${isCartAnimating ? 'animate-bounce' : ''}`} />
-              <span className="absolute -top-2 -right-2 bg-italian-red text-white text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full border-2 border-white">
+              <span className="absolute -top-2 -right-2 bg-italian-red text-white text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full border-2 border-white dark:border-stone-800">
                 {totalItems}
               </span>
             </button>
