@@ -519,12 +519,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         {/* --- TAB: SETTINGS --- */}
         {activeTab === 'settings' && (
            <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200 animate-in fade-in slide-in-from-bottom-2 space-y-8">
-              {/* ... Keep Settings Tab Content ... */}
               <div>
                 <h2 className="text-xl font-bold text-stone-800 mb-6 flex items-center gap-2">
                   <Settings className="w-5 h-5 text-italian-red" /> Dados do Estabelecimento
                 </h2>
-                {/* ... Guide Toggle & Inputs ... */}
+                
+                {/* Guide Toggle */}
                 <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-6 flex items-center justify-between">
                    <div>
                       <h3 className="font-bold text-blue-900 flex items-center gap-2">
@@ -544,43 +544,90 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <div className="w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                    </label>
                 </div>
+
+                {/* Form Inputs */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                   {/* Inputs... */}
                    <div>
                       <label className="block text-sm font-bold text-stone-700 mb-1">Nome</label>
-                      <input type="text" value={settingsForm.name} onChange={(e) => setSettingsForm({...settingsForm, name: e.target.value})} className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900"/>
+                      <input 
+                        type="text" 
+                        value={settingsForm.name} 
+                        onChange={(e) => setSettingsForm({...settingsForm, name: e.target.value})} 
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 dark:text-stone-900"
+                      />
                    </div>
                    <div>
                       <label className="block text-sm font-bold text-stone-700 mb-1">WhatsApp</label>
-                      <input type="text" value={settingsForm.whatsapp} onChange={(e) => setSettingsForm({...settingsForm, whatsapp: e.target.value})} className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900"/>
+                      <input 
+                        type="text" 
+                        value={settingsForm.whatsapp} 
+                        onChange={(e) => setSettingsForm({...settingsForm, whatsapp: e.target.value})} 
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 dark:text-stone-900"
+                      />
                    </div>
-                   {/* ... Other inputs ... */}
+                   <div className="md:col-span-2">
+                      <label className="block text-sm font-bold text-stone-700 mb-1">Endereço</label>
+                      <textarea 
+                        rows={2} 
+                        value={settingsForm.address} 
+                        onChange={(e) => setSettingsForm({...settingsForm, address: e.target.value})} 
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 dark:text-stone-900"
+                      />
+                   </div>
+                   <div>
+                      <label className="block text-sm font-bold text-stone-700 mb-1">Horário de Funcionamento</label>
+                      <input 
+                        type="text" 
+                        value={settingsForm.openingHours} 
+                        onChange={(e) => setSettingsForm({...settingsForm, openingHours: e.target.value})} 
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 dark:text-stone-900"
+                      />
+                   </div>
+                   <div>
+                      <label className="block text-sm font-bold text-stone-700 mb-1">Telefones (separados por vírgula)</label>
+                      <input 
+                        type="text" 
+                        value={settingsForm.phones.join(', ')} 
+                        onChange={(e) => setSettingsForm({...settingsForm, phones: e.target.value.split(',').map(p => p.trim())})} 
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 dark:text-stone-900"
+                      />
+                   </div>
+                   <div className="md:col-span-2">
+                      <label className="block text-sm font-bold text-stone-700 mb-1">URL do Logo</label>
+                      <input 
+                        type="text" 
+                        value={settingsForm.logoUrl} 
+                        onChange={(e) => setSettingsForm({...settingsForm, logoUrl: e.target.value})} 
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 dark:text-stone-900"
+                      />
+                   </div>
                 </div>
               </div>
+
               <hr className="border-stone-200" />
+              
               <div>
                  {/* ... Region Logic ... */}
                  <h2 className="text-xl font-bold text-stone-800 mb-6 flex items-center gap-2">
                    <MapPin className="w-5 h-5 text-italian-red" /> Taxas de Entrega
                 </h2>
-                {/* ... (Existing Region UI) ... */}
+                
                 <div className={`p-4 rounded-lg border mb-4 transition-colors ${editingRegionId ? 'bg-orange-50 border-orange-200' : 'bg-stone-50 border-stone-200'}`}>
-                   {/* ... Region Form ... */}
                    <div className="space-y-3">
                       <div className="grid grid-cols-12 gap-3 items-end">
                         <div className="col-span-8 md:col-span-9">
                            <label className="block text-xs font-bold text-stone-500 mb-1">Nome</label>
-                           <input type="text" value={newRegionName} onChange={(e) => setNewRegionName(e.target.value)} className="w-full p-2 bg-white border border-stone-300 rounded-md text-sm text-stone-900"/>
+                           <input type="text" value={newRegionName} onChange={(e) => setNewRegionName(e.target.value)} className="w-full p-2 bg-white border border-stone-300 rounded-md text-sm text-stone-900 dark:text-stone-900"/>
                         </div>
                         <div className="col-span-4 md:col-span-3">
                            <label className="block text-xs font-bold text-stone-500 mb-1">Taxa</label>
-                           <input type="number" value={newRegionPrice} onChange={(e) => setNewRegionPrice(e.target.value)} className="w-full p-2 bg-white border border-stone-300 rounded-md text-sm text-stone-900"/>
+                           <input type="number" value={newRegionPrice} onChange={(e) => setNewRegionPrice(e.target.value)} className="w-full p-2 bg-white border border-stone-300 rounded-md text-sm text-stone-900 dark:text-stone-900"/>
                         </div>
                       </div>
                       <div className="grid grid-cols-12 gap-3 items-end">
                          <div className="col-span-10">
-                           <label className="block text-xs font-bold text-stone-500 mb-1">CEPs</label>
-                           <input type="text" value={newRegionZips} onChange={(e) => setNewRegionZips(e.target.value)} className="w-full p-2 bg-white border border-stone-300 rounded-md text-sm text-stone-900"/>
+                           <label className="block text-xs font-bold text-stone-500 mb-1">CEPs (separados por vírgula)</label>
+                           <input type="text" value={newRegionZips} onChange={(e) => setNewRegionZips(e.target.value)} className="w-full p-2 bg-white border border-stone-300 rounded-md text-sm text-stone-900 dark:text-stone-900" placeholder="Ex: 13295-000, 13295-001"/>
                          </div>
                          <div className="col-span-2 flex gap-1">
                            <button onClick={handleAddRegion} className="flex-1 p-2 bg-italian-green text-white rounded-md flex items-center justify-center">
@@ -593,17 +640,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div className="space-y-2">
                    {(settingsForm.deliveryRegions || []).map((region, idx) => (
                       <div key={idx} className="flex justify-between p-3 bg-white border rounded-lg">
-                         <div><span className="font-bold">{region.name}</span> <span className="text-green-600">R$ {region.price}</span></div>
+                         <div>
+                            <span className="font-bold">{region.name}</span> <span className="text-green-600">R$ {region.price}</span>
+                            {region.zipPrefixes && region.zipPrefixes.length > 0 && (
+                               <div className="text-xs text-stone-400 mt-1">CEPs: {region.zipPrefixes.join(', ')}</div>
+                            )}
+                         </div>
                          <div className="flex gap-2">
-                            <button onClick={() => startEditingRegion(region)}><Edit3 className="w-4 h-4"/></button>
-                            <button onClick={() => handleRemoveRegion(region.id)}><Trash2 className="w-4 h-4"/></button>
+                            <button onClick={() => startEditingRegion(region)} className="p-1 hover:text-blue-500"><Edit3 className="w-4 h-4"/></button>
+                            <button onClick={() => handleRemoveRegion(region.id)} className="p-1 hover:text-red-500"><Trash2 className="w-4 h-4"/></button>
                          </div>
                       </div>
                    ))}
                 </div>
               </div>
               <div className="flex justify-end pt-4 border-t border-stone-100">
-                  <button onClick={handleSaveSettings} className="px-6 py-2.5 bg-italian-green text-white rounded-lg font-bold">Salvar Configurações</button>
+                  <button onClick={handleSaveSettings} className="px-6 py-2.5 bg-italian-green text-white rounded-lg font-bold hover:bg-green-700">Salvar Configurações</button>
               </div>
            </div>
         )}
