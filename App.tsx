@@ -26,6 +26,7 @@ function App() {
   // --- STATE MANAGEMENT ---
   const [menuData, setMenuData] = useState<Category[]>([]);
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(DEFAULT_SETTINGS);
+  const [settingsId, setSettingsId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,15 +55,16 @@ function App() {
         .from('products')
         .select('*');
 
-      // 3. Fetch Settings (Assuming a table 'settings' exists, or fallback)
+      // 3. Fetch Settings (Using maybeSingle to avoid error if table is empty)
       const { data: settingsData, error: settingsError } = await supabase
         .from('settings')
         .select('*')
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (catError) throw catError;
       if (prodError) throw prodError;
+      if (settingsError) throw settingsError;
 
       // Process Menu
       if (categories && products) {
@@ -76,27 +78,40 @@ function App() {
 
       // Process Settings
       if (settingsData) {
+        setSettingsId(settingsData.id);
         setStoreSettings({
             name: settingsData.name || DEFAULT_SETTINGS.name,
             whatsapp: settingsData.whatsapp || DEFAULT_SETTINGS.whatsapp,
             logoUrl: settingsData.logo_url || DEFAULT_SETTINGS.logoUrl,
             address: settingsData.address || DEFAULT_SETTINGS.address,
             openingHours: settingsData.opening_hours || DEFAULT_SETTINGS.openingHours,
-            phones: settingsData.phones || DEFAULT_SETTINGS.phones
+            phones: (settingsData.phones && Array.isArray(settingsData.phones)) ? settingsData.phones : DEFAULT_SETTINGS.phones
         });
       } else {
-        // If table empty or doesn't exist, use default
+        // If table empty, use default but don't error out
         setStoreSettings(DEFAULT_SETTINGS);
       }
       
       setError(null);
 
     } catch (err: any) {
-      console.error('Erro ao buscar dados:', err);
+      // Log detalhado para debug no console
+      console.error('Erro ao buscar dados:', JSON.stringify(err, null, 2));
+      if (err.message) console.error('Mensagem:', err.message);
+
       // Fallback to local data on error
       setMenuData(MENU_DATA);
       setStoreSettings(DEFAULT_SETTINGS);
-      setError('Usando dados locais (Erro de conexão).');
+
+      // Tratamento amigável para erro de tabela inexistente (comum em projetos novos)
+      // Adicionado PGRST205 que é o erro específico relatado
+      if (err.code === '42P01' || err.code === 'PGRST205') { 
+         setError('Banco de dados ainda não configurado (Tabelas não encontradas). Usando dados locais.');
+      } else if (err.message && (err.message.includes('fetch') || err.message.includes('network'))) {
+         setError('Erro de conexão. Usando dados offline.');
+      } else {
+         setError('Usando dados locais devido a erro no servidor.');
+      }
     } finally {
       setLoading(false);
     }
@@ -303,23 +318,46 @@ function App() {
      if (!supabase) return;
 
      try {
-        // Upsert settings (assuming ID 1 for single row config)
-        const { error } = await supabase
-           .from('settings')
-           .upsert({ 
-              id: 1,
-              name: newSettings.name,
-              whatsapp: newSettings.whatsapp,
-              address: newSettings.address,
-              opening_hours: newSettings.openingHours,
-              phones: newSettings.phones,
-              logo_url: newSettings.logoUrl
-           });
-        
-        if (error) throw error;
-     } catch (err) {
-        console.error(err);
-        // Don't revert immediately to keep UI snappy, but maybe show error toast
+        if (settingsId) {
+            // Atualizar configuração existente usando o ID capturado
+            const { error } = await supabase
+               .from('settings')
+               .update({ 
+                  name: newSettings.name,
+                  whatsapp: newSettings.whatsapp,
+                  address: newSettings.address,
+                  opening_hours: newSettings.openingHours,
+                  phones: newSettings.phones,
+                  logo_url: newSettings.logoUrl
+               })
+               .eq('id', settingsId);
+            
+            if (error) throw error;
+        } else {
+            // Se não houver ID (primeira vez), inserir
+            const { data, error } = await supabase
+               .from('settings')
+               .insert([{ 
+                  name: newSettings.name,
+                  whatsapp: newSettings.whatsapp,
+                  address: newSettings.address,
+                  opening_hours: newSettings.openingHours,
+                  phones: newSettings.phones,
+                  logo_url: newSettings.logoUrl
+               }])
+               .select();
+            
+            if (error) throw error;
+            // Salvar o ID recém criado para futuros updates
+            if (data && data[0]) setSettingsId(data[0].id);
+        }
+     } catch (err: any) {
+        console.error('Erro ao salvar configurações:', err);
+        if (err.code === '42P01' || err.code === 'PGRST205') {
+            alert('Erro: A tabela de configurações não existe no banco de dados. Crie a tabela "settings" no Supabase.');
+        } else {
+            alert('Ocorreu um erro ao salvar as configurações. Verifique o console.');
+        }
      }
   };
 
