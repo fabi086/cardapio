@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { MENU_DATA, DEFAULT_SETTINGS, CATEGORY_IMAGES } from './data';
 import { Product, CartItem, Category, StoreSettings } from './types';
 import { Header } from './components/Header';
@@ -636,49 +636,74 @@ function App() {
   const promoCategory = menuData.find(c => c.id === 'promocoes');
   const activePromotions = promoCategory ? promoCategory.items : [];
 
-  // FILTERING LOGIC
-  const displayCategories = menuData
-    .map(cat => {
-      // 1. Filter items by Search Term
-      const filteredItems = cat.items.filter(item => {
-         if (searchTerm) {
-            // Helper to normalize strings (remove accents, lowercase) for better search
-            const normalize = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            
-            // Break search term into words (tokens)
-            const searchTerms = normalize(searchTerm).split(/\s+/).filter(t => t.length > 0);
-            
-            if (searchTerms.length === 0) return true;
+  // FILTERING LOGIC (Memoized for performance and effect dependency)
+  const displayCategories = useMemo(() => {
+    return menuData
+      .map(cat => {
+        // 1. Filter items by Search Term
+        const filteredItems = cat.items.filter(item => {
+           if (searchTerm) {
+              // Helper to normalize strings (remove accents, lowercase) for better search
+              const normalize = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+              
+              // Break search term into words (tokens)
+              const searchTerms = normalize(searchTerm).split(/\s+/).filter(t => t.length > 0);
+              
+              if (searchTerms.length === 0) return true;
 
-            // Create a single searchable string containing all relevant product info
-            const itemSearchableText = normalize(
-               [
-                  item.name,
-                  item.description || '',
-                  item.code || '',
-                  item.subcategory || '',
-                  (item.ingredients || []).join(' '),
-                  cat.name // Added category name to search scope
-               ].join(' ')
-            );
+              // Create a single searchable string containing all relevant product info
+              // Include category name in searchable text
+              const itemSearchableText = normalize(
+                 [
+                    item.name,
+                    item.description || '',
+                    item.code || '',
+                    item.subcategory || '',
+                    (item.ingredients || []).join(' '),
+                    cat.name // Added category name to search scope
+                 ].join(' ')
+              );
 
-            // AND Logic: The item must contain ALL typed words (in any order)
-            return searchTerms.every(term => itemSearchableText.includes(term));
-         }
+              // AND Logic: The item must contain ALL typed words (in any order)
+              return searchTerms.every(term => itemSearchableText.includes(term));
+           }
+           return true;
+        });
+        return { ...cat, items: filteredItems };
+      })
+      .filter(cat => {
+         // 2. Scope Filter: If a scope is selected, ONLY show that category
+         if (searchScope !== 'all' && cat.id !== searchScope) return false;
+         
+         // 3. Hide 'promocoes' from main list unless we are searching
+         // This allows finding promo items via search bar
+         if (cat.id === 'promocoes' && !searchTerm) return false;
+         
          return true;
       });
-      return { ...cat, items: filteredItems };
-    })
-    .filter(cat => {
-       // 2. Scope Filter: If a scope is selected, ONLY show that category
-       if (searchScope !== 'all' && cat.id !== searchScope) return false;
-       
-       // 3. Hide 'promocoes' from main list unless we are searching
-       // This allows finding promo items via search bar
-       if (cat.id === 'promocoes' && !searchTerm) return false;
-       
-       return true;
-    });
+  }, [menuData, searchTerm, searchScope]);
+
+  // Auto-scroll effect when search results change
+  useEffect(() => {
+    if (searchTerm) {
+      const timer = setTimeout(() => {
+        // Find the first category that has matching items
+        const firstCategoryWithItems = displayCategories.find(cat => cat.items.length > 0);
+        
+        if (firstCategoryWithItems) {
+          const element = document.getElementById(`category-${firstCategoryWithItems.id}`);
+          if (element) {
+            const headerOffset = 200; // Matches CategoryNav offset
+            const elementPosition = element.getBoundingClientRect().top;
+            const offsetPosition = elementPosition + window.scrollY - headerOffset;
+            window.scrollTo({ top: offsetPosition, behavior: "smooth" });
+          }
+        }
+      }, 500); // Debounce: Wait 500ms after user stops typing
+
+      return () => clearTimeout(timer);
+    }
+  }, [searchTerm, displayCategories]);
 
   const navCategories = menuData
     .filter(cat => cat.id !== 'promocoes')
