@@ -15,6 +15,7 @@ export interface ProductOption {
 
 export interface Product {
   id: number;
+  store_id?: number;
   code?: string;
   name: string;
   description: string;
@@ -30,6 +31,7 @@ export interface Product {
 
 export interface Category {
   id: string;
+  store_id?: number;
   name: string;
   items: Product[];
   image?: string; // New field for category navigation image
@@ -59,6 +61,8 @@ export interface DeliveryRegion {
 }
 
 export interface StoreSettings {
+  id?: number;
+  store_id?: number;
   name: string;
   logoUrl: string;
   whatsapp: string;
@@ -73,6 +77,7 @@ export interface StoreSettings {
 
 export interface Coupon {
   id: number;
+  store_id?: number;
   code: string;
   discount_percent: number;
   active: boolean;
@@ -83,6 +88,7 @@ export type OrderStatus = 'pending' | 'preparing' | 'delivery' | 'completed' | '
 
 export interface Order {
   id: number;
+  store_id?: number;
   created_at: string;
   customer_name: string;
   customer_phone?: string; // Optional, maybe captured later or via login
