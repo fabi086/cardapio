@@ -12,6 +12,7 @@ interface AdminPanelProps {
   onResetMenu: () => void;
   onBack: () => void;
   onAddCategory?: (name: string) => void;
+  onUpdateCategory?: (id: string, updates: { name?: string; image?: string }) => void;
   onDeleteCategory?: (id: string) => void;
 }
 
@@ -25,6 +26,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onResetMenu, 
   onBack,
   onAddCategory,
+  onUpdateCategory,
   onDeleteCategory
 }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -73,6 +75,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   // Category State
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [editCategoryName, setEditCategoryName] = useState('');
+  const [editCategoryImage, setEditCategoryImage] = useState('');
 
   useEffect(() => {
     setSettingsForm(settings);
@@ -167,6 +172,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         } else {
           setEditForm({ ...editForm, image: reader.result as string });
         }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // --- CATEGORY IMAGE UPLOAD ---
+  const handleCategoryImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setEditCategoryImage(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
@@ -401,6 +418,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
+  const triggerUpdateCategory = () => {
+    if (editingCategoryId && onUpdateCategory) {
+      onUpdateCategory(editingCategoryId, { name: editCategoryName, image: editCategoryImage });
+      setEditingCategoryId(null);
+      setEditCategoryName('');
+      setEditCategoryImage('');
+    }
+  };
+
+  const startEditingCategory = (category: Category) => {
+    setEditingCategoryId(category.id);
+    setEditCategoryName(category.name);
+    setEditCategoryImage(category.image || '');
+  };
+
+  const cancelEditingCategory = () => {
+    setEditingCategoryId(null);
+    setEditCategoryName('');
+    setEditCategoryImage('');
+  };
+
   const triggerDeleteCategory = (id: string) => {
     if (onDeleteCategory) {
       onDeleteCategory(id);
@@ -512,18 +550,75 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
               <div className="space-y-2">
                  {menuData.filter(c => c.id !== 'promocoes').map((cat) => (
-                    <div key={cat.id} className="flex justify-between items-center p-3 bg-white border border-stone-200 rounded-lg">
-                       <div>
-                          <span className="font-bold text-stone-800">{cat.name}</span>
-                          <span className="text-xs text-stone-400 ml-2">({cat.items.length} produtos)</span>
-                       </div>
-                       <button 
-                         onClick={() => triggerDeleteCategory(cat.id)}
-                         className="p-2 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded"
-                         title="Excluir Categoria"
-                       >
-                          <Trash2 className="w-4 h-4" />
-                       </button>
+                    <div key={cat.id} className="p-3 bg-white border border-stone-200 rounded-lg">
+                       {editingCategoryId === cat.id ? (
+                          <div className="space-y-3">
+                             <div className="grid gap-2">
+                                <label className="text-xs font-bold text-stone-500">Nome da Categoria</label>
+                                <input 
+                                  type="text" 
+                                  value={editCategoryName}
+                                  onChange={(e) => setEditCategoryName(e.target.value)}
+                                  className="w-full p-2 bg-white border border-stone-300 rounded-lg text-sm text-stone-900"
+                                />
+                             </div>
+                             <div className="grid gap-2">
+                                <label className="text-xs font-bold text-stone-500">Imagem de Capa</label>
+                                <div className="flex items-center gap-3">
+                                   <div className="w-16 h-12 rounded bg-stone-100 border border-stone-200 overflow-hidden">
+                                      {editCategoryImage ? (
+                                         <img src={editCategoryImage} className="w-full h-full object-cover" />
+                                      ) : (
+                                         <ImageIcon className="w-full h-full p-3 text-stone-300" />
+                                      )}
+                                   </div>
+                                   <input 
+                                     type="file" 
+                                     className="text-xs text-stone-500"
+                                     onChange={handleCategoryImageUpload}
+                                   />
+                                </div>
+                             </div>
+                             <div className="flex gap-2">
+                                <button onClick={triggerUpdateCategory} className="bg-italian-green text-white px-3 py-1.5 rounded text-sm font-bold">Salvar</button>
+                                <button onClick={cancelEditingCategory} className="bg-stone-200 text-stone-700 px-3 py-1.5 rounded text-sm font-bold">Cancelar</button>
+                             </div>
+                          </div>
+                       ) : (
+                          <div className="flex justify-between items-center">
+                             <div className="flex items-center gap-3">
+                                <div className="w-10 h-8 rounded bg-stone-100 border border-stone-200 overflow-hidden">
+                                   {cat.image ? (
+                                      <img src={cat.image} className="w-full h-full object-cover" />
+                                   ) : (
+                                      <div className="w-full h-full flex items-center justify-center text-stone-300">
+                                         <ImageIcon className="w-4 h-4" />
+                                      </div>
+                                   )}
+                                </div>
+                                <div>
+                                   <span className="font-bold text-stone-800 block">{cat.name}</span>
+                                   <span className="text-xs text-stone-400">({cat.items.length} produtos)</span>
+                                </div>
+                             </div>
+                             <div className="flex gap-2">
+                                <button 
+                                  onClick={() => startEditingCategory(cat)}
+                                  className="p-2 text-blue-500 hover:bg-blue-50 rounded"
+                                  title="Editar Categoria"
+                                >
+                                   <Edit3 className="w-4 h-4" />
+                                </button>
+                                <button 
+                                  onClick={() => triggerDeleteCategory(cat.id)}
+                                  className="p-2 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded"
+                                  title="Excluir Categoria"
+                                >
+                                   <Trash2 className="w-4 h-4" />
+                                </button>
+                             </div>
+                          </div>
+                       )}
                     </div>
                  ))}
               </div>

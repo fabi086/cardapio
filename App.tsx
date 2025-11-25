@@ -427,7 +427,6 @@ function App() {
 
   // --- CATEGORY ACTIONS ---
   const handleAddCategory = async (name: string) => {
-    // ... (Keep existing implementation)
     const id = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     const newCategory: Category = { id, name, items: [] };
 
@@ -447,8 +446,31 @@ function App() {
     }
   };
 
+  const handleUpdateCategory = async (id: string, updates: { name?: string; image?: string }) => {
+    // Optimistic update
+    setMenuData(prev => prev.map(c => {
+      if (c.id === id) {
+        return { ...c, ...updates };
+      }
+      return c;
+    }));
+
+    if (!supabase) return;
+
+    try {
+      const { error } = await supabase
+        .from('categories')
+        .update(updates)
+        .eq('id', id);
+      
+      if (error) throw error;
+    } catch (err) {
+      console.error("Erro ao atualizar categoria:", err);
+      fetchData(); // Revert on error
+    }
+  };
+
   const handleDeleteCategory = async (id: string) => {
-    // ... (Keep existing implementation)
     if (window.confirm('Tem certeza? Isso apagará a categoria e TODOS os produtos nela.')) {
       setMenuData(prev => prev.filter(c => c.id !== id));
       
@@ -620,12 +642,28 @@ function App() {
       // 1. Filter items by Search Term
       const filteredItems = cat.items.filter(item => {
          if (searchTerm) {
-            const term = searchTerm.toLowerCase();
-            const matchName = item.name.toLowerCase().includes(term);
-            const matchDesc = item.description?.toLowerCase().includes(term);
-            const matchCode = item.code?.toLowerCase().includes(term);
-            const matchSub = item.subcategory?.toLowerCase().includes(term);
-            if (!matchName && !matchDesc && !matchCode && !matchSub) return false;
+            // Helper to normalize strings (remove accents, lowercase) for better search
+            const normalize = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            
+            // Break search term into words (tokens)
+            const searchTerms = normalize(searchTerm).split(/\s+/).filter(t => t.length > 0);
+            
+            if (searchTerms.length === 0) return true;
+
+            // Create a single searchable string containing all relevant product info
+            const itemSearchableText = normalize(
+               [
+                  item.name,
+                  item.description || '',
+                  item.code || '',
+                  item.subcategory || '',
+                  (item.ingredients || []).join(' '),
+                  cat.name // Added category name to search scope
+               ].join(' ')
+            );
+
+            // AND Logic: The item must contain ALL typed words (in any order)
+            return searchTerms.every(term => itemSearchableText.includes(term));
          }
          return true;
       });
@@ -635,8 +673,9 @@ function App() {
        // 2. Scope Filter: If a scope is selected, ONLY show that category
        if (searchScope !== 'all' && cat.id !== searchScope) return false;
        
-       // 3. Hide 'promocoes' from main list (banner handles it)
-       if (cat.id === 'promocoes') return false;
+       // 3. Hide 'promocoes' from main list unless we are searching
+       // This allows finding promo items via search bar
+       if (cat.id === 'promocoes' && !searchTerm) return false;
        
        return true;
     });
@@ -664,6 +703,7 @@ function App() {
         onDeleteProduct={handleDeleteProduct}
         onUpdateSettings={handleUpdateSettings}
         onAddCategory={handleAddCategory}
+        onUpdateCategory={handleUpdateCategory}
         onDeleteCategory={handleDeleteCategory}
         onResetMenu={handleResetMenu}
         onBack={() => setView('customer')}
