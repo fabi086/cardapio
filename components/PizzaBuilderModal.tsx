@@ -29,7 +29,7 @@ export const PizzaBuilderModal: React.FC<PizzaBuilderModalProps> = ({
     if (isOpen) {
       if (initialFirstHalf) {
         setFirstHalf(initialFirstHalf);
-        setStep(2); // Skip to second half selection
+        setStep(2); // Skip to second half selection immediately
       } else {
         setFirstHalf(null);
         setStep(1);
@@ -195,6 +195,7 @@ export const PizzaBuilderModal: React.FC<PizzaBuilderModalProps> = ({
                 </div>
               </div>
 
+              {/* Show options from the first half pizza (usually borders are standard across the pizza or associated with base) */}
               {firstHalf.options && firstHalf.options.length > 0 && (
                 <div className="space-y-4">
                   {firstHalf.options.map(option => (
