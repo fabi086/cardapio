@@ -24,7 +24,7 @@ export const PizzaBuilderModal: React.FC<PizzaBuilderModalProps> = ({
   const [selectedOptions, setSelectedOptions] = useState<CartItem['selectedOptions']>([]);
   const [observation, setObservation] = useState('');
 
-  // Reset state when opening
+  // Reset state when opening or when initialFirstHalf changes
   useEffect(() => {
     if (isOpen) {
       if (initialFirstHalf) {

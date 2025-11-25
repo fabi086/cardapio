@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { MENU_DATA, DEFAULT_SETTINGS, CATEGORY_IMAGES } from './data';
 import { Product, CartItem, Category, StoreSettings } from './types';
@@ -380,6 +379,7 @@ function App() {
   // --- CART ACTIONS ---
   const addToCart = (product: Product, quantity: number = 1, observation: string = '', selectedOptions?: CartItem['selectedOptions']) => {
     // Allowed even if store is closed (per request)
+    // No checking for storeStatus here.
     
     const normalizedObservation = (observation || '').trim();
     const optionsKey = selectedOptions ? JSON.stringify(selectedOptions.sort((a,b) => a.choiceName.localeCompare(b.choiceName))) : '';
@@ -670,7 +670,21 @@ function App() {
          </div>
       )}
 
-      <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} items={cartItems} onRemoveItem={removeFromCart} onClearCart={clearCart} onUpdateQuantity={updateQuantity} onUpdateObservation={updateObservation} whatsappNumber={storeSettings.whatsapp} storeName={storeSettings.name} deliveryRegions={storeSettings.deliveryRegions || []} paymentMethods={storeSettings.paymentMethods} freeShipping={storeSettings.freeShipping} />
+      <CartDrawer 
+        isOpen={isCartOpen} 
+        onClose={() => setIsCartOpen(false)} 
+        items={cartItems} 
+        onRemoveItem={removeFromCart} 
+        onClearCart={clearCart} 
+        onUpdateQuantity={updateQuantity} 
+        onUpdateObservation={updateObservation} 
+        whatsappNumber={storeSettings.whatsapp} 
+        storeName={storeSettings.name} 
+        deliveryRegions={storeSettings.deliveryRegions || []} 
+        paymentMethods={storeSettings.paymentMethods} 
+        freeShipping={storeSettings.freeShipping} 
+        menuData={menuData}
+      />
       <InfoModal isOpen={isInfoModalOpen} onClose={() => setIsInfoModalOpen(false)} settings={storeSettings} isOpenNow={storeStatus.isOpen} />
       <PizzaBuilderModal isOpen={isPizzaBuilderOpen} onClose={() => setIsPizzaBuilderOpen(false)} availablePizzas={pizzasForBuilder} onAddToCart={addToCart} initialFirstHalf={pizzaBuilderFirstHalf} />
 

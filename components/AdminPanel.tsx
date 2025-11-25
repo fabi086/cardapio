@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { Category, Product, StoreSettings, ProductOption, ProductChoice, Order, Coupon } from '../types';
-import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Layers, Megaphone, Tag, List, HelpCircle, Utensils, Phone, CreditCard, Truck, Receipt, ClipboardList, Clock, Printer, Ticket } from 'lucide-react';
+import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Layers, Megaphone, Tag, List, HelpCircle, Utensils, Phone, CreditCard, Truck, Receipt, ClipboardList, Clock, Printer, Ticket, LayoutDashboard, DollarSign, TrendingUp, ShoppingBag, Calendar, PieChart, BarChart3, Filter, Ban } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 interface AdminPanelProps {
@@ -33,8 +32,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
-  const [activeTab, setActiveTab] = useState<'menu' | 'settings' | 'categories' | 'orders' | 'coupons'>('orders');
+  const [activeTab, setActiveTab] = useState<'menu' | 'settings' | 'categories' | 'orders' | 'coupons' | 'dashboard'>('dashboard');
   
+  // Dashboard Date Filter
+  const [dateFilter, setDateFilter] = useState<'today' | 'yesterday' | 'week' | 'month' | 'custom'>('today');
+  const [customDate, setCustomDate] = useState('');
+
   // Menu State
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [editingProduct, setEditingProduct] = useState<number | null>(null);
@@ -91,26 +94,61 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // Fetch data when tabs change
   useEffect(() => {
     if (isAuthenticated && supabase) {
-      if (activeTab === 'orders') {
+      if (activeTab === 'orders' || activeTab === 'dashboard') {
         fetchOrders();
-        const interval = setInterval(fetchOrders, 15000); 
-        return () => clearInterval(interval);
+        // Setup polling only for orders tab if strictly needed
+        if (activeTab === 'orders') {
+           const interval = setInterval(fetchOrders, 15000); 
+           return () => clearInterval(interval);
+        }
       }
       if (activeTab === 'coupons') {
         fetchCoupons();
       }
     }
-  }, [isAuthenticated, activeTab, orderFilter]);
+  }, [isAuthenticated, activeTab, orderFilter, dateFilter, customDate]);
 
   const fetchOrders = async () => {
     setOrdersLoading(true);
     try {
       let query = supabase.from('orders').select('*').order('created_at', { ascending: false });
       
-      if (orderFilter === 'active') {
+      // Filter logic only applies if we are in 'orders' tab view specifically for the list
+      if (activeTab === 'orders' && orderFilter === 'active') {
         query = query.in('status', ['pending', 'preparing', 'delivery']);
       }
       
+      // Filter logic for Dashboard
+      if (activeTab === 'dashboard') {
+         const start = new Date();
+         start.setHours(0,0,0,0);
+         
+         if (dateFilter === 'today') {
+            query = query.gte('created_at', start.toISOString());
+         } else if (dateFilter === 'yesterday') {
+            const yesterdayStart = new Date(start);
+            yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+            const yesterdayEnd = new Date(start);
+            query = query.gte('created_at', yesterdayStart.toISOString()).lt('created_at', yesterdayEnd.toISOString());
+         } else if (dateFilter === 'week') {
+             const weekStart = new Date(start);
+             weekStart.setDate(weekStart.getDate() - 7);
+             query = query.gte('created_at', weekStart.toISOString());
+         } else if (dateFilter === 'month') {
+             const monthStart = new Date(start);
+             monthStart.setDate(1);
+             query = query.gte('created_at', monthStart.toISOString());
+         } else if (dateFilter === 'custom' && customDate) {
+             // Create date object from input (YYYY-MM-DD) treated as local midnight
+             const selectedDate = new Date(customDate + 'T00:00:00');
+             const nextDay = new Date(selectedDate);
+             nextDay.setDate(nextDay.getDate() + 1);
+
+             query = query.gte('created_at', selectedDate.toISOString())
+                          .lt('created_at', nextDay.toISOString());
+         }
+      }
+
       const { data, error } = await query;
       
       if (data) {
@@ -422,6 +460,33 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const cancelEditingCategory = () => { setEditingCategoryId(null); setEditCategoryName(''); setEditCategoryImage(''); };
   const triggerDeleteCategory = (id: string) => { if (onDeleteCategory) { onDeleteCategory(id); } };
 
+  // Dashboard calculations
+  const filteredOrders = orders.filter(o => o.status !== 'cancelled');
+  const totalRevenue = filteredOrders.reduce((acc, o) => acc + o.total, 0);
+  const totalOrders = filteredOrders.length;
+  const averageTicket = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+  
+  // Dashboard Analytics Helper
+  const getTopProducts = () => {
+    const counts: Record<string, number> = {};
+    filteredOrders.forEach(order => {
+       order.items.forEach((item: any) => {
+          counts[item.name] = (counts[item.name] || 0) + item.quantity;
+       });
+    });
+    return Object.entries(counts)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 5);
+  };
+
+  const getPaymentStats = () => {
+     const stats: Record<string, number> = {};
+     filteredOrders.forEach(order => {
+        stats[order.payment_method] = (stats[order.payment_method] || 0) + 1;
+     });
+     return Object.entries(stats).sort(([,a], [,b]) => b - a);
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-stone-100 text-stone-800 flex items-center justify-center p-4">
@@ -475,6 +540,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
           <div className="flex space-x-2 md:space-x-4 border-b border-stone-700 overflow-x-auto hide-scrollbar">
              <button 
+                onClick={() => setActiveTab('dashboard')}
+                className={`pb-2 px-2 flex items-center gap-2 text-sm font-bold transition-colors whitespace-nowrap ${activeTab === 'dashboard' ? 'text-italian-green border-b-2 border-italian-green' : 'text-stone-400 hover:text-white'}`}
+             >
+                <LayoutDashboard className="w-4 h-4" /> Dashboard
+             </button>
+             <button 
                 onClick={() => setActiveTab('orders')}
                 className={`pb-2 px-2 flex items-center gap-2 text-sm font-bold transition-colors whitespace-nowrap ${activeTab === 'orders' ? 'text-italian-green border-b-2 border-italian-green' : 'text-stone-400 hover:text-white'}`}
              >
@@ -510,6 +581,129 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-4">
         
+        {/* --- TAB: DASHBOARD --- */}
+        {activeTab === 'dashboard' && (
+           <div className="space-y-6 animate-in fade-in">
+              {/* Filters */}
+              <div className="bg-white p-2 rounded-lg shadow-sm border border-stone-200 inline-flex flex-wrap items-center gap-1 overflow-x-auto max-w-full">
+                 <button onClick={() => setDateFilter('today')} className={`px-4 py-2 rounded-md text-sm font-bold transition-colors whitespace-nowrap ${dateFilter === 'today' ? 'bg-italian-green text-white' : 'text-stone-500 hover:bg-stone-100'}`}>Hoje</button>
+                 <button onClick={() => setDateFilter('yesterday')} className={`px-4 py-2 rounded-md text-sm font-bold transition-colors whitespace-nowrap ${dateFilter === 'yesterday' ? 'bg-italian-green text-white' : 'text-stone-500 hover:bg-stone-100'}`}>Ontem</button>
+                 <button onClick={() => setDateFilter('week')} className={`px-4 py-2 rounded-md text-sm font-bold transition-colors whitespace-nowrap ${dateFilter === 'week' ? 'bg-italian-green text-white' : 'text-stone-500 hover:bg-stone-100'}`}>Últimos 7 Dias</button>
+                 <button onClick={() => setDateFilter('month')} className={`px-4 py-2 rounded-md text-sm font-bold transition-colors whitespace-nowrap ${dateFilter === 'month' ? 'bg-italian-green text-white' : 'text-stone-500 hover:bg-stone-100'}`}>Este Mês</button>
+                 
+                 <div className="flex items-center gap-2 ml-2 pl-2 border-l border-stone-200">
+                    <span className="text-xs font-bold text-stone-500 uppercase">Data:</span>
+                    <input 
+                      type="date" 
+                      value={customDate}
+                      onChange={(e) => {
+                         setCustomDate(e.target.value);
+                         setDateFilter('custom');
+                      }}
+                      className={`p-1.5 rounded-md text-sm outline-none border transition-colors ${dateFilter === 'custom' ? 'border-italian-green bg-green-50 text-green-900 ring-1 ring-italian-green' : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300'}`}
+                    />
+                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                 {/* Card 1: Vendas */}
+                 <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                    <div className="flex justify-between items-start mb-4">
+                       <div>
+                          <p className="text-stone-500 text-sm font-bold uppercase">Vendas ({dateFilter === 'custom' ? (customDate ? new Date(customDate).toLocaleDateString('pt-BR') : 'Data Esp.') : dateFilter})</p>
+                          <h3 className="text-3xl font-bold text-italian-green mt-1">R$ {totalRevenue.toFixed(2)}</h3>
+                       </div>
+                       <div className="bg-green-100 p-3 rounded-full text-green-600">
+                          <DollarSign className="w-6 h-6" />
+                       </div>
+                    </div>
+                 </div>
+
+                 {/* Card 2: Pedidos */}
+                 <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                    <div className="flex justify-between items-start mb-4">
+                       <div>
+                          <p className="text-stone-500 text-sm font-bold uppercase">Pedidos</p>
+                          <h3 className="text-3xl font-bold text-stone-800 mt-1">{totalOrders}</h3>
+                       </div>
+                       <div className="bg-blue-100 p-3 rounded-full text-blue-600">
+                          <ShoppingBag className="w-6 h-6" />
+                       </div>
+                    </div>
+                 </div>
+
+                 {/* Card 3: Ticket Médio */}
+                 <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                    <div className="flex justify-between items-start mb-4">
+                       <div>
+                          <p className="text-stone-500 text-sm font-bold uppercase">Ticket Médio</p>
+                          <h3 className="text-3xl font-bold text-stone-800 mt-1">R$ {averageTicket.toFixed(2)}</h3>
+                       </div>
+                       <div className="bg-purple-100 p-3 rounded-full text-purple-600">
+                          <TrendingUp className="w-6 h-6" />
+                       </div>
+                    </div>
+                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Top Products */}
+                  <div className="bg-white rounded-xl shadow-sm border border-stone-200 p-6">
+                     <h3 className="font-bold text-lg mb-4 text-stone-800 flex items-center gap-2"><PieChart className="w-5 h-5 text-italian-red"/> Top Produtos</h3>
+                     <div className="space-y-3">
+                        {getTopProducts().map(([name, count], i) => (
+                           <div key={i} className="flex justify-between items-center border-b border-stone-100 pb-2 last:border-0">
+                              <span className="text-sm font-bold text-stone-700">{i+1}. {name}</span>
+                              <span className="text-xs font-bold bg-stone-100 px-2 py-1 rounded text-stone-600">{count} vendas</span>
+                           </div>
+                        ))}
+                        {getTopProducts().length === 0 && <p className="text-stone-400 text-sm">Sem dados para o período.</p>}
+                     </div>
+                  </div>
+
+                  {/* Payment Methods */}
+                  <div className="bg-white rounded-xl shadow-sm border border-stone-200 p-6">
+                     <h3 className="font-bold text-lg mb-4 text-stone-800 flex items-center gap-2"><CreditCard className="w-5 h-5 text-italian-red"/> Métodos de Pagamento</h3>
+                     <div className="space-y-3">
+                        {getPaymentStats().map(([method, count], i) => (
+                           <div key={i} className="flex justify-between items-center border-b border-stone-100 pb-2 last:border-0">
+                              <span className="text-sm font-medium text-stone-700">{method}</span>
+                              <span className="text-xs font-bold text-stone-500">{count} pedidos</span>
+                           </div>
+                        ))}
+                        {getPaymentStats().length === 0 && <p className="text-stone-400 text-sm">Sem dados para o período.</p>}
+                     </div>
+                  </div>
+              </div>
+
+              {/* Recent Orders List */}
+              <div className="bg-white rounded-xl shadow-sm border border-stone-200 p-6">
+                 <h3 className="font-bold text-lg mb-4 text-stone-800">Atividade Recente (Detalhada)</h3>
+                 <div className="space-y-4">
+                    {orders.map(order => (
+                       <div key={order.id} className="flex items-start justify-between border-b border-stone-100 pb-3 last:border-0 last:pb-0">
+                          <div className="flex items-start gap-3">
+                             <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${order.status === 'completed' ? 'bg-green-500' : 'bg-yellow-500'}`} />
+                             <div>
+                                <p className="font-bold text-sm text-stone-800">#{order.id} - {order.customer_name}</p>
+                                <p className="text-xs text-stone-500 mb-1">{new Date(order.created_at).toLocaleString('pt-BR')}</p>
+                                <div className="text-xs text-stone-600 bg-stone-50 p-1.5 rounded border border-stone-100 max-w-md">
+                                  {order.items.map((i: any) => `${i.quantity}x ${i.name}`).join(', ')}
+                                </div>
+                             </div>
+                          </div>
+                          <div className="text-right">
+                             <span className="font-bold text-stone-700 block">R$ {order.total.toFixed(2)}</span>
+                             <span className="text-[10px] text-stone-400 uppercase">{order.payment_method}</span>
+                          </div>
+                       </div>
+                    ))}
+                    {orders.length === 0 && <p className="text-stone-400 text-sm italic">Nenhuma atividade recente.</p>}
+                 </div>
+              </div>
+           </div>
+        )}
+
         {/* --- TAB: ORDERS (KDS) --- */}
         {activeTab === 'orders' && (
           <div className="space-y-6 animate-in fade-in">
@@ -532,7 +726,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                    </button>
                 </div>
              </div>
-
+             {/* ... (Existing Orders Tab Content) ... */}
              {ordersLoading && orders.length === 0 ? (
                <div className="text-center py-12 text-stone-400">Carregando pedidos...</div>
              ) : orders.length === 0 ? (
@@ -543,7 +737,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
              ) : (
                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                  {orders.map(order => (
-                   <div key={order.id} className={`bg-white rounded-xl shadow-sm border overflow-hidden transition-all ${order.status === 'completed' ? 'border-stone-200 opacity-70' : 'border-italian-red/20 ring-1 ring-italian-red/5'}`}>
+                   <div key={order.id} className={`bg-white rounded-xl shadow-sm border overflow-hidden transition-all ${order.status === 'completed' ? 'border-stone-200 opacity-70' : order.status === 'cancelled' ? 'border-red-200 bg-red-50/50' : 'border-italian-red/20 ring-1 ring-italian-red/5'}`}>
                       <div className="p-4 border-b border-stone-100 flex justify-between items-start bg-stone-50">
                          <div>
                             <div className="flex items-center gap-2 mb-1">
@@ -559,12 +753,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                                order.status === 'preparing' ? 'bg-blue-100 text-blue-800' :
                                order.status === 'delivery' ? 'bg-orange-100 text-orange-800' :
+                               order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
                                'bg-green-100 text-green-800'
                             }`}>
                                {order.status === 'pending' && 'Pendente'}
                                {order.status === 'preparing' && 'Em Preparo'}
                                {order.status === 'delivery' && 'Saiu p/ Entrega'}
                                {order.status === 'completed' && 'Concluído'}
+                               {order.status === 'cancelled' && 'Cancelado'}
                             </span>
                             <button 
                                onClick={() => handlePrintOrder(order)}
@@ -626,11 +822,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                          </div>
                       </div>
 
-                      <div className="bg-stone-50 p-2 grid grid-cols-4 gap-1">
-                         <button onClick={() => handleUpdateOrderStatus(order.id, 'pending')} className={`p-2 rounded text-xs font-bold ${order.status === 'pending' ? 'bg-white shadow text-yellow-600' : 'text-stone-400 hover:bg-stone-200'}`}>Pendente</button>
-                         <button onClick={() => handleUpdateOrderStatus(order.id, 'preparing')} className={`p-2 rounded text-xs font-bold ${order.status === 'preparing' ? 'bg-white shadow text-blue-600' : 'text-stone-400 hover:bg-stone-200'}`}>Preparo</button>
-                         <button onClick={() => handleUpdateOrderStatus(order.id, 'delivery')} className={`p-2 rounded text-xs font-bold ${order.status === 'delivery' ? 'bg-white shadow text-orange-600' : 'text-stone-400 hover:bg-stone-200'}`}>Entrega</button>
-                         <button onClick={() => handleUpdateOrderStatus(order.id, 'completed')} className={`p-2 rounded text-xs font-bold ${order.status === 'completed' ? 'bg-white shadow text-green-600' : 'text-stone-400 hover:bg-stone-200'}`}>Concluir</button>
+                      <div className="bg-stone-50 p-2 flex flex-wrap gap-2 justify-between">
+                         <button onClick={() => handleUpdateOrderStatus(order.id, 'pending')} className={`flex-1 p-2 rounded text-xs font-bold transition-all ${order.status === 'pending' ? 'bg-white shadow text-yellow-600 ring-1 ring-yellow-200' : 'text-stone-400 hover:bg-stone-200'}`}>Pendente</button>
+                         <button onClick={() => handleUpdateOrderStatus(order.id, 'preparing')} className={`flex-1 p-2 rounded text-xs font-bold transition-all ${order.status === 'preparing' ? 'bg-white shadow text-blue-600 ring-1 ring-blue-200' : 'text-stone-400 hover:bg-stone-200'}`}>Preparo</button>
+                         <button onClick={() => handleUpdateOrderStatus(order.id, 'delivery')} className={`flex-1 p-2 rounded text-xs font-bold transition-all ${order.status === 'delivery' ? 'bg-white shadow text-orange-600 ring-1 ring-orange-200' : 'text-stone-400 hover:bg-stone-200'}`}>Entrega</button>
+                         <button onClick={() => handleUpdateOrderStatus(order.id, 'completed')} className={`flex-1 p-2 rounded text-xs font-bold transition-all ${order.status === 'completed' ? 'bg-white shadow text-green-600 ring-1 ring-green-200' : 'text-stone-400 hover:bg-stone-200'}`}>Concluir</button>
+                         <button 
+                           onClick={() => {
+                             if(window.confirm('Tem certeza que deseja CANCELAR este pedido? Ele será removido das métricas de vendas.')) {
+                               handleUpdateOrderStatus(order.id, 'cancelled');
+                             }
+                           }} 
+                           className={`flex-1 p-2 rounded text-xs font-bold transition-all ${order.status === 'cancelled' ? 'bg-red-100 text-red-800' : 'text-red-400 hover:bg-red-50 hover:text-red-600'}`}
+                           title="Cancelar Pedido"
+                         >
+                           <Ban className="w-4 h-4 mx-auto" />
+                         </button>
                       </div>
                    </div>
                  ))}
@@ -815,7 +1022,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         {/* --- TAB: SETTINGS --- */}
         {activeTab === 'settings' && (
            <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200 animate-in fade-in slide-in-from-bottom-2 space-y-8">
-              {/* Settings Form Content */}
+              {/* ... (Existing settings content) ... */}
               <div>
                 <h2 className="text-xl font-bold text-stone-800 mb-6 flex items-center gap-2">
                   <Settings className="w-5 h-5 text-italian-red" /> Dados do Estabelecimento
@@ -1024,7 +1231,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
         {/* --- TAB: MENU (Product Editing) --- */}
         {activeTab === 'menu' && (
-          // ... (Keep existing menu code) ...
+          // ... (Existing menu editing code remains) ...
           <>
             <button 
                onClick={() => setIsAddingNew(!isAddingNew)}
