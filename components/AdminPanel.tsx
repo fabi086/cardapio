@@ -1,7 +1,7 @@
 
 
 import React, { useState, useEffect } from 'react';
-import { Category, Product, StoreSettings, ProductOption, ProductChoice, Order, Coupon } from '../types';
+import { Category, Product, StoreSettings, ProductOption, ProductChoice, Order, Coupon, DeliveryRegion } from '../types';
 import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Layers, Megaphone, Tag, List, HelpCircle, Utensils, Phone, CreditCard, Truck, Receipt, ClipboardList, Clock, Printer, Ticket, LayoutDashboard, DollarSign, TrendingUp, ShoppingBag, Calendar, PieChart, BarChart3, Filter, Ban } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
@@ -447,9 +447,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setEditForm(prev => ({...prev, options: (prev.options || []).map(opt => { if (opt.id === groupId) { return { ...opt, choices: opt.choices.filter((_, idx) => idx !== choiceIndex) }; } return opt; })}));
   };
   const handleSaveSettings = () => { onUpdateSettings(settingsForm); alert('Configurações salvas e atualizadas no site!'); };
+  
   const handleAddRegion = () => {
     if (!newRegionName || !newRegionPrice) return;
-    const newRegion = { 
+    const newRegion: DeliveryRegion = { 
         id: editingRegionId || newRegionName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''), 
         name: newRegionName, 
         price: parseFloat(newRegionPrice), 
@@ -464,13 +465,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
     setNewRegionName(''); setNewRegionPrice(''); setNewRegionZips(''); setNewRegionZipExclusions('');
   };
-  const startEditingRegion = (region: any) => { 
+
+  const startEditingRegion = (region: DeliveryRegion) => { 
       setEditingRegionId(region.id); 
       setNewRegionName(region.name); 
       setNewRegionPrice(region.price.toString()); 
       setNewRegionZips(region.zips || '');
       setNewRegionZipExclusions(region.zipExclusions || '');
   };
+
   const cancelEditingRegion = () => { 
       setEditingRegionId(null); 
       setNewRegionName(''); 
@@ -1242,7 +1245,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                    {(settingsForm.deliveryRegions || []).map((region, idx) => (
                       <div key={idx} className="flex justify-between p-3 bg-white border rounded-lg">
                          <div>
-                            <span className="font-bold">{region.name}</span> <span className="text-green-600">R$ {region.price}</span>
+                            <span className="font-bold">{region.name}</span> <span className="text-green-600">R$ {region.price.toFixed(2)}</span>
                             {region.zips && (
                                <div className="text-xs text-stone-400 mt-1">Atende: {region.zips}</div>
                             )}
