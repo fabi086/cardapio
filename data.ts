@@ -65,8 +65,7 @@ export const MENU_DATA: Category[] = [
         description: 'Consulte nossas promoções de Segunda a Quinta-feira (Exceto feriados).',
         price: 0,
         category: 'promocoes',
-        image: IMG_PROMO,
-        tags: ['popular']
+        image: IMG_PROMO
       }
     ]
   },
@@ -75,7 +74,7 @@ export const MENU_DATA: Category[] = [
     name: 'Esfihas',
     image: IMG_ESFIHA_MEAT,
     items: [
-      { id: 901, code: '901', name: 'Carne', description: 'Tradicional de carne', price: 8.00, category: 'esfihas', image: IMG_ESFIHA_MEAT, tags: ['popular'] },
+      { id: 901, code: '901', name: 'Carne', description: 'Tradicional de carne', price: 8.00, category: 'esfihas', image: IMG_ESFIHA_MEAT },
       { id: 902, code: '902', name: 'Carne e Mussarela', description: 'Carne com cobertura de mussarela', price: 9.00, category: 'esfihas', image: IMG_ESFIHA_MEAT },
       { id: 903, code: '903', name: 'Carne e Catupiry', description: 'Carne com cobertura de catupiry', price: 9.00, category: 'esfihas', image: IMG_ESFIHA_MEAT },
       { id: 944, code: '944', name: 'Carne e Cheddar', description: 'Carne com cobertura de cheddar', price: 9.00, category: 'esfihas', image: IMG_ESFIHA_MEAT },
@@ -84,14 +83,14 @@ export const MENU_DATA: Category[] = [
       { id: 907, code: '907', name: 'Frango', description: 'Frango temperado', price: 8.00, category: 'esfihas', image: IMG_ESFIHA_MEAT },
       { id: 908, code: '908', name: 'Frango e Mussarela', description: 'Frango com mussarela', price: 9.00, category: 'esfihas', image: IMG_ESFIHA_MEAT },
       { id: 909, code: '909', name: 'Frango e Catupiry', description: 'Frango com catupiry', price: 9.00, category: 'esfihas', image: IMG_ESFIHA_MEAT },
-      { id: 910, code: '910', name: 'Mussarela', description: 'Queijo mussarela derretido', price: 8.00, category: 'esfihas', image: IMG_ESFIHA_CHEESE, tags: ['vegetarian'] },
-      { id: 911, code: '911', name: 'Catupiry', description: 'Requeijão cremoso', price: 9.00, category: 'esfihas', image: IMG_ESFIHA_CHEESE, tags: ['vegetarian'] },
-      { id: 914, code: '914', name: 'Brócolis', description: 'Brócolis temperado', price: 8.00, category: 'esfihas', image: IMG_ESFIHA_CHEESE, tags: ['vegetarian'] },
+      { id: 910, code: '910', name: 'Mussarela', description: 'Queijo mussarela derretido', price: 8.00, category: 'esfihas', image: IMG_ESFIHA_CHEESE },
+      { id: 911, code: '911', name: 'Catupiry', description: 'Requeijão cremoso', price: 9.00, category: 'esfihas', image: IMG_ESFIHA_CHEESE },
+      { id: 914, code: '914', name: 'Brócolis', description: 'Brócolis temperado', price: 8.00, category: 'esfihas', image: IMG_ESFIHA_CHEESE },
       { id: 915, code: '915', name: 'Brócolis, Bacon e Mussarela', description: 'Brócolis, bacon e mussarela', price: 9.00, category: 'esfihas', image: IMG_ESFIHA_CHEESE },
-      { id: 917, code: '917', name: 'Palmito c/ Mussarela', description: 'Palmito coberto com mussarela', price: 9.00, category: 'esfihas', image: IMG_ESFIHA_CHEESE, tags: ['vegetarian'] },
+      { id: 917, code: '917', name: 'Palmito c/ Mussarela', description: 'Palmito coberto com mussarela', price: 9.00, category: 'esfihas', image: IMG_ESFIHA_CHEESE },
       { id: 919, code: '919', name: 'Bacon', description: 'Bacon crocante', price: 9.00, category: 'esfihas', image: IMG_ESFIHA_MEAT },
       { id: 925, code: '925', name: 'Atum com cebola', description: 'Atum sólido com cebola', price: 9.00, category: 'esfihas', image: IMG_ESFIHA_MEAT },
-      { id: 939, code: '939', name: 'Escarola', description: 'Escarola refogada', price: 8.00, category: 'esfihas', image: IMG_ESFIHA_CHEESE, tags: ['vegetarian'] },
+      { id: 939, code: '939', name: 'Escarola', description: 'Escarola refogada', price: 8.00, category: 'esfihas', image: IMG_ESFIHA_CHEESE },
       { id: 940, code: '940', name: 'Escarola, Bacon e Mussarela', description: 'Escarola, bacon e mussarela', price: 9.00, category: 'esfihas', image: IMG_ESFIHA_CHEESE },
     ]
   },
@@ -100,14 +99,14 @@ export const MENU_DATA: Category[] = [
     name: 'Esfihas Doces',
     image: IMG_SWEET,
     items: [
-      { id: 920, code: '920', name: 'Chocolate', description: 'Esfiha de chocolate', price: 10.00, category: 'esfihas-doces', image: IMG_SWEET, tags: ['popular'] },
+      { id: 920, code: '920', name: 'Chocolate', description: 'Esfiha de chocolate', price: 10.00, category: 'esfihas-doces', image: IMG_SWEET },
       { id: 921, code: '921', name: 'Chocolate c/ Confete', description: 'Chocolate com confetes coloridos', price: 10.00, category: 'esfihas-doces', image: IMG_SWEET },
       { id: 922, code: '922', name: 'Doce de Leite', description: 'Doce de leite cremoso', price: 10.00, category: 'esfihas-doces', image: IMG_SWEET },
-      { id: 923, code: '923', name: 'Banana', description: 'Banana, leite condensado e canela', price: 10.00, category: 'esfihas-doces', image: IMG_SWEET, tags: ['vegetarian'] },
+      { id: 923, code: '923', name: 'Banana', description: 'Banana, leite condensado e canela', price: 10.00, category: 'esfihas-doces', image: IMG_SWEET },
       { id: 924, code: '924', name: 'Prestígio', description: 'Chocolate com coco ralado', price: 10.00, category: 'esfihas-doces', image: IMG_SWEET },
       { id: 935, code: '935', name: 'Chocolate c/ Morango', description: 'Chocolate com pedaços de morango', price: 10.00, category: 'esfihas-doces', image: IMG_SWEET },
-      { id: 942, code: '942', name: 'Romeu e Julieta', description: 'Mussarela ou catupiry com goiabada', price: 10.00, category: 'esfihas-doces', image: IMG_SWEET, tags: ['vegetarian'] },
-      { id: 943, code: '943', name: 'Chocolate c/ Banana', description: 'Chocolate com banana', price: 10.00, category: 'esfihas-doces', image: IMG_SWEET, tags: ['vegetarian'] },
+      { id: 942, code: '942', name: 'Romeu e Julieta', description: 'Mussarela ou catupiry com goiabada', price: 10.00, category: 'esfihas-doces', image: IMG_SWEET },
+      { id: 943, code: '943', name: 'Chocolate c/ Banana', description: 'Chocolate com banana', price: 10.00, category: 'esfihas-doces', image: IMG_SWEET },
     ]
   },
   {
@@ -120,7 +119,7 @@ export const MENU_DATA: Category[] = [
       { id: 96, code: '96', name: 'Lombo', description: 'Lombo, ovo, alface, tomate, mussarela e catupiry', price: 54.00, category: 'beirutes', image: IMG_BEIRUTE },
       { id: 97, code: '97', name: 'Presunto', description: 'Presunto, ovo, alface, tomate, mussarela e catupiry', price: 54.00, category: 'beirutes', image: IMG_BEIRUTE },
       { id: 98, code: '98', name: 'Frango', description: 'Frango desfiado, ovo, alface, tomate, mussarela e catupiry', price: 54.00, category: 'beirutes', image: IMG_BEIRUTE },
-      { id: 99, code: '99', name: 'Filé Mignon', description: 'Tiras de filé mignon, ovo, alface, tomate, mussarela e catupiry', price: 69.00, category: 'beirutes', image: IMG_BEIRUTE, tags: ['new'] },
+      { id: 99, code: '99', name: 'Filé Mignon', description: 'Tiras de filé mignon, ovo, alface, tomate, mussarela e catupiry', price: 69.00, category: 'beirutes', image: IMG_BEIRUTE },
     ]
   },
   {
@@ -129,17 +128,17 @@ export const MENU_DATA: Category[] = [
     image: IMG_PIZZA_PEPPERONI,
     items: [
       // Queijos
-      { id: 2, code: '02', name: 'Mussarela', description: 'Mussarela e orégano', price: 57.00, category: 'pizzas-salgadas', image: IMG_PIZZA_TRADITIONAL, tags: ['popular', 'vegetarian'] },
-      { id: 3, code: '03', name: '2 Queijos', description: 'Mussarela coberta com catupiry', price: 64.00, category: 'pizzas-salgadas', image: IMG_PIZZA_TRADITIONAL, tags: ['vegetarian'] },
-      { id: 4, code: '04', name: '3 Queijos', description: 'Mussarela, catupiry e parmesão ralado', price: 67.00, category: 'pizzas-salgadas', image: IMG_PIZZA_TRADITIONAL, tags: ['vegetarian'] },
-      { id: 6, code: '06', name: '5 Queijos', description: 'Mussarela, catupiry, parmesão, provolone e gorgonzola', price: 71.00, category: 'pizzas-salgadas', image: IMG_PIZZA_TRADITIONAL, tags: ['vegetarian'] },
-      { id: 9, code: '09', name: 'Marguerita', description: 'Mussarela, manjericão, tomate em rodelas e parmesão ralado', price: 65.00, category: 'pizzas-salgadas', image: IMG_PIZZA_TRADITIONAL, tags: ['vegetarian'] },
-      { id: 10, code: '10', name: 'Milho Verde', description: 'Mussarela e milho', price: 63.00, category: 'pizzas-salgadas', image: IMG_PIZZA_VEGGIE, tags: ['vegetarian'] },
+      { id: 2, code: '02', name: 'Mussarela', description: 'Mussarela e orégano', price: 57.00, category: 'pizzas-salgadas', image: IMG_PIZZA_TRADITIONAL },
+      { id: 3, code: '03', name: '2 Queijos', description: 'Mussarela coberta com catupiry', price: 64.00, category: 'pizzas-salgadas', image: IMG_PIZZA_TRADITIONAL },
+      { id: 4, code: '04', name: '3 Queijos', description: 'Mussarela, catupiry e parmesão ralado', price: 67.00, category: 'pizzas-salgadas', image: IMG_PIZZA_TRADITIONAL },
+      { id: 6, code: '06', name: '5 Queijos', description: 'Mussarela, catupiry, parmesão, provolone e gorgonzola', price: 71.00, category: 'pizzas-salgadas', image: IMG_PIZZA_TRADITIONAL },
+      { id: 9, code: '09', name: 'Marguerita', description: 'Mussarela, manjericão, tomate em rodelas e parmesão ralado', price: 65.00, category: 'pizzas-salgadas', image: IMG_PIZZA_TRADITIONAL },
+      { id: 10, code: '10', name: 'Milho Verde', description: 'Mussarela e milho', price: 63.00, category: 'pizzas-salgadas', image: IMG_PIZZA_VEGGIE },
       
       // Calabresa
-      { id: 12, code: '12', name: 'Calabresa', description: 'Calabresa fatiada e cebola', price: 57.00, category: 'pizzas-salgadas', image: IMG_PIZZA_PEPPERONI, tags: ['popular'] },
+      { id: 12, code: '12', name: 'Calabresa', description: 'Calabresa fatiada e cebola', price: 57.00, category: 'pizzas-salgadas', image: IMG_PIZZA_PEPPERONI },
       { id: 13, code: '13', name: 'Calabresa com Catupiry', description: 'Calabresa fatiada, cebola e catupiry', price: 65.00, category: 'pizzas-salgadas', image: IMG_PIZZA_PEPPERONI },
-      { id: 14, code: '14', name: 'Baiana', description: 'Calabresa moída apimentada, ovos e cebola', price: 60.00, category: 'pizzas-salgadas', image: IMG_PIZZA_PEPPERONI, tags: ['spicy'] },
+      { id: 14, code: '14', name: 'Baiana', description: 'Calabresa moída apimentada, ovos e cebola', price: 60.00, category: 'pizzas-salgadas', image: IMG_PIZZA_PEPPERONI },
       { id: 15, code: '15', name: 'Baianinha', description: 'Calabresa moída, mussarela e ovos', price: 62.00, category: 'pizzas-salgadas', image: IMG_PIZZA_PEPPERONI },
       { id: 16, code: '16', name: 'Toscana', description: 'Calabresa fatiada, mussarela, alho frito e cebola', price: 65.00, category: 'pizzas-salgadas', image: IMG_PIZZA_PEPPERONI },
       
@@ -155,14 +154,14 @@ export const MENU_DATA: Category[] = [
 
       // Lombo & Presunto
       { id: 26, code: '26', name: 'Lombo Canadense', description: 'Lombo canadense e cebola', price: 57.00, category: 'pizzas-salgadas', image: IMG_PIZZA_TRADITIONAL },
-      { id: 37, code: '37', name: 'Portuguesa', description: 'Presunto, mussarela, ovos, palmito, ervilha e cebola', price: 66.00, category: 'pizzas-salgadas', image: IMG_PIZZA_TRADITIONAL, tags: ['popular'] },
+      { id: 37, code: '37', name: 'Portuguesa', description: 'Presunto, mussarela, ovos, palmito, ervilha e cebola', price: 66.00, category: 'pizzas-salgadas', image: IMG_PIZZA_TRADITIONAL },
       { id: 38, code: '38', name: 'Francesa', description: 'Presunto, mussarela, ovos, cebola coberta com catupiry', price: 66.00, category: 'pizzas-salgadas', image: IMG_PIZZA_TRADITIONAL },
       
       // Especiais
-      { id: 43, code: '43', name: 'Pepperoni', description: 'Salame tipo pepperoni, mussarela e provolone', price: 68.00, category: 'pizzas-salgadas', image: IMG_PIZZA_PEPPERONI, tags: ['spicy'] },
+      { id: 43, code: '43', name: 'Pepperoni', description: 'Salame tipo pepperoni, mussarela e provolone', price: 68.00, category: 'pizzas-salgadas', image: IMG_PIZZA_PEPPERONI },
       { id: 44, code: '44', name: 'Aliche', description: 'Aliche e mussarela', price: 68.00, category: 'pizzas-salgadas', image: IMG_PIZZA_TRADITIONAL },
       { id: 47, code: '47', name: 'Modinha', description: 'Atum, palmito, ovos, cebola, coberta com mussarela', price: 68.00, category: 'pizzas-salgadas', image: IMG_PIZZA_TRADITIONAL },
-      { id: 49, code: '49', name: 'Tomate Seco', description: 'Tomate seco, mussarela de búfala e rúcula', price: 67.00, category: 'pizzas-salgadas', image: IMG_PIZZA_VEGGIE, tags: ['vegetarian', 'new'] },
+      { id: 49, code: '49', name: 'Tomate Seco', description: 'Tomate seco, mussarela de búfala e rúcula', price: 67.00, category: 'pizzas-salgadas', image: IMG_PIZZA_VEGGIE },
       { id: 50, code: '50', name: 'Escarola', description: 'Escarola, bacon, coberta com mussarela', price: 65.00, category: 'pizzas-salgadas', image: IMG_PIZZA_VEGGIE },
       { id: 93, code: '93', name: 'Moda do Pizzaiolo', description: 'Presunto, palmito, ervilha, cebola, bacon, catupiry e parmesão', price: 76.00, category: 'pizzas-salgadas', image: IMG_PIZZA_TRADITIONAL },
     ]
@@ -172,14 +171,14 @@ export const MENU_DATA: Category[] = [
     name: 'Pizzas Doces',
     image: IMG_SWEET_PIZZA,
     items: [
-      { id: 56, code: '56', name: 'Chocolate', description: 'Creme de chocolate coberto com chocolate granulado', price: 67.00, category: 'pizzas-doces', image: IMG_SWEET_PIZZA, tags: ['popular'] },
+      { id: 56, code: '56', name: 'Chocolate', description: 'Creme de chocolate coberto com chocolate granulado', price: 67.00, category: 'pizzas-doces', image: IMG_SWEET_PIZZA },
       { id: 57, code: '57', name: 'Chocolate com Morango', description: 'Creme de chocolate coberto com morangos (da época)', price: 67.00, category: 'pizzas-doces', image: IMG_SWEET_PIZZA },
       { id: 58, code: '58', name: 'Prestígio', description: 'Creme de chocolate coberto com coco ralado', price: 67.00, category: 'pizzas-doces', image: IMG_SWEET_PIZZA },
-      { id: 60, code: '60', name: 'Romeu e Julieta', description: 'Mussarela ou catupiry, coberto com goiabada cremosa', price: 67.00, category: 'pizzas-doces', image: IMG_SWEET_PIZZA, tags: ['vegetarian'] },
-      { id: 68, code: '68', name: 'Doce de Leite', description: 'Doce de leite, banana e canela', price: 67.00, category: 'pizzas-doces', image: IMG_SWEET_PIZZA, tags: ['vegetarian'] },
-      { id: 73, code: '73', name: 'Chocolate com Banana', description: 'Creme de chocolate com banana', price: 67.00, category: 'pizzas-doces', image: IMG_SWEET_PIZZA, tags: ['vegetarian'] },
+      { id: 60, code: '60', name: 'Romeu e Julieta', description: 'Mussarela ou catupiry, coberto com goiabada cremosa', price: 67.00, category: 'pizzas-doces', image: IMG_SWEET_PIZZA },
+      { id: 68, code: '68', name: 'Doce de Leite', description: 'Doce de leite, banana e canela', price: 67.00, category: 'pizzas-doces', image: IMG_SWEET_PIZZA },
+      { id: 73, code: '73', name: 'Chocolate com Banana', description: 'Creme de chocolate com banana', price: 67.00, category: 'pizzas-doces', image: IMG_SWEET_PIZZA },
       { id: 74, code: '74', name: 'Chocolate com Confete', description: 'Creme de chocolate com confetes', price: 67.00, category: 'pizzas-doces', image: IMG_SWEET_PIZZA },
-      { id: 67, code: '67', name: 'Chocolate com Avelã', description: 'Creme de chocolate com avelã e leite ninho', price: 72.00, category: 'pizzas-doces', image: IMG_SWEET_PIZZA, tags: ['new'] },
+      { id: 67, code: '67', name: 'Chocolate com Avelã', description: 'Creme de chocolate com avelã e leite ninho', price: 72.00, category: 'pizzas-doces', image: IMG_SWEET_PIZZA },
     ]
   },
   {

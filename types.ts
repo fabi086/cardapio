@@ -23,7 +23,6 @@ export interface Product {
   image?: string;
   options?: ProductOption[]; // New field for customization
   ingredients?: string[]; // New field for product ingredients
-  tags?: string[]; // New field for badges (e.g. 'spicy', 'vegetarian', 'new', 'popular')
 }
 
 export interface Category {
