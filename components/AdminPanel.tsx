@@ -168,37 +168,36 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const handlePrintOrder = (order: Order) => {
-    // Tenta abrir a janela. Se falhar (bloqueador de popup), avisa o usuário.
     const printWindow = window.open('', '_blank', 'width=380,height=600,left=200,top=200');
     
     if (!printWindow) {
-      alert("⚠️ O navegador bloqueou a janela de impressão.\n\nPor favor, permita pop-ups para este site ou tente novamente.");
+      alert("⚠️ Pop-up bloqueado. Permita pop-ups para imprimir.");
       return;
     }
 
-    // Formatar itens para impressão
+    // Gerar itens formatados
     const itemsHtml = order.items.map((item: any) => {
       let optionsHtml = '';
       if (item.selectedOptions && item.selectedOptions.length > 0) {
-        optionsHtml = `<div class="options">
-          ${item.selectedOptions.map((opt: any) => `+ ${opt.choiceName}`).join('<br/>')}
-        </div>`;
+        optionsHtml = item.selectedOptions.map((opt: any) => 
+          `<div class="option"> + ${opt.choiceName}</div>`
+        ).join('');
       }
       
-      // Calculate unit total including options
+      // Totais unitários
       const optionsPrice = item.selectedOptions ? item.selectedOptions.reduce((s:any, o:any) => s + o.price, 0) : 0;
       const unitTotal = item.price + optionsPrice;
       const itemTotal = unitTotal * item.quantity;
 
       return `
-        <div class="item">
-          <div class="item-header">
-            <span class="qty">${item.quantity}x</span>
-            <span class="name">${item.name}</span>
-          </div>
-          ${optionsHtml}
-          ${item.observation ? `<div class="obs">⚠️ OBS: ${item.observation}</div>` : ''}
-           <div class="price-row">R$ ${itemTotal.toFixed(2).replace('.', ',')}</div>
+        <div class="item-row">
+           <div class="item-qty">${item.quantity}x</div>
+           <div class="item-name">
+              ${item.name}
+              ${optionsHtml}
+              ${item.observation ? `<div class="obs">OBS: ${item.observation}</div>` : ''}
+           </div>
+           <div class="item-price">${itemTotal.toFixed(2)}</div>
         </div>
       `;
     }).join('');
@@ -210,106 +209,129 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <title>Pedido #${order.id}</title>
           <style>
             @media print {
-              @page { margin: 0; size: 80mm auto; }
-              body { margin: 0; padding: 10px; }
+              @page { margin: 0; size: auto; }
+              body { margin: 0; padding: 0; }
             }
             body { 
-              font-family: 'Courier New', Courier, monospace; 
-              font-size: 12px; 
+              font-family: 'Courier New', monospace; 
+              font-size: 13px; 
+              line-height: 1.2;
               width: 100%; 
-              max-width: 80mm; 
-              margin: 0 auto; 
-              padding: 10px; 
+              max-width: 300px; /* Largura segura para 80mm e adapta para 58mm */
+              margin: 0;
+              padding: 5px 2px;
               color: #000;
-              background: #fff;
+              text-transform: uppercase;
             }
-            .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
-            .title { font-size: 16px; font-weight: bold; margin: 0; text-transform: uppercase; }
-            .subtitle { font-size: 11px; margin-top: 5px; }
-            .order-id { font-size: 18px; font-weight: bold; margin-top: 5px; border: 1px solid #000; display: inline-block; padding: 2px 8px; }
+            .center { text-align: center; }
+            .right { text-align: right; }
+            .bold { font-weight: bold; }
+            .big { font-size: 16px; }
+            .huge { font-size: 22px; font-weight: bold; }
+            .line { border-bottom: 1px dashed #000; margin: 8px 0; }
             
-            .info { margin-bottom: 10px; border-bottom: 1px dashed #000; padding-bottom: 10px; }
-            .customer { font-weight: bold; font-size: 14px; text-transform: uppercase; }
-            .address { margin-top: 5px; font-size: 12px; line-height: 1.4; }
+            .header { margin-bottom: 10px; }
+            .store-name { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
             
-            .items { margin-bottom: 10px; }
-            .item { margin-bottom: 10px; border-bottom: 1px dotted #ccc; padding-bottom: 5px; }
-            .item:last-child { border-bottom: none; }
-            .item-header { font-weight: bold; font-size: 13px; display: flex; gap: 5px; }
-            .qty { white-space: nowrap; }
-            .options { font-size: 11px; padding-left: 20px; color: #333; margin-top: 2px; }
-            .obs { font-weight: bold; font-size: 11px; margin-top: 2px; background: #eee; padding: 2px; }
-            .price-row { text-align: right; font-weight: bold; margin-top: 2px; }
+            .info-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
+            
+            .type-tag { 
+               font-size: 18px; 
+               font-weight: bold; 
+               border: 2px solid #000; 
+               padding: 5px; 
+               margin: 10px 0; 
+               text-align: center;
+               display: block;
+            }
 
-            .totals { border-top: 2px dashed #000; padding-top: 10px; margin-top: 10px; text-align: right; }
-            .total-row { display: flex; justify-content: space-between; margin-bottom: 2px; font-size: 12px; }
-            .final-total { font-size: 18px; font-weight: bold; margin-top: 8px; border-top: 1px solid #000; pt-2; }
+            .items-container { margin: 10px 0; }
+            .item-row { display: flex; margin-bottom: 8px; }
+            .item-qty { width: 30px; font-weight: bold; }
+            .item-name { flex: 1; font-weight: bold; }
+            .item-price { width: 60px; text-align: right; }
             
-            .payment { text-align: center; margin-top: 15px; border: 1px solid #000; padding: 5px; font-weight: bold; font-size: 12px; text-transform: uppercase; background: #eee; }
-            .footer { text-align: center; margin-top: 20px; font-size: 10px; }
+            .option { font-weight: normal; font-size: 11px; margin-left: 5px; }
+            .obs { font-weight: bold; margin-top: 2px; font-size: 11px; }
+
+            .totals { margin-top: 10px; }
+            .total-row { display: flex; justify-content: space-between; font-weight: bold; }
+            
+            .payment-box { border: 1px solid #000; padding: 5px; margin-top: 10px; font-weight: bold; text-align: center; }
+            
+            .address-box { margin-top: 10px; font-size: 14px; font-weight: bold; }
           </style>
         </head>
         <body>
-          <div class="header">
-            <h1 class="title">${settings.name}</h1>
-            <div class="subtitle">${new Date(order.created_at).toLocaleString('pt-BR')}</div>
-            <div class="order-id">PEDIDO #${order.id}</div>
-          </div>
-          
-          <div class="info">
-            <div>CLIENTE:</div>
-            <div class="customer">${order.customer_name}</div>
-            ${order.delivery_type === 'delivery' 
-              ? `<div class="address">
-                  <strong>ENTREGA:</strong><br/>
-                  ${order.address_street}, ${order.address_number}<br/>
-                  ${order.address_district}<br/>
-                  ${order.address_city}
-                  ${order.address_complement ? `<br/>Comp: ${order.address_complement}` : ''}
-                </div>`
-              : '<div class="address" style="text-align:center; font-size:14px; margin-top:5px;">📍 RETIRADA NO BALCÃO</div>'
-            }
+          <div class="header center">
+            <div class="store-name">${settings.name}</div>
+            <div>${new Date(order.created_at).toLocaleDateString('pt-BR')} - ${new Date(order.created_at).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</div>
           </div>
 
-          <div class="items">
+          <div class="center">
+             <span style="font-size: 16px;">PEDIDO #${order.id}</span>
+          </div>
+          
+          <div class="type-tag">
+             ${order.delivery_type === 'delivery' ? 'ENTREGA' : 'RETIRADA'}
+          </div>
+
+          <div style="font-size: 15px; font-weight: bold; margin-bottom: 5px;">
+             ${order.customer_name}
+          </div>
+
+          <div class="line"></div>
+
+          <div class="items-container">
             ${itemsHtml}
           </div>
 
+          <div class="line"></div>
+
           <div class="totals">
             <div class="total-row">
-              <span>Subtotal:</span>
-              <span>R$ ${(order.total - order.delivery_fee + order.discount).toFixed(2).replace('.', ',')}</span>
+               <span>SUBTOTAL</span>
+               <span>${(order.total - order.delivery_fee + order.discount).toFixed(2)}</span>
             </div>
-             ${order.discount > 0 ? `
+            ${order.discount > 0 ? `
             <div class="total-row">
-              <span>Desconto (${order.coupon_code || 'CUPOM'}):</span>
-              <span>- R$ ${order.discount.toFixed(2).replace('.', ',')}</span>
+               <span>DESC (${order.coupon_code || ''})</span>
+               <span>- ${order.discount.toFixed(2)}</span>
             </div>` : ''}
+            ${order.delivery_type === 'delivery' ? `
             <div class="total-row">
-              <span>Taxa Entrega:</span>
-              <span>R$ {order.delivery_fee.toFixed(2).replace('.', ',')}</span>
-            </div>
-            <div class="total-row final-total">
-              <span>TOTAL:</span>
-              <span>R$ {order.total.toFixed(2).replace('.', ',')}</span>
+               <span>TAXA ENTREGA</span>
+               <span>${order.delivery_fee.toFixed(2)}</span>
+            </div>` : ''}
+            
+            <div class="line"></div>
+            
+            <div class="total-row huge center" style="display: block; text-align: center; margin-top: 5px;">
+               TOTAL: R$ ${order.total.toFixed(2)}
             </div>
           </div>
 
-          <div class="payment">
-            Pagamento: ${order.payment_method}
+          <div class="payment-box">
+             PAGAMENTO: ${order.payment_method}
           </div>
+
+          ${order.delivery_type === 'delivery' ? `
+            <div class="line"></div>
+            <div class="address-box">
+              <div>${order.address_street}, ${order.address_number}</div>
+              <div>${order.address_district}</div>
+              ${order.address_city ? `<div>${order.address_city}</div>` : ''}
+              ${order.address_complement ? `<div style="margin-top:2px; font-size: 12px;">COMPL: ${order.address_complement}</div>` : ''}
+            </div>
+          ` : ''}
           
-          <div class="footer">
-            Desenvolvido por Cardápio Digital<br/>
-            . . .
+          <div class="center" style="margin-top: 20px; font-size: 10px;">
+             .
           </div>
-          
+
           <script>
-            // Auto print logic
             window.onload = function() {
-              setTimeout(function() {
-                window.print();
-              }, 500);
+              window.print();
             }
           </script>
         </body>
@@ -317,7 +339,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     `;
 
     printWindow.document.write(htmlContent);
-    printWindow.document.close(); // Importante para o navegador terminar de carregar
+    printWindow.document.close();
   };
 
   const handleLogin = (e: React.FormEvent) => {
