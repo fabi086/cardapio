@@ -1,3 +1,4 @@
+
 import { Category, StoreSettings } from './types';
 
 // Default Settings (Fallback)
@@ -23,7 +24,8 @@ export const DEFAULT_SETTINGS: StoreSettings = {
       zipPrefixes: ['13295000'] // Exemplo específico
     }
   ],
-  enableGuide: true
+  enableGuide: true,
+  freeShipping: false
 };
 
 export const WHATSAPP_NUMBER = DEFAULT_SETTINGS.whatsapp; // Legacy support if needed

@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState } from 'react';
 import { CartItem, DeliveryRegion } from '../types';
 import { X, Trash2, ShoppingBag, Plus, Minus, Edit2, MapPin, CreditCard, User, Search, Loader2 } from 'lucide-react';
@@ -14,6 +15,7 @@ interface CartDrawerProps {
   storeName: string;
   deliveryRegions?: DeliveryRegion[];
   paymentMethods?: string[];
+  freeShipping?: boolean; // Prop for free shipping check
 }
 
 export const CartDrawer: React.FC<CartDrawerProps> = ({ 
@@ -27,7 +29,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   whatsappNumber,
   storeName,
   deliveryRegions = [],
-  paymentMethods = []
+  paymentMethods = [],
+  freeShipping = false
 }) => {
   // Checkout State
   const [deliveryType, setDeliveryType] = useState<'delivery' | 'pickup'>('delivery');
@@ -65,8 +68,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
   const deliveryFee = useMemo(() => {
     if (deliveryType === 'pickup') return 0;
+    // Even if freeShipping is true, we need to know if the region is valid (calculatedFee !== null)
+    // But the cost will be 0
+    if (calculatedFee !== null && freeShipping) return 0;
     return calculatedFee !== null ? calculatedFee : 0;
-  }, [deliveryType, calculatedFee]);
+  }, [deliveryType, calculatedFee, freeShipping]);
 
   const total = subtotal + deliveryFee;
 
@@ -179,7 +185,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     message += `*Subtotal:* R$ ${subtotal.toFixed(2).replace('.', ',')}\n`;
     
     if (deliveryType === 'delivery') {
-      message += `*Entrega (${matchedRegionName}):* R$ ${deliveryFee.toFixed(2).replace('.', ',')}\n`;
+      const feeText = freeShipping ? 'GRÁTIS' : `R$ ${deliveryFee.toFixed(2).replace('.', ',')}`;
+      message += `*Entrega (${matchedRegionName}):* ${feeText}\n`;
     } else {
       message += `*Retirada no Balcão*\n`;
     }
@@ -418,7 +425,15 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                             )}
                             {calculatedFee !== null && !cepError && (
                                <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded text-xs text-green-800 dark:text-green-300 flex items-center gap-1">
-                                  <span className="font-bold">Região Atendida:</span> {matchedRegionName} (Taxa: R$ {calculatedFee.toFixed(2)})
+                                  {freeShipping ? (
+                                    <>
+                                      <span className="font-bold">Região Atendida:</span> {matchedRegionName} (Taxa: <span className="line-through opacity-70">R$ {calculatedFee.toFixed(2)}</span> <span className="font-bold">GRÁTIS</span>)
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span className="font-bold">Região Atendida:</span> {matchedRegionName} (Taxa: R$ {calculatedFee.toFixed(2)})
+                                    </>
+                                  )}
                                </div>
                             )}
                          </div>
@@ -526,7 +541,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                <div className="flex justify-between items-center text-sm text-stone-500 dark:text-stone-400">
                   <span>Taxa de Entrega</span>
                   <span>
-                     {calculatedFee !== null ? `R$ ${calculatedFee.toFixed(2).replace('.', ',')}` : 'Calcule pelo CEP'}
+                     {calculatedFee !== null 
+                        ? (freeShipping ? <span className="text-green-600 font-bold">GRÁTIS</span> : `R$ ${calculatedFee.toFixed(2).replace('.', ',')}`)
+                        : 'Calcule pelo CEP'}
                   </span>
                </div>
              )}

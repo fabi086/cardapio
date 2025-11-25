@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { MENU_DATA, DEFAULT_SETTINGS, CATEGORY_IMAGES } from './data';
 import { Product, CartItem, Category, StoreSettings } from './types';
@@ -203,7 +204,8 @@ function App() {
             phones: (settingsData.phones && Array.isArray(settingsData.phones)) ? settingsData.phones : DEFAULT_SETTINGS.phones,
             paymentMethods: (settingsData.payment_methods && Array.isArray(settingsData.payment_methods)) ? settingsData.payment_methods : DEFAULT_SETTINGS.paymentMethods,
             deliveryRegions: Array.isArray(deliveryRegions) ? deliveryRegions : DEFAULT_SETTINGS.deliveryRegions,
-            enableGuide: settingsData.enable_guide ?? true
+            enableGuide: settingsData.enable_guide ?? true,
+            freeShipping: settingsData.free_shipping ?? false
         });
       } else {
         setStoreSettings(DEFAULT_SETTINGS);
@@ -350,7 +352,8 @@ function App() {
           logo_url: newSettings.logoUrl,
           delivery_regions: JSON.stringify(newSettings.deliveryRegions || []),
           enable_guide: newSettings.enableGuide,
-          payment_methods: newSettings.paymentMethods
+          payment_methods: newSettings.paymentMethods,
+          free_shipping: newSettings.freeShipping
        };
        if (settingsId) await supabase.from('settings').update(payload).eq('id', settingsId);
        else {
@@ -362,7 +365,16 @@ function App() {
 
   const handleResetMenu = () => { fetchData(); };
   const handleAddCategory = (name: string) => { /* ... */ };
-  const handleUpdateCategory = (id: string, u: any) => { /* ... */ };
+  
+  const handleUpdateCategory = async (id: string, updates: { name?: string; image?: string }) => {
+     setMenuData(prev => prev.map(cat => 
+        cat.id === id ? { ...cat, ...updates } : cat
+     ));
+     if(supabase) {
+        await supabase.from('categories').update(updates).eq('id', id);
+     }
+  };
+  
   const handleDeleteCategory = (id: string) => { /* ... */ };
 
   // --- CART ACTIONS ---
@@ -658,7 +670,7 @@ function App() {
          </div>
       )}
 
-      <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} items={cartItems} onRemoveItem={removeFromCart} onClearCart={clearCart} onUpdateQuantity={updateQuantity} onUpdateObservation={updateObservation} whatsappNumber={storeSettings.whatsapp} storeName={storeSettings.name} deliveryRegions={storeSettings.deliveryRegions || []} paymentMethods={storeSettings.paymentMethods} />
+      <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} items={cartItems} onRemoveItem={removeFromCart} onClearCart={clearCart} onUpdateQuantity={updateQuantity} onUpdateObservation={updateObservation} whatsappNumber={storeSettings.whatsapp} storeName={storeSettings.name} deliveryRegions={storeSettings.deliveryRegions || []} paymentMethods={storeSettings.paymentMethods} freeShipping={storeSettings.freeShipping} />
       <InfoModal isOpen={isInfoModalOpen} onClose={() => setIsInfoModalOpen(false)} settings={storeSettings} isOpenNow={storeStatus.isOpen} />
       <PizzaBuilderModal isOpen={isPizzaBuilderOpen} onClose={() => setIsPizzaBuilderOpen(false)} availablePizzas={pizzasForBuilder} onAddToCart={addToCart} initialFirstHalf={pizzaBuilderFirstHalf} />
 

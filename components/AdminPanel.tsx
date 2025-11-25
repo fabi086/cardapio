@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { Category, Product, StoreSettings, ProductOption, ProductChoice } from '../types';
-import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Layers, Megaphone, Tag, List, HelpCircle, Utensils, Phone, CreditCard } from 'lucide-react';
+import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Layers, Megaphone, Tag, List, HelpCircle, Utensils, Phone, CreditCard, Truck } from 'lucide-react';
 
 interface AdminPanelProps {
   menuData: Category[];
@@ -655,6 +656,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                    </label>
                 </div>
 
+                {/* Free Shipping Toggle */}
+                <div className="bg-green-50 border border-green-200 p-4 rounded-lg mb-6 flex items-center justify-between">
+                   <div>
+                      <h3 className="font-bold text-green-900 flex items-center gap-2">
+                         <Truck className="w-5 h-5" /> Frete Grátis Global
+                      </h3>
+                      <p className="text-xs text-green-700 mt-1">
+                         Ative para zerar a taxa de entrega de todas as regiões (útil para testes ou promoções).
+                      </p>
+                   </div>
+                   <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer" 
+                        checked={settingsForm.freeShipping === true} 
+                        onChange={(e) => setSettingsForm({...settingsForm, freeShipping: e.target.checked})}
+                      />
+                      <div className="w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-italian-green"></div>
+                   </label>
+                </div>
+
                 {/* Form Inputs */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                    {/* ... (Existing Settings Inputs - Same as before but ensuring contrast) ... */}
@@ -827,6 +849,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
             {isAddingNew && (
                <div className="bg-white p-6 rounded-xl shadow-lg border border-italian-green mb-6 animate-in slide-in-from-top-4">
+                  {/* ... (Existing New Product Form content - unchanged) ... */}
                   <h3 className="font-bold text-lg mb-4 text-stone-800">Novo Produto</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                      <div>
@@ -940,7 +963,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                       <textarea value={editForm.description || ''} onChange={(e) => setEditForm({...editForm, description: e.target.value})} className="w-full p-2 bg-stone-50 border border-stone-200 rounded-lg text-sm text-stone-900" rows={2}></textarea>
                                    </div>
                                    
-                                   {/* EDIT IMAGE UPLOAD SECTION - ADDED */}
+                                   {/* EDIT IMAGE UPLOAD SECTION */}
                                    <div className="md:col-span-2 border-t border-stone-100 pt-3">
                                       <label className="block text-xs font-bold text-stone-700 mb-2 flex items-center gap-2">
                                         <ImageIcon className="w-4 h-4 text-italian-red" /> Imagem do Produto

@@ -1,3 +1,4 @@
+
 export interface ProductChoice {
   name: string;
   price: number;
@@ -65,4 +66,5 @@ export interface StoreSettings {
   paymentMethods: string[]; // New field for dynamic payment methods
   deliveryRegions?: DeliveryRegion[];
   enableGuide?: boolean; // New field to toggle onboarding tour
+  freeShipping?: boolean; // New field for global free shipping toggle
 }
