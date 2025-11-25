@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { CartItem, DeliveryRegion, Coupon, Category, Product } from '../types';
 import { X, Trash2, ShoppingBag, Plus, Minus, Edit2, MapPin, CreditCard, User, Search, Loader2, Ticket, CheckCircle, MessageCircle, Sparkles } from 'lucide-react';
 import { supabase } from '../supabaseClient';
@@ -12,6 +12,7 @@ interface CartDrawerProps {
   onClearCart?: () => void;
   onUpdateQuantity?: (index: number, newQuantity: number) => void;
   onUpdateObservation?: (index: number, newObservation: string) => void;
+  onAddToCart?: (product: Product, quantity: number, observation: string, selectedOptions?: CartItem['selectedOptions']) => void;
   whatsappNumber: string;
   storeName: string;
   deliveryRegions?: DeliveryRegion[];
@@ -28,6 +29,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onClearCart,
   onUpdateQuantity,
   onUpdateObservation,
+  onAddToCart,
   whatsappNumber,
   storeName,
   deliveryRegions = [],
@@ -133,26 +135,13 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   }, [items, menuData]);
 
   const handleQuickAdd = (product: Product) => {
-     if (onUpdateQuantity) { // Should be onAdd, but passing via props requires changing interface in App.tsx. 
-        // Since we are inside CartDrawer, we can't easily call addToCart from App.tsx without a prop.
-        // Quick fix: The user will implement the actual add logic if they click the button, 
-        // but since onAddToCart isn't passed to CartDrawer, we need to mock it or ask user to pass it.
-        // Wait, onAddToCart is NOT in props. 
-        // We will assume the parent handles `onUpdateQuantity` which updates existing items. 
-        // To ADD NEW items from here, we need `onAddToCart`.
-        // Let's check `App.tsx`. `addToCart` is defined there.
-        // We will emit an event or need to update the interface.
-        // For now, let's use a workaround: The `onUpdateQuantity` is only for index.
-        // We need to request `onAddToCart` prop or similar.
-        // Since I can't change the interface too drastically without breaking things, let's accept that we need to pass `addToCart` or simulate it.
-        // Actually, let's pass `onAddToCart` to CartDrawer in App.tsx and add to interface here.
+     if (onAddToCart) {
+        onAddToCart(product, 1, '', []);
+     } else {
+        alert("Por favor, feche o carrinho e adicione o item através do menu principal.");
      }
   };
   
-  // NOTE: I will update the Interface to accept `onAddToCart` to make upsell work properly.
-  // Wait, I cannot change `App.tsx` easily to pass `addToCart` without modifying the `<CartDrawer>` usage in App.tsx which I am already doing.
-  // So I will add `onAddToCart` to the props.
-
   // --- COUPON LOGIC ---
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) return;
@@ -201,8 +190,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   };
 
   // --- CEP LOGIC ---
-  const handleCepSearch = async () => {
-    const cleanCep = cep.replace(/\D/g, '');
+  const performCepSearch = async (cepToSearch: string) => {
+    const cleanCep = cepToSearch.replace(/\D/g, '');
     
     if (cleanCep.length !== 8) {
       setCepError('CEP deve ter 8 dígitos');
@@ -256,6 +245,32 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     }
   };
 
+  const handleCepSearch = () => performCepSearch(cep);
+
+  // --- AUTO FILL USER DATA ---
+  useEffect(() => {
+    if (isOpen) {
+       const saved = localStorage.getItem('spagnolli_user_data');
+       if (saved) {
+          try {
+             const p = JSON.parse(saved);
+             if (!customerName && p.name) setCustomerName(p.name);
+             if (!cep && p.cep) setCep(p.cep);
+             if (!addressStreet && p.street) setAddressStreet(p.street);
+             if (!addressNumber && p.number) setAddressNumber(p.number);
+             if (!addressDistrict && p.district) setAddressDistrict(p.district);
+             if (!addressCity && p.city) setAddressCity(p.city);
+             if (!addressComplement && p.complement) setAddressComplement(p.complement);
+             
+             // Try to calc fee if CEP exists and wasn't calculated yet
+             if (p.cep && p.cep.replace(/\D/g, '').length === 8 && calculatedFee === null) {
+                performCepSearch(p.cep);
+             }
+          } catch(e) { console.error(e); }
+       }
+    }
+  }, [isOpen]);
+
   const handleCheckout = async () => {
     if (items.length === 0) return;
     if (isSubmitting) return; // Prevent double clicks
@@ -308,6 +323,28 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
            console.error("Erro ao salvar pedido no DB:", error);
         } else if (data && data.length > 0) {
            orderId = data[0].id;
+           
+           // Save to local storage for tracking
+           try {
+             const savedOrders = JSON.parse(localStorage.getItem('spagnolli_my_orders') || '[]');
+             if (!savedOrders.includes(orderId)) {
+               savedOrders.unshift(orderId);
+               localStorage.setItem('spagnolli_my_orders', JSON.stringify(savedOrders.slice(0, 10))); // keep last 10
+             }
+           } catch (e) {
+             console.error("Failed to save order ID to local storage", e);
+           }
+
+           // Save user info for future autofill
+           localStorage.setItem('spagnolli_user_data', JSON.stringify({
+              name: customerName,
+              cep: cep,
+              street: addressStreet,
+              number: addressNumber,
+              district: addressDistrict,
+              city: addressCity,
+              complement: addressComplement
+           }));
         }
       } catch (err) {
         console.error("Erro inesperado ao salvar pedido:", err);
@@ -467,7 +504,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-6">
-              {/* ... (Existing Items List Logic) ... */}
+              {/* ... Items ... */}
               <div className="space-y-3">
                 <h3 className="font-bold text-stone-700 dark:text-stone-300 text-sm uppercase tracking-wider border-b border-stone-200 dark:border-stone-700 pb-2">Itens do Carrinho</h3>
                 
@@ -584,11 +621,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                              </div>
                              <button 
                                className="w-full bg-orange-100 hover:bg-orange-200 text-orange-800 text-xs font-bold py-1.5 rounded transition-colors"
-                               onClick={() => {
-                                  // Quick and dirty add since we can't easily pass the full addToCart prop chain without breaking interfaces
-                                  // NOTE: In a real app, pass onAddToCart properly. Here we alert the user to close cart and add.
-                                  alert("Por favor, feche o carrinho e adicione o item através do menu principal.");
-                               }}
+                               onClick={() => handleQuickAdd(prod)}
                              >
                                + Adicionar
                              </button>
@@ -598,6 +631,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                  </div>
               )}
 
+              {/* Checkout Form */}
               {items.length > 0 && (
                 <div className="space-y-6">
                     <div className="space-y-3">

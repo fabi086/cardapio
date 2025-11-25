@@ -696,6 +696,7 @@ function App() {
         onClearCart={clearCart} 
         onUpdateQuantity={updateQuantity} 
         onUpdateObservation={updateObservation} 
+        onAddToCart={addToCart}
         whatsappNumber={storeSettings.whatsapp} 
         storeName={storeSettings.name} 
         deliveryRegions={storeSettings.deliveryRegions || []} 
