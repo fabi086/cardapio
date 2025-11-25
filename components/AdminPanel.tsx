@@ -168,8 +168,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const handlePrintOrder = (order: Order) => {
-    const printWindow = window.open('', '_blank', 'width=350,height=600');
-    if (!printWindow) return;
+    // Tenta abrir a janela. Se falhar (bloqueador de popup), avisa o usuário.
+    const printWindow = window.open('', '_blank', 'width=380,height=600,left=200,top=200');
+    
+    if (!printWindow) {
+      alert("⚠️ O navegador bloqueou a janela de impressão.\n\nPor favor, permita pop-ups para este site ou tente novamente.");
+      return;
+    }
 
     // Formatar itens para impressão
     const itemsHtml = order.items.map((item: any) => {
@@ -180,60 +185,89 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>`;
       }
       
-      const itemTotal = (item.price + (item.selectedOptions ? item.selectedOptions.reduce((s:any, o:any) => s + o.price, 0) : 0)) * item.quantity;
+      // Calculate unit total including options
+      const optionsPrice = item.selectedOptions ? item.selectedOptions.reduce((s:any, o:any) => s + o.price, 0) : 0;
+      const unitTotal = item.price + optionsPrice;
+      const itemTotal = unitTotal * item.quantity;
 
       return `
         <div class="item">
           <div class="item-header">
             <span class="qty">${item.quantity}x</span>
             <span class="name">${item.name}</span>
-            <span class="price">R$ ${itemTotal.toFixed(2).replace('.', ',')}</span>
           </div>
           ${optionsHtml}
-          ${item.observation ? `<div class="obs">OBS: ${item.observation}</div>` : ''}
+          ${item.observation ? `<div class="obs">⚠️ OBS: ${item.observation}</div>` : ''}
+           <div class="price-row">R$ ${itemTotal.toFixed(2).replace('.', ',')}</div>
         </div>
       `;
     }).join('');
 
     const htmlContent = `
+      <!DOCTYPE html>
       <html>
         <head>
           <title>Pedido #${order.id}</title>
           <style>
-            body { font-family: 'Courier New', monospace; font-size: 12px; width: 300px; margin: 0; padding: 10px; color: #000; }
-            .header { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
-            .title { font-size: 16px; font-weight: bold; margin: 0; }
-            .subtitle { font-size: 10px; }
+            @media print {
+              @page { margin: 0; size: 80mm auto; }
+              body { margin: 0; padding: 10px; }
+            }
+            body { 
+              font-family: 'Courier New', Courier, monospace; 
+              font-size: 12px; 
+              width: 100%; 
+              max-width: 80mm; 
+              margin: 0 auto; 
+              padding: 10px; 
+              color: #000;
+              background: #fff;
+            }
+            .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
+            .title { font-size: 16px; font-weight: bold; margin: 0; text-transform: uppercase; }
+            .subtitle { font-size: 11px; margin-top: 5px; }
+            .order-id { font-size: 18px; font-weight: bold; margin-top: 5px; border: 1px solid #000; display: inline-block; padding: 2px 8px; }
+            
             .info { margin-bottom: 10px; border-bottom: 1px dashed #000; padding-bottom: 10px; }
-            .customer { font-weight: bold; font-size: 14px; margin-top: 5px; }
-            .address { margin-top: 5px; font-size: 12px; }
-            .item { margin-bottom: 8px; }
-            .item-header { display: flex; justify-content: space-between; font-weight: bold; }
-            .qty { margin-right: 5px; }
-            .options { font-size: 10px; padding-left: 20px; }
-            .obs { font-weight: bold; font-size: 11px; margin-top: 2px; }
-            .totals { border-top: 1px dashed #000; padding-top: 10px; margin-top: 10px; text-align: right; }
-            .total-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
-            .final-total { font-size: 16px; font-weight: bold; margin-top: 5px; }
-            .payment { text-align: center; margin-top: 10px; border-top: 1px dashed #000; padding-top: 10px; font-weight: bold; }
+            .customer { font-weight: bold; font-size: 14px; text-transform: uppercase; }
+            .address { margin-top: 5px; font-size: 12px; line-height: 1.4; }
+            
+            .items { margin-bottom: 10px; }
+            .item { margin-bottom: 10px; border-bottom: 1px dotted #ccc; padding-bottom: 5px; }
+            .item:last-child { border-bottom: none; }
+            .item-header { font-weight: bold; font-size: 13px; display: flex; gap: 5px; }
+            .qty { white-space: nowrap; }
+            .options { font-size: 11px; padding-left: 20px; color: #333; margin-top: 2px; }
+            .obs { font-weight: bold; font-size: 11px; margin-top: 2px; background: #eee; padding: 2px; }
+            .price-row { text-align: right; font-weight: bold; margin-top: 2px; }
+
+            .totals { border-top: 2px dashed #000; padding-top: 10px; margin-top: 10px; text-align: right; }
+            .total-row { display: flex; justify-content: space-between; margin-bottom: 2px; font-size: 12px; }
+            .final-total { font-size: 18px; font-weight: bold; margin-top: 8px; border-top: 1px solid #000; pt-2; }
+            
+            .payment { text-align: center; margin-top: 15px; border: 1px solid #000; padding: 5px; font-weight: bold; font-size: 12px; text-transform: uppercase; background: #eee; }
+            .footer { text-align: center; margin-top: 20px; font-size: 10px; }
           </style>
         </head>
         <body>
           <div class="header">
             <h1 class="title">${settings.name}</h1>
             <div class="subtitle">${new Date(order.created_at).toLocaleString('pt-BR')}</div>
-            <div class="title" style="margin-top:5px">PEDIDO #${order.id}</div>
+            <div class="order-id">PEDIDO #${order.id}</div>
           </div>
           
           <div class="info">
+            <div>CLIENTE:</div>
             <div class="customer">${order.customer_name}</div>
             ${order.delivery_type === 'delivery' 
               ? `<div class="address">
+                  <strong>ENTREGA:</strong><br/>
                   ${order.address_street}, ${order.address_number}<br/>
-                  ${order.address_district} - ${order.address_city}<br/>
-                  ${order.address_complement ? `Comp: ${order.address_complement}` : ''}
+                  ${order.address_district}<br/>
+                  ${order.address_city}
+                  ${order.address_complement ? `<br/>Comp: ${order.address_complement}` : ''}
                 </div>`
-              : '<div class="address">RETIRADA NO BALCÃO</div>'
+              : '<div class="address" style="text-align:center; font-size:14px; margin-top:5px;">📍 RETIRADA NO BALCÃO</div>'
             }
           </div>
 
@@ -248,11 +282,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
              ${order.discount > 0 ? `
             <div class="total-row">
-              <span>Desconto:</span>
+              <span>Desconto (${order.coupon_code || 'CUPOM'}):</span>
               <span>- R$ ${order.discount.toFixed(2).replace('.', ',')}</span>
             </div>` : ''}
             <div class="total-row">
-              <span>Entrega:</span>
+              <span>Taxa Entrega:</span>
               <span>R$ {order.delivery_fee.toFixed(2).replace('.', ',')}</span>
             </div>
             <div class="total-row final-total">
@@ -264,19 +298,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <div class="payment">
             Pagamento: ${order.payment_method}
           </div>
-          <br/><br/>
-          <center>. . . . . . . . .</center>
+          
+          <div class="footer">
+            Desenvolvido por Cardápio Digital<br/>
+            . . .
+          </div>
+          
+          <script>
+            // Auto print logic
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
+              }, 500);
+            }
+          </script>
         </body>
       </html>
     `;
 
     printWindow.document.write(htmlContent);
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 500);
+    printWindow.document.close(); // Importante para o navegador terminar de carregar
   };
 
   const handleLogin = (e: React.FormEvent) => {
@@ -418,6 +459,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <ClipboardList className="w-4 h-4" /> Pedidos
              </button>
              <button 
+                onClick={() => setActiveTab('coupons')}
+                className={`pb-2 px-2 flex items-center gap-2 text-sm font-bold transition-colors whitespace-nowrap ${activeTab === 'coupons' ? 'text-italian-green border-b-2 border-italian-green' : 'text-stone-400 hover:text-white'}`}
+             >
+                <Ticket className="w-4 h-4" /> Cupons
+             </button>
+             <button 
                 onClick={() => setActiveTab('menu')}
                 className={`pb-2 px-2 flex items-center gap-2 text-sm font-bold transition-colors whitespace-nowrap ${activeTab === 'menu' ? 'text-italian-green border-b-2 border-italian-green' : 'text-stone-400 hover:text-white'}`}
              >
@@ -428,12 +475,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 className={`pb-2 px-2 flex items-center gap-2 text-sm font-bold transition-colors whitespace-nowrap ${activeTab === 'categories' ? 'text-italian-green border-b-2 border-italian-green' : 'text-stone-400 hover:text-white'}`}
              >
                 <List className="w-4 h-4" /> Categorias
-             </button>
-             <button 
-                onClick={() => setActiveTab('coupons')}
-                className={`pb-2 px-2 flex items-center gap-2 text-sm font-bold transition-colors whitespace-nowrap ${activeTab === 'coupons' ? 'text-italian-green border-b-2 border-italian-green' : 'text-stone-400 hover:text-white'}`}
-             >
-                <Ticket className="w-4 h-4" /> Cupons
              </button>
              <button 
                 onClick={() => setActiveTab('settings')}
