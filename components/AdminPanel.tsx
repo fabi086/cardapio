@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Category, Product, StoreSettings, ProductOption, ProductChoice, Order, Coupon } from '../types';
+import { Category, Product, StoreSettings, ProductOption, ProductChoice, Order, Coupon, DeliveryRegion } from '../types';
 import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Layers, Megaphone, Tag, List, HelpCircle, Utensils, Phone, CreditCard, Truck, Receipt, ClipboardList, Clock, Printer, Ticket, LayoutDashboard, DollarSign, TrendingUp, ShoppingBag, Calendar, PieChart, BarChart3, Filter, Ban } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
@@ -76,6 +76,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [newRegionName, setNewRegionName] = useState('');
   const [newRegionPrice, setNewRegionPrice] = useState('');
   const [newRegionZips, setNewRegionZips] = useState('');
+  const [newRegionExclusions, setNewRegionExclusions] = useState('');
 
   // Option Management State
   const [newOptionName, setNewOptionName] = useState('');
@@ -444,15 +445,42 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setEditForm(prev => ({...prev, options: (prev.options || []).map(opt => { if (opt.id === groupId) { return { ...opt, choices: opt.choices.filter((_, idx) => idx !== choiceIndex) }; } return opt; })}));
   };
   const handleSaveSettings = () => { onUpdateSettings(settingsForm); alert('Configurações salvas e atualizadas no site!'); };
+  
+  const cancelEditingRegion = () => { 
+    setEditingRegionId(null); 
+    setNewRegionName(''); 
+    setNewRegionPrice(''); 
+    setNewRegionZips(''); 
+    setNewRegionExclusions('');
+  };
+
   const handleAddRegion = () => {
     if (!newRegionName || !newRegionPrice) return;
-    const zipArray = newRegionZips ? newRegionZips.split(',').map(z => z.trim().replace(/[^0-9-]/g, '')).filter(z => z.length > 0) : [];
-    const newRegion = { id: editingRegionId || newRegionName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''), name: newRegionName, price: parseFloat(newRegionPrice), zipPrefixes: zipArray };
-    if (editingRegionId) { setSettingsForm({ ...settingsForm, deliveryRegions: (settingsForm.deliveryRegions || []).map(r => r.id === editingRegionId ? newRegion : r) }); setEditingRegionId(null); } else { setSettingsForm({ ...settingsForm, deliveryRegions: [...(settingsForm.deliveryRegions || []), newRegion] }); }
-    setNewRegionName(''); setNewRegionPrice(''); setNewRegionZips('');
+    const zipArray = newRegionZips ? newRegionZips.split(',').map(z => z.trim()).filter(Boolean) : [];
+    const exclusionsArray = newRegionExclusions ? newRegionExclusions.split(',').map(z => z.trim()).filter(Boolean) : [];
+    const newRegion: DeliveryRegion = { 
+        id: editingRegionId || newRegionName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''), 
+        name: newRegionName, 
+        price: parseFloat(newRegionPrice), 
+        zipRules: zipArray,
+        zipExclusions: exclusionsArray
+    };
+    if (editingRegionId) { 
+        setSettingsForm({ ...settingsForm, deliveryRegions: (settingsForm.deliveryRegions || []).map(r => r.id === editingRegionId ? newRegion : r) }); 
+    } else { 
+        setSettingsForm({ ...settingsForm, deliveryRegions: [...(settingsForm.deliveryRegions || []), newRegion] }); 
+    }
+    cancelEditingRegion();
   };
-  const startEditingRegion = (region: any) => { setEditingRegionId(region.id); setNewRegionName(region.name); setNewRegionPrice(region.price.toString()); setNewRegionZips(region.zipPrefixes ? region.zipPrefixes.join(', ') : ''); };
-  const cancelEditingRegion = () => { setEditingRegionId(null); setNewRegionName(''); setNewRegionPrice(''); setNewRegionZips(''); };
+
+  const startEditingRegion = (region: DeliveryRegion) => { 
+    setEditingRegionId(region.id); 
+    setNewRegionName(region.name); 
+    setNewRegionPrice(region.price.toString()); 
+    setNewRegionZips(region.zipRules ? region.zipRules.join(', ') : ''); 
+    setNewRegionExclusions(region.zipExclusions ? region.zipExclusions.join(', ') : ''); 
+  };
+  
   const handleRemoveRegion = (id: string) => { if (window.confirm('Remover esta região de entrega?')) { setSettingsForm({ ...settingsForm, deliveryRegions: (settingsForm.deliveryRegions || []).filter(r => r.id !== id) }); if (editingRegionId === id) cancelEditingRegion(); } };
   const triggerAddCategory = () => { if (newCategoryName && onAddCategory) { onAddCategory(newCategoryName); setNewCategoryName(''); alert('Categoria adicionada!'); } };
   const triggerUpdateCategory = () => { if (editingCategoryId && onUpdateCategory) { onUpdateCategory(editingCategoryId, { name: editCategoryName, image: editCategoryImage }); setEditingCategoryId(null); setEditCategoryName(''); setEditCategoryImage(''); } };
@@ -1185,39 +1213,53 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                    <div className="space-y-3">
                       <div className="grid grid-cols-12 gap-3 items-end">
                         <div className="col-span-8 md:col-span-9">
-                           <label className="block text-xs font-bold text-stone-500 mb-1">Nome</label>
+                           <label className="block text-xs font-bold text-stone-500 mb-1">Nome da Região</label>
                            <input type="text" value={newRegionName} onChange={(e) => setNewRegionName(e.target.value)} className="w-full p-2 bg-white border border-stone-300 rounded-md text-sm text-stone-900"/>
                         </div>
                         <div className="col-span-4 md:col-span-3">
-                           <label className="block text-xs font-bold text-stone-500 mb-1">Taxa</label>
+                           <label className="block text-xs font-bold text-stone-500 mb-1">Taxa (R$)</label>
                            <input type="number" value={newRegionPrice} onChange={(e) => setNewRegionPrice(e.target.value)} className="w-full p-2 bg-white border border-stone-300 rounded-md text-sm text-stone-900"/>
                         </div>
                       </div>
-                      <div className="grid grid-cols-12 gap-3 items-end">
-                         <div className="col-span-10">
-                           <label className="block text-xs font-bold text-stone-500 mb-1">CEPs (separados por vírgula)</label>
-                           <input type="text" value={newRegionZips} onChange={(e) => setNewRegionZips(e.target.value)} className="w-full p-2 bg-white border border-stone-300 rounded-md text-sm text-stone-900" placeholder="Ex: 13295-000, 13295-001"/>
-                         </div>
-                         <div className="col-span-2 flex gap-1">
-                           <button onClick={handleAddRegion} className="flex-1 p-2 bg-italian-green text-white rounded-md flex items-center justify-center">
-                              {editingRegionId ? <Check className="w-4 h-4"/> : <Plus className="w-4 h-4"/>}
-                           </button>
-                         </div>
+                      <div className="col-span-12">
+                          <label className="block text-xs font-bold text-stone-500 mb-1">Regras de CEP (separados por vírgula)</label>
+                          <input type="text" value={newRegionZips} onChange={(e) => setNewRegionZips(e.target.value)} className="w-full p-2 bg-white border border-stone-300 rounded-md text-sm text-stone-900" placeholder="Ex: 13295, 04800000-04999999"/>
+                      </div>
+                      <div className="col-span-12">
+                          <label className="block text-xs font-bold text-stone-500 mb-1">Exclusões de CEP (separados por vírgula)</label>
+                          <input type="text" value={newRegionExclusions} onChange={(e) => setNewRegionExclusions(e.target.value)} className="w-full p-2 bg-white border border-stone-300 rounded-md text-sm text-stone-900" placeholder="Ex: 13295100, 04850"/>
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        {editingRegionId && (
+                            <button onClick={cancelEditingRegion} className="px-4 py-2 bg-stone-200 text-stone-700 rounded-md text-sm font-bold">
+                                Cancelar
+                            </button>
+                        )}
+                        <button onClick={handleAddRegion} className="px-4 py-2 bg-italian-green text-white rounded-md text-sm font-bold flex items-center justify-center gap-1">
+                            {editingRegionId ? <><Check className="w-4 h-4"/> Salvar Região</> : <><Plus className="w-4 h-4"/> Adicionar Região</>}
+                        </button>
                       </div>
                    </div>
                 </div>
                 <div className="space-y-2">
                    {(settingsForm.deliveryRegions || []).map((region, idx) => (
-                      <div key={idx} className="flex justify-between p-3 bg-white border rounded-lg">
+                      <div key={idx} className="flex justify-between p-3 bg-white border rounded-lg items-start">
                          <div>
-                            <span className="font-bold">{region.name}</span> <span className="text-green-600">R$ {region.price}</span>
-                            {region.zipPrefixes && region.zipPrefixes.length > 0 && (
-                               <div className="text-xs text-stone-400 mt-1">CEPs: {region.zipPrefixes.join(', ')}</div>
+                            <span className="font-bold">{region.name}</span> <span className="text-green-600 font-bold">R$ {region.price.toFixed(2)}</span>
+                            {region.zipRules && region.zipRules.length > 0 && (
+                               <div className="text-xs text-stone-500 mt-1">
+                                 <span className="font-semibold">Regras:</span> {region.zipRules.join(', ')}
+                               </div>
+                            )}
+                            {region.zipExclusions && region.zipExclusions.length > 0 && (
+                               <div className="text-xs text-red-500 mt-1">
+                                 <span className="font-semibold">Exceções:</span> {region.zipExclusions.join(', ')}
+                               </div>
                             )}
                          </div>
                          <div className="flex gap-2">
-                            <button onClick={() => startEditingRegion(region)} className="p-1 hover:text-blue-500"><Edit3 className="w-4 h-4"/></button>
-                            <button onClick={() => handleRemoveRegion(region.id)} className="p-1 hover:text-red-500"><Trash2 className="w-4 h-4"/></button>
+                            <button onClick={() => startEditingRegion(region)} className="p-1 text-stone-400 hover:text-blue-500"><Edit3 className="w-4 h-4"/></button>
+                            <button onClick={() => handleRemoveRegion(region.id)} className="p-1 text-stone-400 hover:text-red-500"><Trash2 className="w-4 h-4"/></button>
                          </div>
                       </div>
                    ))}

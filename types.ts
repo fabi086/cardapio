@@ -1,4 +1,5 @@
 
+
 export interface ProductChoice {
   name: string;
   price: number;
@@ -53,7 +54,8 @@ export interface DeliveryRegion {
   id: string;
   name: string;
   price: number;
-  zipPrefixes?: string[];
+  zipRules?: string[]; // Can be a prefix (13295), full CEP (13295000) or range (13295000-13299999)
+  zipExclusions?: string[]; // Rules for CEPs to exclude from this region
 }
 
 export interface StoreSettings {

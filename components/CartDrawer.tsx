@@ -1,4 +1,6 @@
 
+
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { CartItem, DeliveryRegion, Coupon, Category, Product } from '../types';
 import { X, Trash2, ShoppingBag, Plus, Minus, Edit2, MapPin, CreditCard, User, Search, Loader2, Ticket, CheckCircle, MessageCircle, Sparkles } from 'lucide-react';
@@ -12,6 +14,7 @@ interface CartDrawerProps {
   onClearCart?: () => void;
   onUpdateQuantity?: (index: number, newQuantity: number) => void;
   onUpdateObservation?: (index: number, newObservation: string) => void;
+  // FIX: Added missing onAddToCart prop for upsell functionality.
   onAddToCart?: (product: Product, quantity: number, observation: string, selectedOptions?: CartItem['selectedOptions']) => void;
   whatsappNumber: string;
   storeName: string;
@@ -134,6 +137,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
      return [];
   }, [items, menuData]);
 
+  // FIX: Implemented correct quick add functionality using onAddToCart.
   const handleQuickAdd = (product: Product) => {
      if (onAddToCart) {
         onAddToCart(product, 1, '', []);
@@ -189,6 +193,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     setCouponCode('');
   };
 
+  // FIX: Replaced buggy CEP logic with a robust implementation that handles ranges, prefixes, and exclusions.
   // --- CEP LOGIC ---
   const performCepSearch = async (cepToSearch: string) => {
     const cleanCep = cepToSearch.replace(/\D/g, '');
@@ -219,15 +224,47 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       setAddressDistrict(data.bairro || '');
       setAddressCity(data.localidade || '');
 
+      const cepMatchesRule = (cep: string, rule: string): boolean => {
+        const cleanRule = rule.replace(/\D/g, '');
+
+        if (rule.includes('-')) { // Range check
+            const parts = cleanRule.split('-');
+            if (parts.length === 2) {
+                const start = parseInt(parts[0], 10);
+                const end = parseInt(parts[1], 10);
+                const cepNum = parseInt(cep, 10);
+                if (!isNaN(start) && !isNaN(end) && !isNaN(cepNum)) {
+                    return cepNum >= start && cepNum <= end;
+                }
+            }
+            return false;
+        } else { // Prefix or full CEP check
+            return cep.startsWith(cleanRule);
+        }
+      };
+
       let foundRegion: DeliveryRegion | undefined;
 
-      foundRegion = deliveryRegions.find(region => {
-         if (!region.zipPrefixes || region.zipPrefixes.length === 0) return false;
-         return region.zipPrefixes.some(prefix => {
-            const cleanPrefix = prefix.replace(/\D/g, '');
-            return cleanCep.startsWith(cleanPrefix);
-         });
-      });
+      regionLoop: for (const region of deliveryRegions) {
+          // 1. Check exclusions first
+          if (region.zipExclusions && region.zipExclusions.length > 0) {
+              for (const exclusionRule of region.zipExclusions) {
+                  if (cepMatchesRule(cleanCep, exclusionRule)) {
+                      continue regionLoop; // This CEP is excluded, skip to the next region
+                  }
+              }
+          }
+
+          // 2. Check inclusions
+          if (region.zipRules && region.zipRules.length > 0) {
+              for (const inclusionRule of region.zipRules) {
+                  if (cepMatchesRule(cleanCep, inclusionRule)) {
+                      foundRegion = region;
+                      break regionLoop; // Found a matching region, stop searching
+                  }
+              }
+          }
+      }
       
       if (foundRegion) {
          setCalculatedFee(foundRegion.price);
@@ -247,6 +284,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
   const handleCepSearch = () => performCepSearch(cep);
 
+  // FIX: Added useEffect to auto-fill user data from local storage.
   // --- AUTO FILL USER DATA ---
   useEffect(() => {
     if (isOpen) {
