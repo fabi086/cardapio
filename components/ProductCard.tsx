@@ -111,7 +111,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
 
   const handleShare = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const url = window.location.href;
+    // Generate a robust deep link using origin + path + hash
+    const origin = window.location.origin + window.location.pathname;
+    const url = `${origin}#product-${product.id}`;
+    
     const text = `Olha que delícia: *${product.name}*\n${product.description || ''}\nPor apenas R$ ${product.price.toFixed(2).replace('.', ',')}\n\nPeça aqui: ${url}`;
     
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
@@ -121,7 +124,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
   const totalPrice = calculateTotal();
 
   return (
-    <div id={id} className="bg-white rounded-xl shadow-sm border border-stone-100 overflow-hidden flex flex-col h-full hover:shadow-md transition-shadow dark:bg-stone-900 dark:border-stone-800">
+    <div id={id} className="bg-white rounded-xl shadow-sm border border-stone-100 overflow-hidden flex flex-col h-full hover:shadow-md transition-shadow dark:bg-stone-900 dark:border-stone-800 relative group/card">
+      
+      {/* Anchor for Deep Linking - positioned higher to account for sticky headers */}
+      <div id={`product-${product.id}`} className="absolute -top-28 left-0 w-full h-0 opacity-0 pointer-events-none" />
+
       {/* Product Image */}
       <div 
         className="h-40 w-full bg-stone-100 relative overflow-hidden group cursor-pointer dark:bg-stone-800"

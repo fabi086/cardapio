@@ -283,6 +283,28 @@ function App() {
     }
   }, [showToast]);
 
+  // Handle Deep Linking (Hash scroll) for Shared Products
+  useEffect(() => {
+    if (!loading && menuData.length > 0) {
+      const hash = window.location.hash;
+      if (hash && hash.startsWith('#product-')) {
+        // Short delay to ensure rendering
+        setTimeout(() => {
+          const element = document.querySelector(hash);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Highlight effect
+            const card = element.closest('.group\\/card') || element.parentElement;
+            if (card) {
+               card.classList.add('ring-4', 'ring-italian-red', 'ring-opacity-50', 'shadow-2xl');
+               setTimeout(() => card.classList.remove('ring-4', 'ring-italian-red', 'ring-opacity-50', 'shadow-2xl'), 2500);
+            }
+          }
+        }, 1000);
+      }
+    }
+  }, [loading, menuData]);
+
   // --- ADMIN ACTIONS ---
   
   const handleUpdateProduct = async (originalCategoryId: string, productId: number, updates: Partial<Product>) => {
