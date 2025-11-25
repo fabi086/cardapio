@@ -68,3 +68,24 @@ export interface StoreSettings {
   enableGuide?: boolean; // New field to toggle onboarding tour
   freeShipping?: boolean; // New field for global free shipping toggle
 }
+
+export type OrderStatus = 'pending' | 'preparing' | 'delivery' | 'completed' | 'cancelled';
+
+export interface Order {
+  id: number;
+  created_at: string;
+  customer_name: string;
+  customer_phone?: string; // Optional, maybe captured later or via login
+  delivery_type: 'delivery' | 'pickup';
+  address_street?: string;
+  address_number?: string;
+  address_district?: string;
+  address_city?: string;
+  address_complement?: string;
+  payment_method: string;
+  total: number;
+  delivery_fee: number;
+  status: OrderStatus;
+  items: any[]; // JSONB content of items for simplicity in archiving
+  observation?: string;
+}

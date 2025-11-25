@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { Category, Product, StoreSettings, ProductOption, ProductChoice } from '../types';
-import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Layers, Megaphone, Tag, List, HelpCircle, Utensils, Phone, CreditCard, Truck } from 'lucide-react';
+import { Category, Product, StoreSettings, ProductOption, ProductChoice, Order } from '../types';
+import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Layers, Megaphone, Tag, List, HelpCircle, Utensils, Phone, CreditCard, Truck, Receipt, ClipboardList, Clock, Printer } from 'lucide-react';
+import { supabase } from '../supabaseClient';
 
 interface AdminPanelProps {
   menuData: Category[];
@@ -32,7 +33,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
-  const [activeTab, setActiveTab] = useState<'menu' | 'settings' | 'categories'>('menu');
+  const [activeTab, setActiveTab] = useState<'menu' | 'settings' | 'categories' | 'orders'>('orders');
   
   // Menu State
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
@@ -50,12 +51,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // Ingredient State
   const [tempIngredient, setTempIngredient] = useState('');
 
-  // Promo State
-  const [isManagingPromos, setIsManagingPromos] = useState(false);
-  const [promoType, setPromoType] = useState<'existing' | 'manual'>('existing');
-  const [selectedPromoId, setSelectedPromoId] = useState(''); // ID-CatID string combo
-  const [promoPrice, setPromoPrice] = useState('');
-  const [manualPromoForm, setManualPromoForm] = useState({ name: '', description: '', price: '', image: '' });
+  // Orders State
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [orderFilter, setOrderFilter] = useState<'all' | 'active'>('active');
 
   // Settings State
   const [settingsForm, setSettingsForm] = useState<StoreSettings>(settings);
@@ -84,6 +83,150 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setSettingsForm(settings);
   }, [settings]);
 
+  // Fetch orders when tab is active
+  useEffect(() => {
+    if (isAuthenticated && activeTab === 'orders' && supabase) {
+      fetchOrders();
+      const interval = setInterval(fetchOrders, 15000); // Polling every 15s for simplicity
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated, activeTab, orderFilter]);
+
+  const fetchOrders = async () => {
+    setOrdersLoading(true);
+    try {
+      let query = supabase.from('orders').select('*').order('created_at', { ascending: false });
+      
+      if (orderFilter === 'active') {
+        query = query.in('status', ['pending', 'preparing', 'delivery']);
+      }
+      
+      const { data, error } = await query;
+      
+      if (data) {
+        setOrders(data as Order[]);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  const handleUpdateOrderStatus = async (orderId: number, newStatus: string) => {
+    if (supabase) {
+      await supabase.from('orders').update({ status: newStatus }).eq('id', orderId);
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus as any } : o));
+    }
+  };
+
+  const handlePrintOrder = (order: Order) => {
+    const printWindow = window.open('', '_blank', 'width=350,height=600');
+    if (!printWindow) return;
+
+    // Formatar itens para impressão
+    const itemsHtml = order.items.map((item: any) => {
+      let optionsHtml = '';
+      if (item.selectedOptions && item.selectedOptions.length > 0) {
+        optionsHtml = `<div class="options">
+          ${item.selectedOptions.map((opt: any) => `+ ${opt.choiceName}`).join('<br/>')}
+        </div>`;
+      }
+      
+      const itemTotal = (item.price + (item.selectedOptions ? item.selectedOptions.reduce((s:any, o:any) => s + o.price, 0) : 0)) * item.quantity;
+
+      return `
+        <div class="item">
+          <div class="item-header">
+            <span class="qty">${item.quantity}x</span>
+            <span class="name">${item.name}</span>
+            <span class="price">R$ ${itemTotal.toFixed(2).replace('.', ',')}</span>
+          </div>
+          ${optionsHtml}
+          ${item.observation ? `<div class="obs">OBS: ${item.observation}</div>` : ''}
+        </div>
+      `;
+    }).join('');
+
+    const htmlContent = `
+      <html>
+        <head>
+          <title>Pedido #${order.id}</title>
+          <style>
+            body { font-family: 'Courier New', monospace; font-size: 12px; width: 300px; margin: 0; padding: 10px; color: #000; }
+            .header { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
+            .title { font-size: 16px; font-weight: bold; margin: 0; }
+            .subtitle { font-size: 10px; }
+            .info { margin-bottom: 10px; border-bottom: 1px dashed #000; padding-bottom: 10px; }
+            .customer { font-weight: bold; font-size: 14px; margin-top: 5px; }
+            .address { margin-top: 5px; font-size: 12px; }
+            .item { margin-bottom: 8px; }
+            .item-header { display: flex; justify-content: space-between; font-weight: bold; }
+            .qty { margin-right: 5px; }
+            .options { font-size: 10px; padding-left: 20px; }
+            .obs { font-weight: bold; font-size: 11px; margin-top: 2px; }
+            .totals { border-top: 1px dashed #000; padding-top: 10px; margin-top: 10px; text-align: right; }
+            .total-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
+            .final-total { font-size: 16px; font-weight: bold; margin-top: 5px; }
+            .payment { text-align: center; margin-top: 10px; border-top: 1px dashed #000; padding-top: 10px; font-weight: bold; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1 class="title">${settings.name}</h1>
+            <div class="subtitle">${new Date(order.created_at).toLocaleString('pt-BR')}</div>
+            <div class="title" style="margin-top:5px">PEDIDO #${order.id}</div>
+          </div>
+          
+          <div class="info">
+            <div class="customer">${order.customer_name}</div>
+            ${order.delivery_type === 'delivery' 
+              ? `<div class="address">
+                  ${order.address_street}, ${order.address_number}<br/>
+                  ${order.address_district} - ${order.address_city}<br/>
+                  ${order.address_complement ? `Comp: ${order.address_complement}` : ''}
+                </div>`
+              : '<div class="address">RETIRADA NO BALCÃO</div>'
+            }
+          </div>
+
+          <div class="items">
+            ${itemsHtml}
+          </div>
+
+          <div class="totals">
+            <div class="total-row">
+              <span>Subtotal:</span>
+              <span>R$ ${(order.total - order.delivery_fee).toFixed(2).replace('.', ',')}</span>
+            </div>
+            <div class="total-row">
+              <span>Entrega:</span>
+              <span>R$ {order.delivery_fee.toFixed(2).replace('.', ',')}</span>
+            </div>
+            <div class="total-row final-total">
+              <span>TOTAL:</span>
+              <span>R$ {order.total.toFixed(2).replace('.', ',')}</span>
+            </div>
+          </div>
+
+          <div class="payment">
+            Pagamento: ${order.payment_method}
+          </div>
+          <br/><br/>
+          <center>. . . . . . . . .</center>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 500);
+  };
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (password === 'admin123') { 
@@ -93,358 +236,78 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
-  // --- SETTINGS HELPER FUNCTIONS ---
+  // ... (Helper functions for Settings/Ingredients/Category remain same) ...
+  // Keeping helper functions to minimize code duplication for this view
   const addPhone = () => {
-    if (tempPhone.trim()) {
-      setSettingsForm(prev => ({
-        ...prev,
-        phones: [...prev.phones, tempPhone.trim()]
-      }));
-      setTempPhone('');
-    }
+    if (tempPhone.trim()) { setSettingsForm(prev => ({...prev, phones: [...prev.phones, tempPhone.trim()]})); setTempPhone(''); }
   };
-
-  const removePhone = (index: number) => {
-    setSettingsForm(prev => ({
-      ...prev,
-      phones: prev.phones.filter((_, i) => i !== index)
-    }));
-  };
-
+  const removePhone = (index: number) => { setSettingsForm(prev => ({...prev, phones: prev.phones.filter((_, i) => i !== index)})); };
   const addPaymentMethod = () => {
-    if (tempPayment.trim()) {
-      setSettingsForm(prev => ({
-        ...prev,
-        paymentMethods: [...(prev.paymentMethods || []), tempPayment.trim()]
-      }));
-      setTempPayment('');
-    }
+    if (tempPayment.trim()) { setSettingsForm(prev => ({...prev, paymentMethods: [...(prev.paymentMethods || []), tempPayment.trim()]})); setTempPayment(''); }
   };
-
-  const removePaymentMethod = (index: number) => {
-    setSettingsForm(prev => ({
-      ...prev,
-      paymentMethods: (prev.paymentMethods || []).filter((_, i) => i !== index)
-    }));
-  };
-
-  // --- INGREDIENTS HELPERS ---
+  const removePaymentMethod = (index: number) => { setSettingsForm(prev => ({...prev, paymentMethods: (prev.paymentMethods || []).filter((_, i) => i !== index)})); };
   const addIngredientToNew = () => {
-    if (tempIngredient.trim()) {
-      setNewProductForm(prev => ({
-        ...prev,
-        ingredients: [...(prev.ingredients || []), tempIngredient.trim()]
-      }));
-      setTempIngredient('');
-    }
+    if (tempIngredient.trim()) { setNewProductForm(prev => ({...prev, ingredients: [...(prev.ingredients || []), tempIngredient.trim()]})); setTempIngredient(''); }
   };
-
-  const removeIngredientFromNew = (index: number) => {
-    setNewProductForm(prev => ({
-      ...prev,
-      ingredients: (prev.ingredients || []).filter((_, i) => i !== index)
-    }));
-  };
-
+  const removeIngredientFromNew = (index: number) => { setNewProductForm(prev => ({...prev, ingredients: (prev.ingredients || []).filter((_, i) => i !== index)})); };
   const addIngredientToEdit = () => {
-    if (tempIngredient.trim()) {
-      setEditForm(prev => ({
-        ...prev,
-        ingredients: [...(prev.ingredients || []), tempIngredient.trim()]
-      }));
-      setTempIngredient('');
-    }
+    if (tempIngredient.trim()) { setEditForm(prev => ({...prev, ingredients: [...(prev.ingredients || []), tempIngredient.trim()]})); setTempIngredient(''); }
   };
-
-  const removeIngredientFromEdit = (index: number) => {
-    setEditForm(prev => ({
-      ...prev,
-      ingredients: (prev.ingredients || []).filter((_, i) => i !== index)
-    }));
-  };
-
+  const removeIngredientFromEdit = (index: number) => { setEditForm(prev => ({...prev, ingredients: (prev.ingredients || []).filter((_, i) => i !== index)})); };
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, isNew = false) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        if (isNew) {
-          setNewProductForm({ ...newProductForm, image: reader.result as string });
-        } else {
-          setEditForm({ ...editForm, image: reader.result as string });
-        }
-      };
+      reader.onloadend = () => { isNew ? setNewProductForm({ ...newProductForm, image: reader.result as string }) : setEditForm({ ...editForm, image: reader.result as string }); };
       reader.readAsDataURL(file);
     }
   };
-
-  // --- CATEGORY IMAGE UPLOAD ---
   const handleCategoryImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setEditCategoryImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
+    if (file) { const reader = new FileReader(); reader.onloadend = () => { setEditCategoryImage(reader.result as string); }; reader.readAsDataURL(file); }
   };
 
-  // --- PROMO ACTIONS ---
-  const handleAddPromo = () => {
-    if (promoType === 'existing') {
-      if (!selectedPromoId || !promoPrice) {
-        alert('Selecione um produto e defina o preço promocional.');
-        return;
-      }
-      
-      const [prodIdStr, catId] = selectedPromoId.split('|');
-      const prodId = parseInt(prodIdStr);
-      
-      const category = menuData.find(c => c.id === catId);
-      const product = category?.items.find(p => p.id === prodId);
-
-      if (!product) return;
-
-      onAddProduct('promocoes', {
-        name: `PROMO: ${product.name}`,
-        description: product.description,
-        price: parseFloat(promoPrice.replace(',', '.')),
-        category: 'promocoes',
-        image: product.image,
-        code: product.code,
-        options: product.options, // Copy options/customizations
-        ingredients: product.ingredients
-      });
-
-    } else {
-      // Manual
-      if (!manualPromoForm.name || !manualPromoForm.price) {
-        alert('Preencha nome e preço.');
-        return;
-      }
-
-      onAddProduct('promocoes', {
-        name: manualPromoForm.name,
-        description: manualPromoForm.description,
-        price: parseFloat(manualPromoForm.price.replace(',', '.')),
-        category: 'promocoes',
-        image: manualPromoForm.image,
-      });
-    }
-
-    alert('Promoção adicionada!');
-    setIsManagingPromos(false);
-    setPromoPrice('');
-    setSelectedPromoId('');
-    setManualPromoForm({ name: '', description: '', price: '', image: '' });
-  };
-
-  // --- MENU ACTIONS ---
-  const startEditing = (product: Product) => {
-    setEditingProduct(product.id);
-    setEditForm(JSON.parse(JSON.stringify(product))); // Deep copy to avoid mutating refs
-    setTempIngredient(''); // Reset temp input
-  };
-
-  const saveEdit = (originalCategoryId: string) => {
-    if (editingProduct && editForm) {
-      onUpdateProduct(originalCategoryId, editingProduct, editForm);
-      setEditingProduct(null);
-      setEditForm({});
-    }
-  };
-
-  const handleDelete = (categoryId: string, productId: number) => {
-    if (window.confirm('Tem certeza que deseja excluir este produto?')) {
-      onDeleteProduct(categoryId, productId);
-    }
-  };
-
+  // ... (Other Actions remain same) ...
+  const startEditing = (product: Product) => { setEditingProduct(product.id); setEditForm(JSON.parse(JSON.stringify(product))); setTempIngredient(''); };
+  const saveEdit = (originalCategoryId: string) => { if (editingProduct && editForm) { onUpdateProduct(originalCategoryId, editingProduct, editForm); setEditingProduct(null); setEditForm({}); } };
+  const handleDelete = (categoryId: string, productId: number) => { if (window.confirm('Tem certeza que deseja excluir este produto?')) { onDeleteProduct(categoryId, productId); } };
   const handleAddNew = () => {
-    if (!newProductForm.name || !newProductForm.price) {
-      alert('Preencha pelo menos nome e preço.');
-      return;
-    }
-
+    if (!newProductForm.name || !newProductForm.price) { alert('Preencha pelo menos nome e preço.'); return; }
     const categoryId = newProductForm.category || menuData[0].id;
-    
-    onAddProduct(categoryId, {
-      name: newProductForm.name,
-      description: newProductForm.description || '',
-      price: Number(newProductForm.price),
-      category: categoryId,
-      image: newProductForm.image,
-      code: newProductForm.code,
-      subcategory: newProductForm.subcategory,
-      ingredients: newProductForm.ingredients || []
-    });
-
-    setIsAddingNew(false);
-    setNewProductForm({ category: menuData[0]?.id, image: '', price: 0, subcategory: '', ingredients: [] });
-    alert('Produto adicionado!');
+    onAddProduct(categoryId, { name: newProductForm.name, description: newProductForm.description || '', price: Number(newProductForm.price), category: categoryId, image: newProductForm.image, code: newProductForm.code, subcategory: newProductForm.subcategory, ingredients: newProductForm.ingredients || [] });
+    setIsAddingNew(false); setNewProductForm({ category: menuData[0]?.id, image: '', price: 0, subcategory: '', ingredients: [] }); alert('Produto adicionado!');
   };
-
-  // --- OPTION ACTIONS ---
   const handleAddOptionGroup = () => {
     if (!newOptionName) return;
-    
-    const newGroup: ProductOption = {
-      id: Date.now().toString(),
-      name: newOptionName,
-      type: newOptionType,
-      required: false,
-      choices: []
-    };
-
-    setEditForm(prev => ({
-      ...prev,
-      options: [...(prev.options || []), newGroup]
-    }));
-
-    setNewOptionName('');
+    const newGroup: ProductOption = { id: Date.now().toString(), name: newOptionName, type: newOptionType, required: false, choices: [] };
+    setEditForm(prev => ({...prev, options: [...(prev.options || []), newGroup]})); setNewOptionName('');
   };
-
-  const handleRemoveOptionGroup = (groupId: string) => {
-    setEditForm(prev => ({
-      ...prev,
-      options: (prev.options || []).filter(o => o.id !== groupId)
-    }));
-  };
-
+  const handleRemoveOptionGroup = (groupId: string) => { setEditForm(prev => ({...prev, options: (prev.options || []).filter(o => o.id !== groupId)})); };
   const handleAddChoice = (groupId: string) => {
-    const name = window.prompt("Nome da opção (ex: Catupiry):");
-    if (!name) return;
-    const priceStr = window.prompt("Preço adicional (digite 0 para grátis):", "0");
-    if (priceStr === null) return;
+    const name = window.prompt("Nome da opção (ex: Catupiry):"); if (!name) return;
+    const priceStr = window.prompt("Preço adicional (digite 0 para grátis):", "0"); if (priceStr === null) return;
     const price = parseFloat(priceStr.replace(',', '.')) || 0;
-
-    setEditForm(prev => ({
-      ...prev,
-      options: (prev.options || []).map(opt => {
-        if (opt.id === groupId) {
-          return {
-            ...opt,
-            choices: [...opt.choices, { name, price }]
-          };
-        }
-        return opt;
-      })
-    }));
+    setEditForm(prev => ({...prev, options: (prev.options || []).map(opt => { if (opt.id === groupId) { return { ...opt, choices: [...opt.choices, { name, price }] }; } return opt; })}));
   };
-
   const handleRemoveChoice = (groupId: string, choiceIndex: number) => {
-    setEditForm(prev => ({
-      ...prev,
-      options: (prev.options || []).map(opt => {
-        if (opt.id === groupId) {
-          return {
-            ...opt,
-            choices: opt.choices.filter((_, idx) => idx !== choiceIndex)
-          };
-        }
-        return opt;
-      })
-    }));
+    setEditForm(prev => ({...prev, options: (prev.options || []).map(opt => { if (opt.id === groupId) { return { ...opt, choices: opt.choices.filter((_, idx) => idx !== choiceIndex) }; } return opt; })}));
   };
-
-  // --- SETTINGS ACTIONS ---
-  const handleSaveSettings = () => {
-    onUpdateSettings(settingsForm);
-    alert('Configurações salvas e atualizadas no site!');
-  };
-
+  const handleSaveSettings = () => { onUpdateSettings(settingsForm); alert('Configurações salvas e atualizadas no site!'); };
   const handleAddRegion = () => {
     if (!newRegionName || !newRegionPrice) return;
-    
-    const zipArray = newRegionZips
-      ? newRegionZips.split(',').map(z => z.trim().replace(/[^0-9-]/g, '')).filter(z => z.length > 0)
-      : [];
-
-    const newRegion = {
-      id: editingRegionId || newRegionName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
-      name: newRegionName,
-      price: parseFloat(newRegionPrice),
-      zipPrefixes: zipArray
-    };
-    
-    if (editingRegionId) {
-      setSettingsForm({
-        ...settingsForm,
-        deliveryRegions: (settingsForm.deliveryRegions || []).map(r => r.id === editingRegionId ? newRegion : r)
-      });
-      setEditingRegionId(null);
-    } else {
-      setSettingsForm({
-        ...settingsForm,
-        deliveryRegions: [...(settingsForm.deliveryRegions || []), newRegion]
-      });
-    }
-    
-    setNewRegionName('');
-    setNewRegionPrice('');
-    setNewRegionZips('');
+    const zipArray = newRegionZips ? newRegionZips.split(',').map(z => z.trim().replace(/[^0-9-]/g, '')).filter(z => z.length > 0) : [];
+    const newRegion = { id: editingRegionId || newRegionName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''), name: newRegionName, price: parseFloat(newRegionPrice), zipPrefixes: zipArray };
+    if (editingRegionId) { setSettingsForm({ ...settingsForm, deliveryRegions: (settingsForm.deliveryRegions || []).map(r => r.id === editingRegionId ? newRegion : r) }); setEditingRegionId(null); } else { setSettingsForm({ ...settingsForm, deliveryRegions: [...(settingsForm.deliveryRegions || []), newRegion] }); }
+    setNewRegionName(''); setNewRegionPrice(''); setNewRegionZips('');
   };
-
-  const startEditingRegion = (region: any) => {
-    setEditingRegionId(region.id);
-    setNewRegionName(region.name);
-    setNewRegionPrice(region.price.toString());
-    setNewRegionZips(region.zipPrefixes ? region.zipPrefixes.join(', ') : '');
-  };
-
-  const cancelEditingRegion = () => {
-    setEditingRegionId(null);
-    setNewRegionName('');
-    setNewRegionPrice('');
-    setNewRegionZips('');
-  };
-
-  const handleRemoveRegion = (id: string) => {
-    if (window.confirm('Remover esta região de entrega?')) {
-      setSettingsForm({
-        ...settingsForm,
-        deliveryRegions: (settingsForm.deliveryRegions || []).filter(r => r.id !== id)
-      });
-      if (editingRegionId === id) cancelEditingRegion();
-    }
-  };
-
-  // --- CATEGORY ACTIONS ---
-  const triggerAddCategory = () => {
-    if (newCategoryName && onAddCategory) {
-      onAddCategory(newCategoryName);
-      setNewCategoryName('');
-      alert('Categoria adicionada!');
-    }
-  };
-
-  const triggerUpdateCategory = () => {
-    if (editingCategoryId && onUpdateCategory) {
-      onUpdateCategory(editingCategoryId, { name: editCategoryName, image: editCategoryImage });
-      setEditingCategoryId(null);
-      setEditCategoryName('');
-      setEditCategoryImage('');
-    }
-  };
-
-  const startEditingCategory = (category: Category) => {
-    setEditingCategoryId(category.id);
-    setEditCategoryName(category.name);
-    setEditCategoryImage(category.image || '');
-  };
-
-  const cancelEditingCategory = () => {
-    setEditingCategoryId(null);
-    setEditCategoryName('');
-    setEditCategoryImage('');
-  };
-
-  const triggerDeleteCategory = (id: string) => {
-    if (onDeleteCategory) {
-      onDeleteCategory(id);
-    }
-  };
+  const startEditingRegion = (region: any) => { setEditingRegionId(region.id); setNewRegionName(region.name); setNewRegionPrice(region.price.toString()); setNewRegionZips(region.zipPrefixes ? region.zipPrefixes.join(', ') : ''); };
+  const cancelEditingRegion = () => { setEditingRegionId(null); setNewRegionName(''); setNewRegionPrice(''); setNewRegionZips(''); };
+  const handleRemoveRegion = (id: string) => { if (window.confirm('Remover esta região de entrega?')) { setSettingsForm({ ...settingsForm, deliveryRegions: (settingsForm.deliveryRegions || []).filter(r => r.id !== id) }); if (editingRegionId === id) cancelEditingRegion(); } };
+  const triggerAddCategory = () => { if (newCategoryName && onAddCategory) { onAddCategory(newCategoryName); setNewCategoryName(''); alert('Categoria adicionada!'); } };
+  const triggerUpdateCategory = () => { if (editingCategoryId && onUpdateCategory) { onUpdateCategory(editingCategoryId, { name: editCategoryName, image: editCategoryImage }); setEditingCategoryId(null); setEditCategoryName(''); setEditCategoryImage(''); } };
+  const startEditingCategory = (category: Category) => { setEditingCategoryId(category.id); setEditCategoryName(category.name); setEditCategoryImage(category.image || ''); };
+  const cancelEditingCategory = () => { setEditingCategoryId(null); setEditCategoryName(''); setEditCategoryImage(''); };
+  const triggerDeleteCategory = (id: string) => { if (onDeleteCategory) { onDeleteCategory(id); } };
 
   if (!isAuthenticated) {
     return (
@@ -474,9 +337,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     );
   }
 
-  // Helper to list current promos
-  const currentPromos = menuData.find(c => c.id === 'promocoes')?.items || [];
-
   return (
     <div className="min-h-screen bg-stone-100 pb-20 text-stone-800">
       <header className="bg-stone-900 text-white sticky top-0 z-30 shadow-md">
@@ -502,6 +362,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
           <div className="flex space-x-2 md:space-x-4 border-b border-stone-700 overflow-x-auto">
              <button 
+                onClick={() => setActiveTab('orders')}
+                className={`pb-2 px-2 flex items-center gap-2 text-sm font-bold transition-colors whitespace-nowrap ${activeTab === 'orders' ? 'text-italian-green border-b-2 border-italian-green' : 'text-stone-400 hover:text-white'}`}
+             >
+                <ClipboardList className="w-4 h-4" /> Pedidos
+             </button>
+             <button 
                 onClick={() => setActiveTab('menu')}
                 className={`pb-2 px-2 flex items-center gap-2 text-sm font-bold transition-colors whitespace-nowrap ${activeTab === 'menu' ? 'text-italian-green border-b-2 border-italian-green' : 'text-stone-400 hover:text-white'}`}
              >
@@ -525,6 +391,129 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-4">
         
+        {/* --- TAB: ORDERS (KDS) --- */}
+        {activeTab === 'orders' && (
+          <div className="space-y-6 animate-in fade-in">
+             <div className="flex justify-between items-center">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                   <ClipboardList className="w-6 h-6 text-italian-red"/> Pedidos Recebidos
+                </h2>
+                <div className="bg-white rounded-lg p-1 border border-stone-200 flex">
+                   <button 
+                     onClick={() => setOrderFilter('active')}
+                     className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${orderFilter === 'active' ? 'bg-italian-green text-white' : 'text-stone-500'}`}
+                   >
+                      Ativos
+                   </button>
+                   <button 
+                     onClick={() => setOrderFilter('all')}
+                     className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${orderFilter === 'all' ? 'bg-italian-green text-white' : 'text-stone-500'}`}
+                   >
+                      Todos
+                   </button>
+                </div>
+             </div>
+
+             {ordersLoading && orders.length === 0 ? (
+               <div className="text-center py-12 text-stone-400">Carregando pedidos...</div>
+             ) : orders.length === 0 ? (
+               <div className="text-center py-12 bg-white rounded-xl border border-stone-200">
+                  <ClipboardList className="w-12 h-12 text-stone-300 mx-auto mb-3" />
+                  <p className="text-stone-500 font-medium">Nenhum pedido encontrado.</p>
+               </div>
+             ) : (
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 {orders.map(order => (
+                   <div key={order.id} className={`bg-white rounded-xl shadow-sm border overflow-hidden transition-all ${order.status === 'completed' ? 'border-stone-200 opacity-70' : 'border-italian-red/20 ring-1 ring-italian-red/5'}`}>
+                      <div className="p-4 border-b border-stone-100 flex justify-between items-start bg-stone-50">
+                         <div>
+                            <div className="flex items-center gap-2 mb-1">
+                               <span className="font-bold text-lg">#{order.id}</span>
+                               <span className="text-xs text-stone-500 bg-white px-2 py-0.5 rounded border border-stone-200">
+                                 {new Date(order.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}
+                               </span>
+                            </div>
+                            <p className="font-bold text-stone-800">{order.customer_name}</p>
+                         </div>
+                         <div className="flex flex-col items-end gap-2">
+                            <span className={`text-xs font-bold px-2 py-1 rounded-full uppercase ${
+                               order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                               order.status === 'preparing' ? 'bg-blue-100 text-blue-800' :
+                               order.status === 'delivery' ? 'bg-orange-100 text-orange-800' :
+                               'bg-green-100 text-green-800'
+                            }`}>
+                               {order.status === 'pending' && 'Pendente'}
+                               {order.status === 'preparing' && 'Em Preparo'}
+                               {order.status === 'delivery' && 'Saiu p/ Entrega'}
+                               {order.status === 'completed' && 'Concluído'}
+                            </span>
+                            <button 
+                               onClick={() => handlePrintOrder(order)}
+                               className="flex items-center gap-1 text-xs bg-stone-800 text-white px-2 py-1 rounded hover:bg-stone-700 transition-colors"
+                            >
+                               <Printer className="w-3 h-3" /> Imprimir
+                            </button>
+                         </div>
+                      </div>
+
+                      <div className="p-4 space-y-3">
+                         <div className="space-y-2">
+                            {order.items.map((item: any, idx: number) => {
+                               const itemTotal = (item.price + (item.selectedOptions ? item.selectedOptions.reduce((s:any, o:any) => s + o.price, 0) : 0)) * item.quantity;
+                               return (
+                                 <div key={idx} className="flex justify-between items-start text-sm">
+                                    <div className="flex-1">
+                                       <span className="font-bold">{item.quantity}x {item.name}</span>
+                                       {item.selectedOptions && item.selectedOptions.length > 0 && (
+                                          <div className="text-xs text-stone-500 pl-2 border-l-2 border-stone-200 mt-1">
+                                             {item.selectedOptions.map((opt:any, i:number) => (
+                                                <div key={i}>+ {opt.choiceName}</div>
+                                             ))}
+                                          </div>
+                                       )}
+                                       {item.observation && (
+                                          <p className="text-xs text-red-600 font-bold mt-1 bg-red-50 p-1 rounded inline-block">Obs: {item.observation}</p>
+                                       )}
+                                    </div>
+                                    <span className="font-medium text-stone-600">R$ {itemTotal.toFixed(2)}</span>
+                                 </div>
+                               );
+                            })}
+                         </div>
+
+                         <div className="border-t border-stone-100 pt-3 flex flex-col gap-1 text-sm">
+                            <div className="flex justify-between text-stone-500">
+                               <span>Entrega ({order.delivery_type === 'pickup' ? 'Balcão' : 'Motoboy'})</span>
+                               <span>R$ {order.delivery_fee.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between font-bold text-lg text-italian-red">
+                               <span>Total</span>
+                               <span>R$ {order.total.toFixed(2)}</span>
+                            </div>
+                            <div className="text-xs text-stone-400 mt-1 flex items-center gap-1">
+                               <CreditCard className="w-3 h-3" /> Pagamento: {order.payment_method}
+                            </div>
+                            {order.delivery_type === 'delivery' && (
+                               <div className="text-xs text-stone-500 mt-1 bg-stone-50 p-2 rounded">
+                                  <strong>Entrega:</strong> {order.address_street}, {order.address_number} - {order.address_district}
+                               </div>
+                            )}
+                         </div>
+                      </div>
+
+                      <div className="bg-stone-50 p-2 grid grid-cols-4 gap-1">
+                         <button onClick={() => handleUpdateOrderStatus(order.id, 'pending')} className={`p-2 rounded text-xs font-bold ${order.status === 'pending' ? 'bg-white shadow text-yellow-600' : 'text-stone-400 hover:bg-stone-200'}`}>Pendente</button>
+                         <button onClick={() => handleUpdateOrderStatus(order.id, 'preparing')} className={`p-2 rounded text-xs font-bold ${order.status === 'preparing' ? 'bg-white shadow text-blue-600' : 'text-stone-400 hover:bg-stone-200'}`}>Preparo</button>
+                         <button onClick={() => handleUpdateOrderStatus(order.id, 'delivery')} className={`p-2 rounded text-xs font-bold ${order.status === 'delivery' ? 'bg-white shadow text-orange-600' : 'text-stone-400 hover:bg-stone-200'}`}>Entrega</button>
+                         <button onClick={() => handleUpdateOrderStatus(order.id, 'completed')} className={`p-2 rounded text-xs font-bold ${order.status === 'completed' ? 'bg-white shadow text-green-600' : 'text-stone-400 hover:bg-stone-200'}`}>Concluir</button>
+                      </div>
+                   </div>
+                 ))}
+               </div>
+             )}
+          </div>
+        )}
+
         {/* --- TAB: CATEGORIES --- */}
         {activeTab === 'categories' && (
            <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200 animate-in fade-in slide-in-from-bottom-2 space-y-8">

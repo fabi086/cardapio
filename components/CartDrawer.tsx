@@ -2,6 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import { CartItem, DeliveryRegion } from '../types';
 import { X, Trash2, ShoppingBag, Plus, Minus, Edit2, MapPin, CreditCard, User, Search, Loader2 } from 'lucide-react';
+import { supabase } from '../supabaseClient';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -36,6 +37,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const [deliveryType, setDeliveryType] = useState<'delivery' | 'pickup'>('delivery');
   const [customerName, setCustomerName] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Address State
   const [cep, setCep] = useState('');
@@ -132,7 +134,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     }
   };
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (items.length === 0) return;
 
     if (!customerName.trim()) {
@@ -154,7 +156,42 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       }
     }
 
-    let message = `*NOVO PEDIDO - ${storeName}*\n`;
+    setIsSubmitting(true);
+    let orderId = null;
+
+    // --- 1. SAVE TO SUPABASE (KDS Integration) ---
+    if (supabase) {
+      try {
+        const payload = {
+          customer_name: customerName,
+          delivery_type: deliveryType,
+          address_street: addressStreet,
+          address_number: addressNumber,
+          address_district: addressDistrict,
+          address_city: addressCity,
+          address_complement: addressComplement,
+          payment_method: paymentMethod,
+          total: total,
+          delivery_fee: deliveryFee,
+          status: 'pending',
+          items: items // Saving items as JSONB
+        };
+        
+        const { data, error } = await supabase.from('orders').insert([payload]).select();
+        
+        if (error) {
+           console.error("Erro ao salvar pedido no DB:", error);
+           // We don't block the user, we just proceed to WhatsApp as fallback
+        } else if (data && data.length > 0) {
+           orderId = data[0].id;
+        }
+      } catch (err) {
+        console.error("Erro inesperado ao salvar pedido:", err);
+      }
+    }
+
+    // --- 2. GENERATE WHATSAPP MESSAGE ---
+    let message = `*NOVO PEDIDO ${orderId ? `#${orderId} ` : ''}- ${storeName}*\n`;
     message += `------------------------------\n`;
     
     // Items
@@ -222,6 +259,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
     const url = `https://wa.me/${cleanNumber}?text=${encodedMessage}`;
     window.open(url, '_blank');
+    
+    setIsSubmitting(false);
+    
+    // Optional: Clear cart after successful checkout if desired
+    // if (onClearCart) onClearCart();
   };
 
   const handleEditObservation = (index: number, currentObs: string) => {
@@ -557,17 +599,23 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
           <button
             onClick={handleCheckout}
-            disabled={items.length === 0 || (deliveryType === 'delivery' && calculatedFee === null)}
+            disabled={items.length === 0 || (deliveryType === 'delivery' && calculatedFee === null) || isSubmitting}
             className={`w-full py-3.5 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all transform active:scale-95 ${
-              items.length === 0 || (deliveryType === 'delivery' && calculatedFee === null)
+              items.length === 0 || (deliveryType === 'delivery' && calculatedFee === null) || isSubmitting
                 ? 'bg-stone-300 text-stone-500 cursor-not-allowed dark:bg-stone-700 dark:text-stone-400'
                 : 'bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/30'
             }`}
           >
-            <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6" xmlns="http://www.w3.org/2000/svg">
-              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.008-.57-.008-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-            </svg>
-            Finalizar no WhatsApp
+            {isSubmitting ? (
+              <Loader2 className="w-6 h-6 animate-spin" />
+            ) : (
+              <>
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.008-.57-.008-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                </svg>
+                Finalizar no WhatsApp
+              </>
+            )}
           </button>
           <p className="text-center text-[10px] text-stone-400 mt-2">
             Ao clicar, você enviará o pedido para {whatsappNumber}
