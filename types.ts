@@ -69,6 +69,14 @@ export interface StoreSettings {
   freeShipping?: boolean; // New field for global free shipping toggle
 }
 
+export interface Coupon {
+  id: number;
+  code: string;
+  discount_percent: number;
+  active: boolean;
+  created_at?: string;
+}
+
 export type OrderStatus = 'pending' | 'preparing' | 'delivery' | 'completed' | 'cancelled';
 
 export interface Order {
@@ -85,6 +93,8 @@ export interface Order {
   payment_method: string;
   total: number;
   delivery_fee: number;
+  discount: number; // New field
+  coupon_code?: string; // New field
   status: OrderStatus;
   items: any[]; // JSONB content of items for simplicity in archiving
   observation?: string;

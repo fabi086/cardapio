@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
-import { CartItem, DeliveryRegion } from '../types';
-import { X, Trash2, ShoppingBag, Plus, Minus, Edit2, MapPin, CreditCard, User, Search, Loader2 } from 'lucide-react';
+import { CartItem, DeliveryRegion, Coupon } from '../types';
+import { X, Trash2, ShoppingBag, Plus, Minus, Edit2, MapPin, CreditCard, User, Search, Loader2, Ticket } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 interface CartDrawerProps {
@@ -39,6 +39,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const [paymentMethod, setPaymentMethod] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
+  // Coupon State
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+  const [couponError, setCouponError] = useState('');
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
+  
   // Address State
   const [cep, setCep] = useState('');
   const [addressStreet, setAddressStreet] = useState('');
@@ -68,6 +74,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     }, 0);
   }, [items]);
 
+  const discountAmount = useMemo(() => {
+    if (!appliedCoupon) return 0;
+    return subtotal * (appliedCoupon.discount_percent / 100);
+  }, [subtotal, appliedCoupon]);
+
   const deliveryFee = useMemo(() => {
     if (deliveryType === 'pickup') return 0;
     // Even if freeShipping is true, we need to know if the region is valid (calculatedFee !== null)
@@ -76,7 +87,54 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     return calculatedFee !== null ? calculatedFee : 0;
   }, [deliveryType, calculatedFee, freeShipping]);
 
-  const total = subtotal + deliveryFee;
+  const total = (subtotal + deliveryFee) - discountAmount;
+
+  // --- COUPON LOGIC ---
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setCouponError('');
+    setIsValidatingCoupon(true);
+
+    if (!supabase) {
+      // Fallback for demo without backend
+      if (couponCode.toUpperCase() === 'TESTE10') {
+        setAppliedCoupon({ id: 999, code: 'TESTE10', discount_percent: 10, active: true });
+      } else {
+        setCouponError('Cupom inválido (Backend offline). Tente TESTE10');
+      }
+      setIsValidatingCoupon(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('coupons')
+        .select('*')
+        .eq('code', couponCode.toUpperCase().trim())
+        .eq('active', true)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        setAppliedCoupon(data as Coupon);
+        setCouponCode('');
+      } else {
+        setCouponError('Cupom inválido ou expirado.');
+        setAppliedCoupon(null);
+      }
+    } catch (err) {
+      console.error(err);
+      setCouponError('Erro ao validar cupom.');
+    } finally {
+      setIsValidatingCoupon(false);
+    }
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode('');
+  };
 
   // --- CEP LOGIC ---
   const handleCepSearch = async () => {
@@ -174,7 +232,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           total: total,
           delivery_fee: deliveryFee,
           status: 'pending',
-          items: items // Saving items as JSONB
+          items: items, // Saving items as JSONB
+          coupon_code: appliedCoupon ? appliedCoupon.code : null,
+          discount: discountAmount
         };
         
         const { data, error } = await supabase.from('orders').insert([payload]).select();
@@ -221,6 +281,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     message += `------------------------------\n`;
     message += `*Subtotal:* R$ ${subtotal.toFixed(2).replace('.', ',')}\n`;
     
+    if (appliedCoupon) {
+       message += `🎟 *Cupom (${appliedCoupon.code}):* - R$ ${discountAmount.toFixed(2).replace('.', ',')}\n`;
+    }
+
     if (deliveryType === 'delivery') {
       const feeText = freeShipping ? 'GRÁTIS' : `R$ ${deliveryFee.toFixed(2).replace('.', ',')}`;
       message += `*Entrega (${matchedRegionName}):* ${feeText}\n`;
@@ -538,6 +602,44 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                    )}
                 </div>
 
+                {/* --- COUPON SECTION --- */}
+                <div className="space-y-3">
+                   <h3 className="font-bold text-stone-700 dark:text-stone-300 text-sm uppercase tracking-wider border-b border-stone-200 dark:border-stone-700 pb-2 flex items-center gap-2">
+                      <Ticket className="w-4 h-4" /> Cupom de Desconto
+                   </h3>
+                   {!appliedCoupon ? (
+                     <div>
+                       <div className="flex gap-2">
+                         <input 
+                           type="text" 
+                           placeholder="Código do Cupom" 
+                           className="flex-1 p-2 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-sm text-stone-900 dark:text-white uppercase"
+                           value={couponCode}
+                           onChange={(e) => setCouponCode(e.target.value)}
+                         />
+                         <button 
+                           onClick={handleApplyCoupon}
+                           disabled={isValidatingCoupon || !couponCode}
+                           className="bg-stone-800 text-white px-3 py-2 rounded-lg text-sm font-bold hover:bg-stone-700 disabled:opacity-50"
+                         >
+                           {isValidatingCoupon ? <Loader2 className="w-4 h-4 animate-spin"/> : 'Aplicar'}
+                         </button>
+                       </div>
+                       {couponError && <p className="text-xs text-red-500 mt-1">{couponError}</p>}
+                     </div>
+                   ) : (
+                     <div className="flex items-center justify-between bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-2 rounded-lg">
+                       <div>
+                         <span className="block font-bold text-green-800 dark:text-green-300 text-sm">{appliedCoupon.code}</span>
+                         <span className="text-xs text-green-600 dark:text-green-400">{appliedCoupon.discount_percent}% de desconto aplicado</span>
+                       </div>
+                       <button onClick={removeCoupon} className="text-stone-400 hover:text-red-500">
+                         <X className="w-4 h-4" />
+                       </button>
+                     </div>
+                   )}
+                </div>
+
                 <div className="space-y-3">
                    <h3 className="font-bold text-stone-700 dark:text-stone-300 text-sm uppercase tracking-wider border-b border-stone-200 dark:border-stone-700 pb-2 flex items-center gap-2">
                       <CreditCard className="w-4 h-4" /> Pagamento
@@ -579,6 +681,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                <span>Subtotal</span>
                <span>R$ {subtotal.toFixed(2).replace('.', ',')}</span>
              </div>
+             {appliedCoupon && (
+               <div className="flex justify-between items-center text-sm text-green-600 font-medium">
+                  <span>Desconto ({appliedCoupon.code})</span>
+                  <span>- R$ {discountAmount.toFixed(2).replace('.', ',')}</span>
+               </div>
+             )}
              {deliveryType === 'delivery' && (
                <div className="flex justify-between items-center text-sm text-stone-500 dark:text-stone-400">
                   <span>Taxa de Entrega</span>

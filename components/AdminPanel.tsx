@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { Category, Product, StoreSettings, ProductOption, ProductChoice, Order } from '../types';
-import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Layers, Megaphone, Tag, List, HelpCircle, Utensils, Phone, CreditCard, Truck, Receipt, ClipboardList, Clock, Printer } from 'lucide-react';
+import { Category, Product, StoreSettings, ProductOption, ProductChoice, Order, Coupon } from '../types';
+import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Layers, Megaphone, Tag, List, HelpCircle, Utensils, Phone, CreditCard, Truck, Receipt, ClipboardList, Clock, Printer, Ticket } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 interface AdminPanelProps {
@@ -33,7 +33,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
-  const [activeTab, setActiveTab] = useState<'menu' | 'settings' | 'categories' | 'orders'>('orders');
+  const [activeTab, setActiveTab] = useState<'menu' | 'settings' | 'categories' | 'orders' | 'coupons'>('orders');
   
   // Menu State
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
@@ -55,6 +55,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [orderFilter, setOrderFilter] = useState<'all' | 'active'>('active');
+
+  // Coupons State
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [newCouponCode, setNewCouponCode] = useState('');
+  const [newCouponDiscount, setNewCouponDiscount] = useState('');
 
   // Settings State
   const [settingsForm, setSettingsForm] = useState<StoreSettings>(settings);
@@ -83,12 +88,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setSettingsForm(settings);
   }, [settings]);
 
-  // Fetch orders when tab is active
+  // Fetch data when tabs change
   useEffect(() => {
-    if (isAuthenticated && activeTab === 'orders' && supabase) {
-      fetchOrders();
-      const interval = setInterval(fetchOrders, 15000); // Polling every 15s for simplicity
-      return () => clearInterval(interval);
+    if (isAuthenticated && supabase) {
+      if (activeTab === 'orders') {
+        fetchOrders();
+        const interval = setInterval(fetchOrders, 15000); 
+        return () => clearInterval(interval);
+      }
+      if (activeTab === 'coupons') {
+        fetchCoupons();
+      }
     }
   }, [isAuthenticated, activeTab, orderFilter]);
 
@@ -110,6 +120,43 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       console.error(err);
     } finally {
       setOrdersLoading(false);
+    }
+  };
+
+  const fetchCoupons = async () => {
+    try {
+      const { data, error } = await supabase.from('coupons').select('*').order('created_at', { ascending: false });
+      if (data) setCoupons(data as Coupon[]);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleAddCoupon = async () => {
+    if (!newCouponCode || !newCouponDiscount) return;
+    if (supabase) {
+      const { error } = await supabase.from('coupons').insert([{
+        code: newCouponCode.toUpperCase().trim(),
+        discount_percent: parseFloat(newCouponDiscount),
+        active: true
+      }]);
+      
+      if (!error) {
+        setNewCouponCode('');
+        setNewCouponDiscount('');
+        fetchCoupons();
+      } else {
+        alert('Erro ao criar cupom. Verifique se o código já existe.');
+      }
+    }
+  };
+
+  const handleDeleteCoupon = async (id: number) => {
+    if (window.confirm('Tem certeza que deseja excluir este cupom?')) {
+      if (supabase) {
+        await supabase.from('coupons').delete().eq('id', id);
+        fetchCoupons();
+      }
     }
   };
 
@@ -197,8 +244,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <div class="totals">
             <div class="total-row">
               <span>Subtotal:</span>
-              <span>R$ ${(order.total - order.delivery_fee).toFixed(2).replace('.', ',')}</span>
+              <span>R$ ${(order.total - order.delivery_fee + order.discount).toFixed(2).replace('.', ',')}</span>
             </div>
+             ${order.discount > 0 ? `
+            <div class="total-row">
+              <span>Desconto:</span>
+              <span>- R$ ${order.discount.toFixed(2).replace('.', ',')}</span>
+            </div>` : ''}
             <div class="total-row">
               <span>Entrega:</span>
               <span>R$ {order.delivery_fee.toFixed(2).replace('.', ',')}</span>
@@ -237,7 +289,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   // ... (Helper functions for Settings/Ingredients/Category remain same) ...
-  // Keeping helper functions to minimize code duplication for this view
   const addPhone = () => {
     if (tempPhone.trim()) { setSettingsForm(prev => ({...prev, phones: [...prev.phones, tempPhone.trim()]})); setTempPhone(''); }
   };
@@ -267,7 +318,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     if (file) { const reader = new FileReader(); reader.onloadend = () => { setEditCategoryImage(reader.result as string); }; reader.readAsDataURL(file); }
   };
 
-  // ... (Other Actions remain same) ...
   const startEditing = (product: Product) => { setEditingProduct(product.id); setEditForm(JSON.parse(JSON.stringify(product))); setTempIngredient(''); };
   const saveEdit = (originalCategoryId: string) => { if (editingProduct && editForm) { onUpdateProduct(originalCategoryId, editingProduct, editForm); setEditingProduct(null); setEditForm({}); } };
   const handleDelete = (categoryId: string, productId: number) => { if (window.confirm('Tem certeza que deseja excluir este produto?')) { onDeleteProduct(categoryId, productId); } };
@@ -360,7 +410,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </button>
           </div>
 
-          <div className="flex space-x-2 md:space-x-4 border-b border-stone-700 overflow-x-auto">
+          <div className="flex space-x-2 md:space-x-4 border-b border-stone-700 overflow-x-auto hide-scrollbar">
              <button 
                 onClick={() => setActiveTab('orders')}
                 className={`pb-2 px-2 flex items-center gap-2 text-sm font-bold transition-colors whitespace-nowrap ${activeTab === 'orders' ? 'text-italian-green border-b-2 border-italian-green' : 'text-stone-400 hover:text-white'}`}
@@ -378,6 +428,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 className={`pb-2 px-2 flex items-center gap-2 text-sm font-bold transition-colors whitespace-nowrap ${activeTab === 'categories' ? 'text-italian-green border-b-2 border-italian-green' : 'text-stone-400 hover:text-white'}`}
              >
                 <List className="w-4 h-4" /> Categorias
+             </button>
+             <button 
+                onClick={() => setActiveTab('coupons')}
+                className={`pb-2 px-2 flex items-center gap-2 text-sm font-bold transition-colors whitespace-nowrap ${activeTab === 'coupons' ? 'text-italian-green border-b-2 border-italian-green' : 'text-stone-400 hover:text-white'}`}
+             >
+                <Ticket className="w-4 h-4" /> Cupons
              </button>
              <button 
                 onClick={() => setActiveTab('settings')}
@@ -486,6 +542,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                <span>Entrega ({order.delivery_type === 'pickup' ? 'Balcão' : 'Motoboy'})</span>
                                <span>R$ {order.delivery_fee.toFixed(2)}</span>
                             </div>
+                            {order.discount > 0 && (
+                               <div className="flex justify-between text-green-600 font-bold">
+                                  <span>Desconto ({order.coupon_code})</span>
+                                  <span>- R$ {order.discount.toFixed(2)}</span>
+                               </div>
+                            )}
                             <div className="flex justify-between font-bold text-lg text-italian-red">
                                <span>Total</span>
                                <span>R$ {order.total.toFixed(2)}</span>
@@ -511,6 +573,78 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                  ))}
                </div>
              )}
+          </div>
+        )}
+
+        {/* --- TAB: COUPONS --- */}
+        {activeTab === 'coupons' && (
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200 animate-in fade-in slide-in-from-bottom-2 space-y-8">
+             <h2 className="text-xl font-bold text-stone-800 flex items-center gap-2">
+               <Ticket className="w-5 h-5 text-italian-red" /> Gerenciar Cupons de Desconto
+             </h2>
+
+             {/* Create Coupon Form */}
+             <div className="bg-stone-50 p-4 rounded-lg border border-stone-200">
+                 <h3 className="font-bold text-sm text-stone-700 mb-3">Criar Novo Cupom</h3>
+                 <div className="flex gap-3">
+                   <div className="flex-1">
+                      <input 
+                        type="text" 
+                        placeholder="CÓDIGO (Ex: BEMVINDO10)" 
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-lg text-sm text-stone-900 uppercase font-bold"
+                        value={newCouponCode}
+                        onChange={(e) => setNewCouponCode(e.target.value.toUpperCase())}
+                      />
+                   </div>
+                   <div className="w-32">
+                      <input 
+                        type="number" 
+                        placeholder="% Desc" 
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-lg text-sm text-stone-900"
+                        value={newCouponDiscount}
+                        onChange={(e) => setNewCouponDiscount(e.target.value)}
+                      />
+                   </div>
+                   <button 
+                     onClick={handleAddCoupon}
+                     className="bg-italian-green text-white px-4 rounded-lg text-sm font-bold hover:bg-green-700 flex items-center gap-2"
+                   >
+                     <Plus className="w-4 h-4" /> Criar
+                   </button>
+                 </div>
+                 <p className="text-xs text-stone-500 mt-2">O desconto será aplicado sobre o subtotal do pedido (não inclui entrega).</p>
+             </div>
+
+             {/* Coupons List */}
+             <div className="space-y-2">
+               <h3 className="font-bold text-sm text-stone-700">Cupons Ativos</h3>
+               {coupons.length === 0 ? (
+                 <p className="text-sm text-stone-400 italic">Nenhum cupom criado.</p>
+               ) : (
+                 <div className="grid gap-2">
+                   {coupons.map(coupon => (
+                     <div key={coupon.id} className="flex justify-between items-center p-3 bg-white border border-stone-200 rounded-lg shadow-sm">
+                        <div className="flex items-center gap-3">
+                           <div className="bg-green-100 p-2 rounded text-green-700">
+                             <Ticket className="w-5 h-5" />
+                           </div>
+                           <div>
+                              <div className="font-bold text-stone-800 text-lg">{coupon.code}</div>
+                              <div className="text-xs text-stone-500 font-medium">{coupon.discount_percent}% de desconto</div>
+                           </div>
+                        </div>
+                        <button 
+                          onClick={() => handleDeleteCoupon(coupon.id)}
+                          className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors"
+                          title="Excluir Cupom"
+                        >
+                           <Trash2 className="w-5 h-5" />
+                        </button>
+                     </div>
+                   ))}
+                 </div>
+               )}
+             </div>
           </div>
         )}
 
@@ -825,8 +959,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
            </div>
         )}
 
-        {/* --- TAB: MENU --- */}
+        {/* --- TAB: MENU (Product Editing) --- */}
         {activeTab === 'menu' && (
+          // ... (Keep existing menu code) ...
           <>
             <button 
                onClick={() => setIsAddingNew(!isAddingNew)}
@@ -838,7 +973,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
             {isAddingNew && (
                <div className="bg-white p-6 rounded-xl shadow-lg border border-italian-green mb-6 animate-in slide-in-from-top-4">
-                  {/* ... (Existing New Product Form content - unchanged) ... */}
                   <h3 className="font-bold text-lg mb-4 text-stone-800">Novo Produto</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                      <div>
@@ -887,7 +1021,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         <input type="text" placeholder="Ex: Long Neck, Lata" value={newProductForm.subcategory || ''} onChange={(e) => setNewProductForm({...newProductForm, subcategory: e.target.value})} className="w-full p-2 bg-stone-50 border border-stone-200 rounded-lg text-sm text-stone-900" />
                      </div>
                      
-                     {/* Ingredients for New Product */}
                      <div className="md:col-span-2">
                         <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1">Ingredientes</label>
                         <div className="flex gap-2 mb-2">
@@ -1012,7 +1145,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                    </div>
                                 </div>
                                 
-                                {/* Option Groups Management */}
                                 <div className="border-t border-stone-100 pt-4 mt-4">
                                    <div className="flex justify-between items-center mb-4">
                                       <h4 className="font-bold text-sm text-stone-700 flex items-center gap-2"><Layers className="w-4 h-4"/> Personalização (Bordas/Adicionais)</h4>
