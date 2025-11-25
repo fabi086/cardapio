@@ -1,5 +1,4 @@
 
-
 import React, { useEffect, useState } from 'react';
 import { X, Clock, CheckCircle, Package, Truck, ChefHat, RefreshCw, AlertCircle } from 'lucide-react';
 import { supabase } from '../supabaseClient';
@@ -8,10 +7,9 @@ import { Order } from '../types';
 interface OrderTrackerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  storeId: number;
 }
 
-export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({ isOpen, onClose, storeId }) => {
+export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({ isOpen, onClose }) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -21,7 +19,7 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({ isOpen, on
     try {
       const savedOrders = JSON.parse(localStorage.getItem('spagnolli_my_orders') || '[]');
       
-      if (savedOrders.length === 0 || !storeId) {
+      if (savedOrders.length === 0) {
         setOrders([]);
         setLoading(false);
         return;
@@ -32,7 +30,6 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({ isOpen, on
           .from('orders')
           .select('*')
           .in('id', savedOrders)
-          .eq('store_id', storeId) // Filter by store
           .order('created_at', { ascending: false });
 
         if (error) throw error;
@@ -57,7 +54,7 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({ isOpen, on
       const interval = setInterval(fetchMyOrders, 15000); // Poll every 15s
       return () => clearInterval(interval);
     }
-  }, [isOpen, storeId]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -121,6 +118,8 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({ isOpen, on
             orders.map(order => {
               const info = getStatusInfo(order.status);
               const step = getStatusStep(order.status);
+              const isDelivery = order.delivery_type === 'delivery';
+
               return (
                 <div key={order.id} className="bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl p-4 shadow-sm">
                   <div className="flex justify-between items-start mb-3">
@@ -133,6 +132,7 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({ isOpen, on
                     </span>
                   </div>
 
+                  {/* Progress Bar */}
                   {step > 0 && (
                     <div className="relative h-2 bg-stone-200 dark:bg-stone-700 rounded-full mb-4 overflow-hidden">
                        <div 

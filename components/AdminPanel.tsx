@@ -1,12 +1,9 @@
-
-
 import React, { useState, useEffect } from 'react';
-import { Category, Product, StoreSettings, ProductOption, ProductChoice, Order, Coupon, DeliveryRegion } from '../types';
+import { Category, Product, StoreSettings, ProductOption, ProductChoice, Order, Coupon } from '../types';
 import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Layers, Megaphone, Tag, List, HelpCircle, Utensils, Phone, CreditCard, Truck, Receipt, ClipboardList, Clock, Printer, Ticket, LayoutDashboard, DollarSign, TrendingUp, ShoppingBag, Calendar, PieChart, BarChart3, Filter, Ban } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 interface AdminPanelProps {
-  storeId: number;
   menuData: Category[];
   settings: StoreSettings;
   onUpdateProduct: (categoryId: string, productId: number, updates: Partial<Product>) => void;
@@ -15,13 +12,12 @@ interface AdminPanelProps {
   onUpdateSettings: (settings: StoreSettings) => void;
   onResetMenu: () => void;
   onBack: () => void;
-  onAddCategory: (name: string) => void;
-  onUpdateCategory: (id: string, updates: { name?: string; image?: string }) => void;
-  onDeleteCategory: (id: string) => void;
+  onAddCategory?: (name: string) => void;
+  onUpdateCategory?: (id: string, updates: { name?: string; image?: string }) => void;
+  onDeleteCategory?: (id: string) => void;
 }
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ 
-  storeId,
   menuData, 
   settings, 
   onUpdateProduct, 
@@ -80,7 +76,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [newRegionName, setNewRegionName] = useState('');
   const [newRegionPrice, setNewRegionPrice] = useState('');
   const [newRegionZips, setNewRegionZips] = useState('');
-  const [newRegionZipExclusions, setNewRegionZipExclusions] = useState('');
 
   // Option Management State
   const [newOptionName, setNewOptionName] = useState('');
@@ -101,6 +96,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     if (isAuthenticated && supabase) {
       if (activeTab === 'orders' || activeTab === 'dashboard') {
         fetchOrders();
+        // Setup polling only for orders tab if strictly needed
         if (activeTab === 'orders') {
            const interval = setInterval(fetchOrders, 15000); 
            return () => clearInterval(interval);
@@ -110,17 +106,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         fetchCoupons();
       }
     }
-  }, [isAuthenticated, activeTab, orderFilter, dateFilter, customDate, storeId]);
+  }, [isAuthenticated, activeTab, orderFilter, dateFilter, customDate]);
 
   const fetchOrders = async () => {
     setOrdersLoading(true);
     try {
-      let query = supabase.from('orders').select('*').eq('store_id', storeId).order('created_at', { ascending: false });
+      let query = supabase.from('orders').select('*').order('created_at', { ascending: false });
       
+      // Filter logic only applies if we are in 'orders' tab view specifically for the list
       if (activeTab === 'orders' && orderFilter === 'active') {
         query = query.in('status', ['pending', 'preparing', 'delivery']);
       }
       
+      // Filter logic for Dashboard
       if (activeTab === 'dashboard') {
          const start = new Date();
          start.setHours(0,0,0,0);
@@ -141,16 +139,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
              monthStart.setDate(1);
              query = query.gte('created_at', monthStart.toISOString());
          } else if (dateFilter === 'custom' && customDate) {
+             // Create date object from input (YYYY-MM-DD) treated as local midnight
              const selectedDate = new Date(customDate + 'T00:00:00');
              const nextDay = new Date(selectedDate);
              nextDay.setDate(nextDay.getDate() + 1);
-             query = query.gte('created_at', selectedDate.toISOString()).lt('created_at', nextDay.toISOString());
+
+             query = query.gte('created_at', selectedDate.toISOString())
+                          .lt('created_at', nextDay.toISOString());
          }
       }
 
       const { data, error } = await query;
       
-      if (data) setOrders(data as Order[]);
+      if (data) {
+        setOrders(data as Order[]);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -160,7 +163,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const fetchCoupons = async () => {
     try {
-      const { data, error } = await supabase.from('coupons').select('*').eq('store_id', storeId).order('created_at', { ascending: false });
+      const { data, error } = await supabase.from('coupons').select('*').order('created_at', { ascending: false });
       if (data) setCoupons(data as Coupon[]);
     } catch (err) {
       console.error(err);
@@ -173,8 +176,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       const { error } = await supabase.from('coupons').insert([{
         code: newCouponCode.toUpperCase().trim(),
         discount_percent: parseFloat(newCouponDiscount),
-        active: true,
-        store_id: storeId
+        active: true
       }]);
       
       if (!error) {
@@ -190,7 +192,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleDeleteCoupon = async (id: number) => {
     if (window.confirm('Tem certeza que deseja excluir este cupom?')) {
       if (supabase) {
-        await supabase.from('coupons').delete().eq('id', id).eq('store_id', storeId);
+        await supabase.from('coupons').delete().eq('id', id);
         fetchCoupons();
       }
     }
@@ -198,7 +200,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const handleUpdateOrderStatus = async (orderId: number, newStatus: string) => {
     if (supabase) {
-      await supabase.from('orders').update({ status: newStatus }).eq('id', orderId).eq('store_id', storeId);
+      await supabase.from('orders').update({ status: newStatus }).eq('id', orderId);
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus as any } : o));
     }
   };
@@ -211,6 +213,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       return;
     }
 
+    // Gerar itens formatados
     const itemsHtml = order.items.map((item: any) => {
       let optionsHtml = '';
       if (item.selectedOptions && item.selectedOptions.length > 0) {
@@ -219,6 +222,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         ).join('');
       }
       
+      // Totais unitários
       const optionsPrice = item.selectedOptions ? item.selectedOptions.reduce((s:any, o:any) => s + o.price, 0) : 0;
       const unitTotal = item.price + optionsPrice;
       const itemTotal = unitTotal * item.quantity;
@@ -251,29 +255,48 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               font-size: 13px; 
               line-height: 1.2;
               width: 100%; 
-              max-width: 300px;
+              max-width: 300px; /* Largura segura para 80mm e adapta para 58mm */
               margin: 0;
               padding: 5px 2px;
               color: #000;
               text-transform: uppercase;
             }
             .center { text-align: center; }
+            .right { text-align: right; }
             .bold { font-weight: bold; }
+            .big { font-size: 16px; }
             .huge { font-size: 22px; font-weight: bold; }
             .line { border-bottom: 1px dashed #000; margin: 8px 0; }
+            
             .header { margin-bottom: 10px; }
             .store-name { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
-            .type-tag { font-size: 18px; font-weight: bold; border: 2px solid #000; padding: 5px; margin: 10px 0; text-align: center; display: block; }
+            
+            .info-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
+            
+            .type-tag { 
+               font-size: 18px; 
+               font-weight: bold; 
+               border: 2px solid #000; 
+               padding: 5px; 
+               margin: 10px 0; 
+               text-align: center;
+               display: block;
+            }
+
             .items-container { margin: 10px 0; }
             .item-row { display: flex; margin-bottom: 8px; }
             .item-qty { width: 30px; font-weight: bold; }
             .item-name { flex: 1; font-weight: bold; }
             .item-price { width: 60px; text-align: right; }
+            
             .option { font-weight: normal; font-size: 11px; margin-left: 5px; }
             .obs { font-weight: bold; margin-top: 2px; font-size: 11px; }
+
             .totals { margin-top: 10px; }
             .total-row { display: flex; justify-content: space-between; font-weight: bold; }
+            
             .payment-box { border: 1px solid #000; padding: 5px; margin-top: 10px; font-weight: bold; text-align: center; }
+            
             .address-box { margin-top: 10px; font-size: 14px; font-weight: bold; }
           </style>
         </head>
@@ -282,20 +305,54 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <div class="store-name">${settings.name}</div>
             <div>${new Date(order.created_at).toLocaleDateString('pt-BR')} - ${new Date(order.created_at).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</div>
           </div>
-          <div class="center"><span style="font-size: 16px;">PEDIDO #${order.id}</span></div>
-          <div class="type-tag">${order.delivery_type === 'delivery' ? 'ENTREGA' : 'RETIRADA'}</div>
-          <div style="font-size: 15px; font-weight: bold; margin-bottom: 5px;">${order.customer_name}</div>
-          <div class="line"></div>
-          <div class="items-container">${itemsHtml}</div>
-          <div class="line"></div>
-          <div class="totals">
-            <div class="total-row"><span>SUBTOTAL</span><span>${(order.total - order.delivery_fee + order.discount).toFixed(2)}</span></div>
-            ${order.discount > 0 ? `<div class="total-row"><span>DESC (${order.coupon_code || ''})</span><span>- ${order.discount.toFixed(2)}</span></div>` : ''}
-            ${order.delivery_type === 'delivery' ? `<div class="total-row"><span>TAXA ENTREGA</span><span>${order.delivery_fee.toFixed(2)}</span></div>` : ''}
-            <div class="line"></div>
-            <div class="total-row huge center" style="display: block; text-align: center; margin-top: 5px;">TOTAL: R$ ${order.total.toFixed(2)}</div>
+
+          <div class="center">
+             <span style="font-size: 16px;">PEDIDO #${order.id}</span>
           </div>
-          <div class="payment-box">PAGAMENTO: ${order.payment_method}</div>
+          
+          <div class="type-tag">
+             ${order.delivery_type === 'delivery' ? 'ENTREGA' : 'RETIRADA'}
+          </div>
+
+          <div style="font-size: 15px; font-weight: bold; margin-bottom: 5px;">
+             ${order.customer_name}
+          </div>
+
+          <div class="line"></div>
+
+          <div class="items-container">
+            ${itemsHtml}
+          </div>
+
+          <div class="line"></div>
+
+          <div class="totals">
+            <div class="total-row">
+               <span>SUBTOTAL</span>
+               <span>${(order.total - order.delivery_fee + order.discount).toFixed(2)}</span>
+            </div>
+            ${order.discount > 0 ? `
+            <div class="total-row">
+               <span>DESC (${order.coupon_code || ''})</span>
+               <span>- ${order.discount.toFixed(2)}</span>
+            </div>` : ''}
+            ${order.delivery_type === 'delivery' ? `
+            <div class="total-row">
+               <span>TAXA ENTREGA</span>
+               <span>${order.delivery_fee.toFixed(2)}</span>
+            </div>` : ''}
+            
+            <div class="line"></div>
+            
+            <div class="total-row huge center" style="display: block; text-align: center; margin-top: 5px;">
+               TOTAL: R$ ${order.total.toFixed(2)}
+            </div>
+          </div>
+
+          <div class="payment-box">
+             PAGAMENTO: ${order.payment_method}
+          </div>
+
           ${order.delivery_type === 'delivery' ? `
             <div class="line"></div>
             <div class="address-box">
@@ -305,9 +362,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               ${order.address_complement ? `<div style="margin-top:2px; font-size: 12px;">COMPL: ${order.address_complement}</div>` : ''}
             </div>
           ` : ''}
-          <div class="center" style="margin-top: 20px; font-size: 10px;">.</div>
+          
+          <div class="center" style="margin-top: 20px; font-size: 10px;">
+             .
+          </div>
+
           <script>
-            window.onload = function() { window.print(); }
+            window.onload = function() {
+              window.print();
+            }
           </script>
         </body>
       </html>
@@ -326,6 +389,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
+  // ... (Helper functions for Settings/Ingredients/Category remain same) ...
   const addPhone = () => {
     if (tempPhone.trim()) { setSettingsForm(prev => ({...prev, phones: [...prev.phones, tempPhone.trim()]})); setTempPhone(''); }
   };
@@ -354,9 +418,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     const file = e.target.files?.[0];
     if (file) { const reader = new FileReader(); reader.onloadend = () => { setEditCategoryImage(reader.result as string); }; reader.readAsDataURL(file); }
   };
+
   const startEditing = (product: Product) => { setEditingProduct(product.id); setEditForm(JSON.parse(JSON.stringify(product))); setTempIngredient(''); };
   const saveEdit = (originalCategoryId: string) => { if (editingProduct && editForm) { onUpdateProduct(originalCategoryId, editingProduct, editForm); setEditingProduct(null); setEditForm({}); } };
-  const handleDelete = (categoryId: string, productId: number) => { onDeleteProduct(categoryId, productId); };
+  const handleDelete = (categoryId: string, productId: number) => { if (window.confirm('Tem certeza que deseja excluir este produto?')) { onDeleteProduct(categoryId, productId); } };
   const handleAddNew = () => {
     if (!newProductForm.name || !newProductForm.price) { alert('Preencha pelo menos nome e preço.'); return; }
     const categoryId = newProductForm.category || menuData[0].id;
@@ -381,35 +446,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleSaveSettings = () => { onUpdateSettings(settingsForm); alert('Configurações salvas e atualizadas no site!'); };
   const handleAddRegion = () => {
     if (!newRegionName || !newRegionPrice) return;
-    const newRegion: DeliveryRegion = { 
-        id: editingRegionId || newRegionName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''), 
-        name: newRegionName, 
-        price: parseFloat(newRegionPrice), 
-        zips: newRegionZips,
-        zipExclusions: newRegionZipExclusions
-    };
-    if (editingRegionId) { 
-        setSettingsForm({ ...settingsForm, deliveryRegions: (settingsForm.deliveryRegions || []).map(r => r.id === editingRegionId ? newRegion : r) }); 
-        setEditingRegionId(null); 
-    } else { 
-        setSettingsForm({ ...settingsForm, deliveryRegions: [...(settingsForm.deliveryRegions || []), newRegion] }); 
-    }
-    setNewRegionName(''); setNewRegionPrice(''); setNewRegionZips(''); setNewRegionZipExclusions('');
+    const zipArray = newRegionZips ? newRegionZips.split(',').map(z => z.trim().replace(/[^0-9-]/g, '')).filter(z => z.length > 0) : [];
+    const newRegion = { id: editingRegionId || newRegionName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''), name: newRegionName, price: parseFloat(newRegionPrice), zipPrefixes: zipArray };
+    if (editingRegionId) { setSettingsForm({ ...settingsForm, deliveryRegions: (settingsForm.deliveryRegions || []).map(r => r.id === editingRegionId ? newRegion : r) }); setEditingRegionId(null); } else { setSettingsForm({ ...settingsForm, deliveryRegions: [...(settingsForm.deliveryRegions || []), newRegion] }); }
+    setNewRegionName(''); setNewRegionPrice(''); setNewRegionZips('');
   };
-  const startEditingRegion = (region: DeliveryRegion) => { 
-      setEditingRegionId(region.id); 
-      setNewRegionName(region.name); 
-      setNewRegionPrice(region.price.toString()); 
-      setNewRegionZips(region.zips || '');
-      setNewRegionZipExclusions(region.zipExclusions || '');
-  };
-  const cancelEditingRegion = () => { 
-      setEditingRegionId(null); 
-      setNewRegionName(''); 
-      setNewRegionPrice(''); 
-      setNewRegionZips(''); 
-      setNewRegionZipExclusions(''); 
-  };
+  const startEditingRegion = (region: any) => { setEditingRegionId(region.id); setNewRegionName(region.name); setNewRegionPrice(region.price.toString()); setNewRegionZips(region.zipPrefixes ? region.zipPrefixes.join(', ') : ''); };
+  const cancelEditingRegion = () => { setEditingRegionId(null); setNewRegionName(''); setNewRegionPrice(''); setNewRegionZips(''); };
   const handleRemoveRegion = (id: string) => { if (window.confirm('Remover esta região de entrega?')) { setSettingsForm({ ...settingsForm, deliveryRegions: (settingsForm.deliveryRegions || []).filter(r => r.id !== id) }); if (editingRegionId === id) cancelEditingRegion(); } };
   const triggerAddCategory = () => { if (newCategoryName && onAddCategory) { onAddCategory(newCategoryName); setNewCategoryName(''); alert('Categoria adicionada!'); } };
   const triggerUpdateCategory = () => { if (editingCategoryId && onUpdateCategory) { onUpdateCategory(editingCategoryId, { name: editCategoryName, image: editCategoryImage }); setEditingCategoryId(null); setEditCategoryName(''); setEditCategoryImage(''); } };
@@ -417,11 +460,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const cancelEditingCategory = () => { setEditingCategoryId(null); setEditCategoryName(''); setEditCategoryImage(''); };
   const triggerDeleteCategory = (id: string) => { if (onDeleteCategory) { onDeleteCategory(id); } };
 
+  // Dashboard calculations
   const filteredOrders = orders.filter(o => o.status !== 'cancelled');
   const totalRevenue = filteredOrders.reduce((acc, o) => acc + o.total, 0);
   const totalOrders = filteredOrders.length;
   const averageTicket = totalOrders > 0 ? totalRevenue / totalOrders : 0;
   
+  // Dashboard Analytics Helper
   const getTopProducts = () => {
     const counts: Record<string, number> = {};
     filteredOrders.forEach(order => {
@@ -429,7 +474,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           counts[item.name] = (counts[item.name] || 0) + item.quantity;
        });
     });
-    return Object.entries(counts).sort(([,a], [,b]) => b - a).slice(0, 5);
+    return Object.entries(counts)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 5);
   };
 
   const getPaymentStats = () => {
@@ -477,7 +524,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <button onClick={onBack} className="p-2 hover:bg-white/10 rounded-full transition-colors">
                 <ArrowLeft className="w-5 h-5" />
               </button>
-              <h1 className="font-bold text-lg hidden md:block">Gerenciar Loja #{storeId}</h1>
+              <h1 className="font-bold text-lg hidden md:block">Gerenciar Sistema</h1>
             </div>
             <button 
               onClick={() => {
@@ -534,8 +581,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-4">
         
+        {/* --- TAB: DASHBOARD --- */}
         {activeTab === 'dashboard' && (
            <div className="space-y-6 animate-in fade-in">
+              {/* Filters */}
               <div className="bg-white p-2 rounded-lg shadow-sm border border-stone-200 inline-flex flex-wrap items-center gap-1 overflow-x-auto max-w-full">
                  <button onClick={() => setDateFilter('today')} className={`px-4 py-2 rounded-md text-sm font-bold transition-colors whitespace-nowrap ${dateFilter === 'today' ? 'bg-italian-green text-white' : 'text-stone-500 hover:bg-stone-100'}`}>Hoje</button>
                  <button onClick={() => setDateFilter('yesterday')} className={`px-4 py-2 rounded-md text-sm font-bold transition-colors whitespace-nowrap ${dateFilter === 'yesterday' ? 'bg-italian-green text-white' : 'text-stone-500 hover:bg-stone-100'}`}>Ontem</button>
@@ -557,10 +606,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                 {/* Card 1: Vendas */}
                  <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
                     <div className="flex justify-between items-start mb-4">
                        <div>
-                          <p className="text-stone-500 text-sm font-bold uppercase">Vendas</p>
+                          <p className="text-stone-500 text-sm font-bold uppercase">Vendas ({dateFilter === 'custom' ? (customDate ? new Date(customDate).toLocaleDateString('pt-BR') : 'Data Esp.') : dateFilter})</p>
                           <h3 className="text-3xl font-bold text-italian-green mt-1">R$ {totalRevenue.toFixed(2)}</h3>
                        </div>
                        <div className="bg-green-100 p-3 rounded-full text-green-600">
@@ -568,6 +618,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                        </div>
                     </div>
                  </div>
+
+                 {/* Card 2: Pedidos */}
                  <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
                     <div className="flex justify-between items-start mb-4">
                        <div>
@@ -579,6 +631,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                        </div>
                     </div>
                  </div>
+
+                 {/* Card 3: Ticket Médio */}
                  <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
                     <div className="flex justify-between items-start mb-4">
                        <div>
@@ -593,6 +647,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Top Products */}
                   <div className="bg-white rounded-xl shadow-sm border border-stone-200 p-6">
                      <h3 className="font-bold text-lg mb-4 text-stone-800 flex items-center gap-2"><PieChart className="w-5 h-5 text-italian-red"/> Top Produtos</h3>
                      <div className="space-y-3">
@@ -605,6 +660,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         {getTopProducts().length === 0 && <p className="text-stone-400 text-sm">Sem dados para o período.</p>}
                      </div>
                   </div>
+
+                  {/* Payment Methods */}
                   <div className="bg-white rounded-xl shadow-sm border border-stone-200 p-6">
                      <h3 className="font-bold text-lg mb-4 text-stone-800 flex items-center gap-2"><CreditCard className="w-5 h-5 text-italian-red"/> Métodos de Pagamento</h3>
                      <div className="space-y-3">
@@ -619,6 +676,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
               </div>
 
+              {/* Recent Orders List */}
               <div className="bg-white rounded-xl shadow-sm border border-stone-200 p-6">
                  <h3 className="font-bold text-lg mb-4 text-stone-800">Atividade Recente (Detalhada)</h3>
                  <div className="space-y-4">
@@ -646,6 +704,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
            </div>
         )}
 
+        {/* --- TAB: ORDERS (KDS) --- */}
         {activeTab === 'orders' && (
           <div className="space-y-6 animate-in fade-in">
              <div className="flex justify-between items-center">
@@ -667,6 +726,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                    </button>
                 </div>
              </div>
+             {/* ... (Existing Orders Tab Content) ... */}
              {ordersLoading && orders.length === 0 ? (
                <div className="text-center py-12 text-stone-400">Carregando pedidos...</div>
              ) : orders.length === 0 ? (
@@ -696,7 +756,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
                                'bg-green-100 text-green-800'
                             }`}>
-                               {order.status}
+                               {order.status === 'pending' && 'Pendente'}
+                               {order.status === 'preparing' && 'Em Preparo'}
+                               {order.status === 'delivery' && 'Saiu p/ Entrega'}
+                               {order.status === 'completed' && 'Concluído'}
+                               {order.status === 'cancelled' && 'Cancelado'}
                             </span>
                             <button 
                                onClick={() => handlePrintOrder(order)}
@@ -706,6 +770,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             </button>
                          </div>
                       </div>
+
                       <div className="p-4 space-y-3">
                          <div className="space-y-2">
                             {order.items.map((item: any, idx: number) => {
@@ -730,9 +795,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                );
                             })}
                          </div>
+
                          <div className="border-t border-stone-100 pt-3 flex flex-col gap-1 text-sm">
                             <div className="flex justify-between text-stone-500">
-                               <span>Entrega ({order.delivery_type})</span>
+                               <span>Entrega ({order.delivery_type === 'pickup' ? 'Balcão' : 'Motoboy'})</span>
                                <span>R$ {order.delivery_fee.toFixed(2)}</span>
                             </div>
                             {order.discount > 0 && (
@@ -755,6 +821,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             )}
                          </div>
                       </div>
+
                       <div className="bg-stone-50 p-2 flex flex-wrap gap-2 justify-between">
                          <button onClick={() => handleUpdateOrderStatus(order.id, 'pending')} className={`flex-1 p-2 rounded text-xs font-bold transition-all ${order.status === 'pending' ? 'bg-white shadow text-yellow-600 ring-1 ring-yellow-200' : 'text-stone-400 hover:bg-stone-200'}`}>Pendente</button>
                          <button onClick={() => handleUpdateOrderStatus(order.id, 'preparing')} className={`flex-1 p-2 rounded text-xs font-bold transition-all ${order.status === 'preparing' ? 'bg-white shadow text-blue-600 ring-1 ring-blue-200' : 'text-stone-400 hover:bg-stone-200'}`}>Preparo</button>
@@ -779,11 +846,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
         )}
 
+        {/* --- TAB: COUPONS --- */}
         {activeTab === 'coupons' && (
           <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200 animate-in fade-in slide-in-from-bottom-2 space-y-8">
              <h2 className="text-xl font-bold text-stone-800 flex items-center gap-2">
                <Ticket className="w-5 h-5 text-italian-red" /> Gerenciar Cupons de Desconto
              </h2>
+
+             {/* Create Coupon Form */}
              <div className="bg-stone-50 p-4 rounded-lg border border-stone-200">
                  <h3 className="font-bold text-sm text-stone-700 mb-3">Criar Novo Cupom</h3>
                  <div className="flex gap-3">
@@ -814,6 +884,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                  </div>
                  <p className="text-xs text-stone-500 mt-2">O desconto será aplicado sobre o subtotal do pedido (não inclui entrega).</p>
              </div>
+
+             {/* Coupons List */}
              <div className="space-y-2">
                <h3 className="font-bold text-sm text-stone-700">Cupons Ativos</h3>
                {coupons.length === 0 ? (
@@ -846,6 +918,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
         )}
 
+        {/* --- TAB: CATEGORIES --- */}
         {activeTab === 'categories' && (
            <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200 animate-in fade-in slide-in-from-bottom-2 space-y-8">
               <h2 className="text-xl font-bold text-stone-800 flex items-center gap-2">
@@ -946,12 +1019,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
            </div>
         )}
 
+        {/* --- TAB: SETTINGS --- */}
         {activeTab === 'settings' && (
            <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200 animate-in fade-in slide-in-from-bottom-2 space-y-8">
+              {/* ... (Existing settings content) ... */}
               <div>
                 <h2 className="text-xl font-bold text-stone-800 mb-6 flex items-center gap-2">
                   <Settings className="w-5 h-5 text-italian-red" /> Dados do Estabelecimento
                 </h2>
+                
+                {/* Guide Toggle */}
                 <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-6 flex items-center justify-between">
                    <div>
                       <h3 className="font-bold text-blue-900 flex items-center gap-2">
@@ -971,6 +1048,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <div className="w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                    </label>
                 </div>
+
+                {/* Free Shipping Toggle */}
                 <div className="bg-green-50 border border-green-200 p-4 rounded-lg mb-6 flex items-center justify-between">
                    <div>
                       <h3 className="font-bold text-green-900 flex items-center gap-2">
@@ -990,27 +1069,62 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <div className="w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-italian-green"></div>
                    </label>
                 </div>
+
+                {/* Form Inputs */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                   {/* ... (Existing Settings Inputs - Same as before but ensuring contrast) ... */}
                    <div>
                       <label className="block text-sm font-bold text-stone-700 mb-1">Nome</label>
-                      <input type="text" value={settingsForm.name} onChange={(e) => setSettingsForm({...settingsForm, name: e.target.value})} className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 text-sm"/>
+                      <input 
+                        type="text" 
+                        value={settingsForm.name} 
+                        onChange={(e) => setSettingsForm({...settingsForm, name: e.target.value})} 
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 text-sm"
+                      />
                    </div>
                    <div>
                       <label className="block text-sm font-bold text-stone-700 mb-1">WhatsApp</label>
-                      <input type="text" value={settingsForm.whatsapp} onChange={(e) => setSettingsForm({...settingsForm, whatsapp: e.target.value})} className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 text-sm"/>
+                      <input 
+                        type="text" 
+                        value={settingsForm.whatsapp} 
+                        onChange={(e) => setSettingsForm({...settingsForm, whatsapp: e.target.value})} 
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 text-sm"
+                      />
                    </div>
                    <div className="md:col-span-2">
                       <label className="block text-sm font-bold text-stone-700 mb-1">Endereço</label>
-                      <textarea rows={3} value={settingsForm.address} onChange={(e) => setSettingsForm({...settingsForm, address: e.target.value})} className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 text-sm"/>
+                      <textarea 
+                        rows={3} 
+                        value={settingsForm.address} 
+                        onChange={(e) => setSettingsForm({...settingsForm, address: e.target.value})} 
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 text-sm"
+                      />
                    </div>
                    <div className="md:col-span-2">
                       <label className="block text-sm font-bold text-stone-700 mb-1">Horário de Funcionamento</label>
-                      <textarea rows={2} value={settingsForm.openingHours} onChange={(e) => setSettingsForm({...settingsForm, openingHours: e.target.value})} className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 text-sm" placeholder="Ex: Aberto todos os dias das 18h às 23h"/>
+                      <textarea 
+                        rows={2}
+                        value={settingsForm.openingHours} 
+                        onChange={(e) => setSettingsForm({...settingsForm, openingHours: e.target.value})} 
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 text-sm"
+                        placeholder="Ex: Aberto todos os dias das 18h às 23h"
+                      />
                    </div>
+                   
+                   {/* Phone Management */}
                    <div className="md:col-span-2">
-                      <label className="block text-sm font-bold text-stone-700 mb-2 flex items-center gap-2"><Phone className="w-4 h-4 text-italian-red"/> Telefones</label>
+                      <label className="block text-sm font-bold text-stone-700 mb-2 flex items-center gap-2">
+                        <Phone className="w-4 h-4 text-italian-red" /> Telefones
+                      </label>
                       <div className="flex gap-2 mb-2">
-                        <input type="text" className="flex-1 p-2 bg-stone-50 border border-stone-300 rounded-lg text-sm text-stone-900" placeholder="Ex: (11) 99999-9999" value={tempPhone} onChange={(e) => setTempPhone(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addPhone()}/>
+                        <input 
+                          type="text" 
+                          className="flex-1 p-2 bg-stone-50 border border-stone-300 rounded-lg text-sm text-stone-900"
+                          placeholder="Ex: (11) 99999-9999"
+                          value={tempPhone}
+                          onChange={(e) => setTempPhone(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && addPhone()}
+                        />
                         <button onClick={addPhone} className="bg-stone-200 hover:bg-stone-300 text-stone-700 px-3 rounded-lg text-sm font-bold"><Plus className="w-4 h-4"/></button>
                       </div>
                       <div className="flex flex-wrap gap-2">
@@ -1021,10 +1135,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                          ))}
                       </div>
                    </div>
+
+                   {/* Payment Methods */}
                    <div className="md:col-span-2">
-                      <label className="block text-sm font-bold text-stone-700 mb-2 flex items-center gap-2"><CreditCard className="w-4 h-4 text-italian-red"/> Formas de Pagamento</label>
+                      <label className="block text-sm font-bold text-stone-700 mb-2 flex items-center gap-2">
+                        <CreditCard className="w-4 h-4 text-italian-red" /> Formas de Pagamento
+                      </label>
                       <div className="flex gap-2 mb-2">
-                        <input type="text" className="flex-1 p-2 bg-stone-50 border border-stone-300 rounded-lg text-sm text-stone-900" placeholder="Ex: Vale Refeição, Pix, etc." value={tempPayment} onChange={(e) => setTempPayment(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addPaymentMethod()}/>
+                        <input 
+                          type="text" 
+                          className="flex-1 p-2 bg-stone-50 border border-stone-300 rounded-lg text-sm text-stone-900"
+                          placeholder="Ex: Vale Refeição, Pix, etc."
+                          value={tempPayment}
+                          onChange={(e) => setTempPayment(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && addPaymentMethod()}
+                        />
                         <button onClick={addPaymentMethod} className="bg-stone-200 hover:bg-stone-300 text-stone-700 px-3 rounded-lg text-sm font-bold"><Plus className="w-4 h-4"/></button>
                       </div>
                       <div className="flex flex-wrap gap-2">
@@ -1035,9 +1160,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                          ))}
                       </div>
                    </div>
+
                    <div className="md:col-span-2">
                       <label className="block text-sm font-bold text-stone-700 mb-1">URL do Logo</label>
-                      <input type="text" value={settingsForm.logoUrl} onChange={(e) => setSettingsForm({...settingsForm, logoUrl: e.target.value})} className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 text-sm"/>
+                      <input 
+                        type="text" 
+                        value={settingsForm.logoUrl} 
+                        onChange={(e) => setSettingsForm({...settingsForm, logoUrl: e.target.value})} 
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 text-sm"
+                      />
                    </div>
                 </div>
               </div>
@@ -1048,35 +1179,30 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                  <h2 className="text-xl font-bold text-stone-800 mb-6 flex items-center gap-2">
                    <MapPin className="w-5 h-5 text-italian-red" /> Taxas de Entrega
                 </h2>
+                
+                {/* Region Editing Form */}
                 <div className={`p-4 rounded-lg border mb-4 transition-colors ${editingRegionId ? 'bg-orange-50 border-orange-200' : 'bg-stone-50 border-stone-200'}`}>
                    <div className="space-y-3">
                       <div className="grid grid-cols-12 gap-3 items-end">
                         <div className="col-span-8 md:col-span-9">
-                           <label className="block text-xs font-bold text-stone-500 mb-1">Nome da Região</label>
+                           <label className="block text-xs font-bold text-stone-500 mb-1">Nome</label>
                            <input type="text" value={newRegionName} onChange={(e) => setNewRegionName(e.target.value)} className="w-full p-2 bg-white border border-stone-300 rounded-md text-sm text-stone-900"/>
                         </div>
                         <div className="col-span-4 md:col-span-3">
-                           <label className="block text-xs font-bold text-stone-500 mb-1">Taxa (R$)</label>
+                           <label className="block text-xs font-bold text-stone-500 mb-1">Taxa</label>
                            <input type="number" value={newRegionPrice} onChange={(e) => setNewRegionPrice(e.target.value)} className="w-full p-2 bg-white border border-stone-300 rounded-md text-sm text-stone-900"/>
                         </div>
                       </div>
-                      <div className="grid md:grid-cols-2 gap-4">
-                         <div>
-                           <label className="block text-xs font-bold text-stone-500 mb-1">CEPs Atendidos (prefixos ou faixas)</label>
-                           <textarea value={newRegionZips} onChange={(e) => setNewRegionZips(e.target.value)} className="w-full p-2 bg-white border border-stone-300 rounded-md text-sm text-stone-900 h-24" placeholder="Ex: 13295, 04800000-04999999"/>
+                      <div className="grid grid-cols-12 gap-3 items-end">
+                         <div className="col-span-10">
+                           <label className="block text-xs font-bold text-stone-500 mb-1">CEPs (separados por vírgula)</label>
+                           <input type="text" value={newRegionZips} onChange={(e) => setNewRegionZips(e.target.value)} className="w-full p-2 bg-white border border-stone-300 rounded-md text-sm text-stone-900" placeholder="Ex: 13295-000, 13295-001"/>
                          </div>
-                         <div>
-                           <label className="block text-xs font-bold text-stone-500 mb-1">CEPs Excluídos (opcional)</label>
-                           <textarea value={newRegionZipExclusions} onChange={(e) => setNewRegionZipExclusions(e.target.value)} className="w-full p-2 bg-white border border-stone-300 rounded-md text-sm text-stone-900 h-24" placeholder="Ex: 13295123, 04850000-04859999"/>
-                         </div>
-                      </div>
-                      <div className="flex gap-2">
-                           <button onClick={handleAddRegion} className="p-2 bg-italian-green text-white rounded-md flex items-center justify-center gap-2 text-sm font-bold flex-1">
-                              {editingRegionId ? <><Check className="w-4 h-4"/> Salvar Região</> : <><Plus className="w-4 h-4"/> Adicionar Região</>}
+                         <div className="col-span-2 flex gap-1">
+                           <button onClick={handleAddRegion} className="flex-1 p-2 bg-italian-green text-white rounded-md flex items-center justify-center">
+                              {editingRegionId ? <Check className="w-4 h-4"/> : <Plus className="w-4 h-4"/>}
                            </button>
-                           {editingRegionId && (
-                                <button onClick={cancelEditingRegion} className="p-2 bg-stone-200 text-stone-600 rounded-md text-sm font-bold">Cancelar</button>
-                           )}
+                         </div>
                       </div>
                    </div>
                 </div>
@@ -1084,12 +1210,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                    {(settingsForm.deliveryRegions || []).map((region, idx) => (
                       <div key={idx} className="flex justify-between p-3 bg-white border rounded-lg">
                          <div>
-                            <span className="font-bold">{region.name}</span> <span className="text-green-600">R$ {region.price.toFixed(2)}</span>
-                            {region.zips && (
-                               <div className="text-xs text-stone-400 mt-1">Atende: {region.zips}</div>
-                            )}
-                            {region.zipExclusions && (
-                               <div className="text-xs text-red-400 mt-1">Exclui: {region.zipExclusions}</div>
+                            <span className="font-bold">{region.name}</span> <span className="text-green-600">R$ {region.price}</span>
+                            {region.zipPrefixes && region.zipPrefixes.length > 0 && (
+                               <div className="text-xs text-stone-400 mt-1">CEPs: {region.zipPrefixes.join(', ')}</div>
                             )}
                          </div>
                          <div className="flex gap-2">
@@ -1106,7 +1229,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
            </div>
         )}
 
+        {/* --- TAB: MENU (Product Editing) --- */}
         {activeTab === 'menu' && (
+          // ... (Existing menu editing code remains) ...
           <>
             <button 
                onClick={() => setIsAddingNew(!isAddingNew)}
@@ -1230,6 +1355,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                       <textarea value={editForm.description || ''} onChange={(e) => setEditForm({...editForm, description: e.target.value})} className="w-full p-2 bg-stone-50 border border-stone-200 rounded-lg text-sm text-stone-900" rows={2}></textarea>
                                    </div>
                                    
+                                   {/* EDIT IMAGE UPLOAD SECTION */}
                                    <div className="md:col-span-2 border-t border-stone-100 pt-3">
                                       <label className="block text-xs font-bold text-stone-700 mb-2 flex items-center gap-2">
                                         <ImageIcon className="w-4 h-4 text-italian-red" /> Imagem do Produto
@@ -1264,6 +1390,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                       <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1">Subcategoria (Opcional)</label>
                                       <input type="text" value={editForm.subcategory || ''} onChange={(e) => setEditForm({...editForm, subcategory: e.target.value})} className="w-full p-2 bg-stone-50 border border-stone-200 rounded-lg text-sm text-stone-900" />
                                    </div>
+
+                                   {/* Ingredients for Editing */}
                                    <div className="md:col-span-2">
                                       <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1">Ingredientes</label>
                                       <div className="flex gap-2 mb-2">
@@ -1286,15 +1414,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                       </div>
                                    </div>
                                 </div>
+                                
                                 <div className="border-t border-stone-100 pt-4 mt-4">
                                    <div className="flex justify-between items-center mb-4">
                                       <h4 className="font-bold text-sm text-stone-700 flex items-center gap-2"><Layers className="w-4 h-4"/> Personalização (Bordas/Adicionais)</h4>
                                    </div>
+                                   
                                    <div className="space-y-4 mb-4">
                                       {(editForm.options || []).map((option) => (
                                          <div key={option.id} className="bg-stone-50 p-3 rounded-lg border border-stone-200">
                                             <div className="flex justify-between items-center mb-2">
-                                               <span className="font-bold text-sm text-stone-800">{option.name} <span className="text-xs font-normal text-stone-500">({option.type})</span></span>
+                                               <span className="font-bold text-sm text-stone-800">{option.name} <span className="text-xs font-normal text-stone-500">({option.type === 'single' ? 'Escolha Única' : 'Múltipla Escolha'})</span></span>
                                                <button onClick={() => handleRemoveOptionGroup(option.id)} className="text-red-500 hover:text-red-700 text-xs font-bold">Remover Grupo</button>
                                             </div>
                                             <div className="space-y-1 pl-2 border-l-2 border-stone-200">
@@ -1312,6 +1442,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                          </div>
                                       ))}
                                    </div>
+
                                    <div className="flex gap-2 items-end bg-stone-50 p-3 rounded-lg border border-stone-200">
                                       <div className="flex-1">
                                          <label className="block text-xs font-bold text-stone-400 mb-1">Novo Grupo</label>
@@ -1327,6 +1458,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                       <button onClick={handleAddOptionGroup} className="bg-stone-800 text-white px-3 py-2 rounded-lg text-xs font-bold">Criar</button>
                                    </div>
                                 </div>
+
                                 <div className="flex gap-2 pt-2">
                                   <button onClick={() => saveEdit(category.id)} className="flex-1 bg-italian-green text-white py-2 rounded-lg font-bold hover:bg-green-700 flex items-center justify-center gap-2">
                                     <Save className="w-4 h-4" /> Salvar Alterações
