@@ -10,7 +10,8 @@ import { AdminPanel } from './components/AdminPanel';
 import { PromoBanner } from './components/PromoBanner';
 import { InfoModal } from './components/InfoModal';
 import { OnboardingGuide } from './components/OnboardingGuide';
-import { ShoppingBag, Check, Loader2, Search, X, Filter, Clock, AlertCircle, HelpCircle, Leaf, Flame, Star, Zap } from 'lucide-react';
+import { PizzaBuilderModal } from './components/PizzaBuilderModal';
+import { ShoppingBag, Check, Loader2, Search, X, Filter, Clock, AlertCircle, HelpCircle, Leaf, Flame, Star, Zap, CirclePercent } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 const isValidCartItem = (item: any): item is CartItem => {
@@ -72,6 +73,10 @@ function App() {
   // Guide State
   const [showGuide, setShowGuide] = useState(false);
 
+  // Pizza Builder State
+  const [isPizzaBuilderOpen, setIsPizzaBuilderOpen] = useState(false);
+  const [pizzaBuilderCategory, setPizzaBuilderCategory] = useState<string>('');
+
   // Theme State
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -115,6 +120,11 @@ function App() {
 
   const restartGuide = () => {
     setShowGuide(true);
+  };
+
+  const openPizzaBuilder = (categoryId: string) => {
+    setPizzaBuilderCategory(categoryId);
+    setIsPizzaBuilderOpen(true);
   };
 
   const fetchData = async () => {
@@ -288,16 +298,14 @@ function App() {
 
   // --- ACTIONS --- (Admin functions simplified for brevity, assume same logic)
   const handleUpdateProduct = async (catId: string, pId: number, updates: Partial<Product>) => {
-     // Logic same as before
      setMenuData(prev => prev.map(c => {
         if(c.id !== catId) return c;
         return { ...c, items: c.items.map(p => p.id === pId ? {...p, ...updates} : p) };
      }));
-     // Supabase update logic...
      if (supabase) {
         const payload: any = { ...updates };
         if (updates.options) payload.options = JSON.stringify(updates.options);
-        if (updates.tags) payload.tags = updates.tags; // Save tags
+        if (updates.tags) payload.tags = updates.tags; 
         await supabase.from('products').update(payload).eq('id', pId);
      }
   };
@@ -308,7 +316,6 @@ function App() {
         if(c.id === catId) return { ...c, items: [...c.items, { ...product, id: tempId, category: catId }]};
         return c;
      }));
-     // Supabase insert logic...
      if(supabase) {
         const payload: any = { 
            ...product, 
@@ -483,6 +490,11 @@ function App() {
 
   let firstProductFound = false;
 
+  // Helper to get pizzas for builder
+  const pizzasForBuilder = menuData
+    .find(c => c.id === pizzaBuilderCategory)
+    ?.items || [];
+
   return (
     <div className="min-h-screen bg-stone-100 dark:bg-stone-900 pb-24 md:pb-0 font-sans transition-colors duration-300">
       {showGuide && <OnboardingGuide onClose={closeGuide} />}
@@ -544,6 +556,29 @@ function App() {
                   {(searchTerm || activeTags.length > 0) && <span className="text-xs bg-italian-green text-white px-2 py-0.5 rounded-full font-normal">{category.items.length}</span>}
                 </h2>
                 
+                {/* Meia a Meia Trigger Button - Show only for Pizza categories and when no search/filter active */}
+                {!searchTerm && activeTags.length === 0 && (category.id.includes('pizza') || category.name.toLowerCase().includes('pizza')) && (
+                  <div className="mb-6">
+                    <button 
+                      onClick={() => openPizzaBuilder(category.id)}
+                      className="w-full bg-gradient-to-r from-italian-red to-red-700 text-white p-4 rounded-xl shadow-md flex items-center justify-between group hover:shadow-lg transition-all"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="bg-white/20 p-3 rounded-full">
+                          <CirclePercent className="w-8 h-8 text-white" />
+                        </div>
+                        <div className="text-left">
+                          <h3 className="font-bold text-lg leading-tight">Crie sua Pizza Meia a Meia</h3>
+                          <p className="text-white/80 text-xs">Escolha 2 sabores diferentes</p>
+                        </div>
+                      </div>
+                      <div className="bg-white text-italian-red px-4 py-2 rounded-full text-sm font-bold group-hover:scale-105 transition-transform">
+                        Montar Agora
+                      </div>
+                    </button>
+                  </div>
+                )}
+
                 {hasSubcategories ? (
                    <div className="space-y-6">
                       {ungroupedItems.length > 0 && (
@@ -595,6 +630,7 @@ function App() {
 
       <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} items={cartItems} onRemoveItem={removeFromCart} onClearCart={clearCart} onUpdateQuantity={updateQuantity} onUpdateObservation={updateObservation} whatsappNumber={storeSettings.whatsapp} storeName={storeSettings.name} deliveryRegions={storeSettings.deliveryRegions || []} paymentMethods={storeSettings.paymentMethods} />
       <InfoModal isOpen={isInfoModalOpen} onClose={() => setIsInfoModalOpen(false)} settings={storeSettings} isOpenNow={storeStatus.isOpen} />
+      <PizzaBuilderModal isOpen={isPizzaBuilderOpen} onClose={() => setIsPizzaBuilderOpen(false)} availablePizzas={pizzasForBuilder} onAddToCart={addToCart} />
 
       {showToast && (
         <div className="fixed top-20 right-4 z-50 animate-in fade-in slide-in-from-right duration-300 pointer-events-none">
