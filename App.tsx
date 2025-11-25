@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { MENU_DATA, DEFAULT_SETTINGS, CATEGORY_IMAGES } from './data';
 import { Product, CartItem, Category, StoreSettings } from './types';
@@ -11,6 +12,7 @@ import { PromoBanner } from './components/PromoBanner';
 import { InfoModal } from './components/InfoModal';
 import { OnboardingGuide } from './components/OnboardingGuide';
 import { PizzaBuilderModal } from './components/PizzaBuilderModal';
+import { OrderTrackerModal } from './components/OrderTrackerModal';
 import { ShoppingBag, Check, Loader2, Search, X, Filter, Clock, AlertCircle, HelpCircle, Leaf, Flame, Star, Zap, PieChart } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
@@ -77,6 +79,9 @@ function App() {
   const [isPizzaBuilderOpen, setIsPizzaBuilderOpen] = useState(false);
   const [pizzaBuilderCategory, setPizzaBuilderCategory] = useState<string>('');
   const [pizzaBuilderFirstHalf, setPizzaBuilderFirstHalf] = useState<Product | null>(null);
+
+  // Order Tracker State
+  const [isTrackerOpen, setIsTrackerOpen] = useState(false);
 
   // Theme State
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -512,7 +517,20 @@ function App() {
       {showGuide && <OnboardingGuide onClose={closeGuide} />}
       {!storeStatus.isOpen && <div className="bg-red-600 text-white px-4 py-2 text-center text-sm font-bold sticky top-0 z-50"><Clock className="w-4 h-4 inline mr-2" /> {storeStatus.message}</div>}
 
-      <Header cartCount={totalItems} onOpenCart={() => setIsCartOpen(true)} animateCart={isCartAnimating} storeName={storeSettings.name} logoUrl={storeSettings.logoUrl} isDarkMode={isDarkMode} onToggleTheme={toggleTheme} whatsapp={storeSettings.whatsapp} phone={storeSettings.phones[0] || ''} onOpenInfo={() => setIsInfoModalOpen(true)} isOpenNow={storeStatus.isOpen} />
+      <Header 
+        cartCount={totalItems} 
+        onOpenCart={() => setIsCartOpen(true)} 
+        animateCart={isCartAnimating} 
+        storeName={storeSettings.name} 
+        logoUrl={storeSettings.logoUrl} 
+        isDarkMode={isDarkMode} 
+        onToggleTheme={toggleTheme} 
+        whatsapp={storeSettings.whatsapp} 
+        phone={storeSettings.phones[0] || ''} 
+        onOpenInfo={() => setIsInfoModalOpen(true)} 
+        isOpenNow={storeStatus.isOpen} 
+        onOpenTracker={() => setIsTrackerOpen(true)}
+      />
       
       {error && <div className="bg-yellow-100 text-yellow-800 px-4 py-2 text-xs text-center">{error}</div>}
       <CategoryNav categories={navCategories} activeCategory={activeCategory} onSelectCategory={handleCategorySelect} />
@@ -687,6 +705,7 @@ function App() {
       />
       <InfoModal isOpen={isInfoModalOpen} onClose={() => setIsInfoModalOpen(false)} settings={storeSettings} isOpenNow={storeStatus.isOpen} />
       <PizzaBuilderModal isOpen={isPizzaBuilderOpen} onClose={() => setIsPizzaBuilderOpen(false)} availablePizzas={pizzasForBuilder} onAddToCart={addToCart} initialFirstHalf={pizzaBuilderFirstHalf} />
+      <OrderTrackerModal isOpen={isTrackerOpen} onClose={() => setIsTrackerOpen(false)} />
 
       {showToast && (
         <div className="fixed top-20 right-4 z-50 animate-in fade-in slide-in-from-right duration-300 pointer-events-none">

@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { ShoppingBag, Moon, Sun, Phone, Info } from 'lucide-react';
+import { ShoppingBag, Moon, Sun, Phone, Info, Clock } from 'lucide-react';
 
 interface HeaderProps {
   cartCount: number;
@@ -12,7 +13,8 @@ interface HeaderProps {
   whatsapp: string;
   phone: string;
   onOpenInfo: () => void;
-  isOpenNow: boolean; // Propriedade nova
+  isOpenNow: boolean;
+  onOpenTracker: () => void; // New prop
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
@@ -26,7 +28,8 @@ export const Header: React.FC<HeaderProps> = ({
   whatsapp,
   phone,
   onOpenInfo,
-  isOpenNow
+  isOpenNow,
+  onOpenTracker
 }) => {
   const [logoError, setLogoError] = useState(false);
 
@@ -111,6 +114,15 @@ export const Header: React.FC<HeaderProps> = ({
             </svg>
           </a>
           
+          {/* Order Tracker Button */}
+          <button 
+             onClick={onOpenTracker}
+             className="p-2 rounded-full hover:bg-white/10 text-white transition-colors"
+             title="Acompanhar Pedidos"
+          >
+             <Clock className="w-6 h-6" />
+          </button>
+
           {/* Info Button */}
           <button 
              id="tour-info"
