@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Product, CartItem } from '../types';
-import { X, Check, Search, CirclePercent } from 'lucide-react';
+import { X, Check, Search } from 'lucide-react';
 
 interface PizzaBuilderModalProps {
   isOpen: boolean;

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Product, CartItem } from '../types';
-import { Plus, Minus, ImageOff, Check, ChevronUp, Share2, CirclePercent } from 'lucide-react';
+import { Plus, Minus, ImageOff, Check, ChevronUp, Share2, PieChart } from 'lucide-react';
 
 interface ProductCardProps {
   product: Product;
@@ -229,7 +229,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
                     onClick={() => onOpenPizzaBuilder && onOpenPizzaBuilder(product)}
                     className="w-full bg-italian-green text-white py-2 rounded-lg font-bold text-sm hover:bg-green-700 flex items-center justify-center gap-2"
                   >
-                    <CirclePercent className="w-4 h-4" /> Escolher 2ª Metade
+                    <PieChart className="w-4 h-4" /> Escolher 2ª Metade
                   </button>
                </div>
             ) : (

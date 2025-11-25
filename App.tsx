@@ -11,7 +11,7 @@ import { PromoBanner } from './components/PromoBanner';
 import { InfoModal } from './components/InfoModal';
 import { OnboardingGuide } from './components/OnboardingGuide';
 import { PizzaBuilderModal } from './components/PizzaBuilderModal';
-import { ShoppingBag, Check, Loader2, Search, X, Filter, Clock, AlertCircle, HelpCircle, Leaf, Flame, Star, Zap, CirclePercent } from 'lucide-react';
+import { ShoppingBag, Check, Loader2, Search, X, Filter, Clock, AlertCircle, HelpCircle, Leaf, Flame, Star, Zap, PieChart } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 const isValidCartItem = (item: any): item is CartItem => {
@@ -569,7 +569,7 @@ function App() {
                     >
                       <div className="flex items-center gap-4">
                         <div className="bg-white/20 p-3 rounded-full">
-                          <CirclePercent className="w-8 h-8 text-white" />
+                          <PieChart className="w-8 h-8 text-white" />
                         </div>
                         <div className="text-left">
                           <h3 className="font-bold text-lg leading-tight">Crie sua Pizza Meia a Meia</h3>
