@@ -86,9 +86,9 @@ export const PizzaBuilderModal: React.FC<PizzaBuilderModalProps> = ({
     // Logic: Price is usually based on the higher value pizza
     const basePrice = Math.max(firstHalf.price, secondHalf.price);
     
-    // Construct a composite product with unique synthetic ID
+    // Construct a composite product with unique synthetic ID (Timestamp to ensure uniqueness)
     const mixedPizza: Product = {
-      id: Date.now(), // Unique ID based on timestamp
+      id: Date.now(), 
       name: `Meia ${firstHalf.name} / Meia ${secondHalf.name}`,
       description: `1/2 ${firstHalf.name}\n1/2 ${secondHalf.name}`,
       price: basePrice,
