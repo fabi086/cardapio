@@ -1,4 +1,5 @@
 
+
 export interface ProductChoice {
   name: string;
   price: number;
@@ -53,7 +54,8 @@ export interface DeliveryRegion {
   id: string;
   name: string;
   price: number;
-  zipPrefixes?: string[];
+  zips?: string; // Comma-separated zips, prefixes, and ranges (e.g., "13295, 04800000-04999999")
+  zipExclusions?: string; // Comma-separated zips, prefixes, and ranges to exclude
 }
 
 export interface StoreSettings {

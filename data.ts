@@ -1,4 +1,5 @@
 
+
 import { Category, StoreSettings } from './types';
 
 // Default Settings (Fallback)
@@ -15,13 +16,13 @@ export const DEFAULT_SETTINGS: StoreSettings = {
       id: 'itupeva-geral', 
       name: 'Itupeva (Geral)', 
       price: 7.00, 
-      zipPrefixes: ['13295', '13295000', '13295-000'] 
+      zips: '13295'
     },
     { 
       id: 'centro', 
       name: 'Centro (Itupeva)', 
       price: 5.00,
-      zipPrefixes: ['13295000'] // Exemplo específico
+      zips: '13295000'
     }
   ],
   enableGuide: true,

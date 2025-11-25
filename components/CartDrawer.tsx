@@ -1,4 +1,5 @@
 
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { CartItem, DeliveryRegion, Coupon, Category, Product } from '../types';
 import { X, Trash2, ShoppingBag, Plus, Minus, Edit2, MapPin, CreditCard, User, Search, Loader2, Ticket, CheckCircle, MessageCircle, Sparkles } from 'lucide-react';
@@ -20,6 +21,50 @@ interface CartDrawerProps {
   freeShipping?: boolean; // Prop for free shipping check
   menuData?: Category[]; // To enable suggestions/upsell
 }
+
+// --- CEP HELPER FUNCTIONS ---
+// Checks if a given CEP matches a set of rules (CSV of zips, prefixes, ranges)
+const isCepMatch = (cep: string, rulesString: string | undefined): boolean => {
+  if (!rulesString) return false;
+  const cleanCep = cep.replace(/\D/g, '');
+  if (cleanCep.length !== 8) return false;
+
+  const rules = rulesString.split(',').map(r => r.trim());
+
+  for (const rule of rules) {
+    if (rule.includes('-')) {
+      const [from, to] = rule.split('-').map(s => s.replace(/\D/g, ''));
+      if (from && to) {
+        const paddedFrom = from.padEnd(8, '0');
+        const paddedTo = to.padEnd(8, '9');
+        if (cleanCep >= paddedFrom && cleanCep <= paddedTo) {
+          return true;
+        }
+      }
+    } else {
+      const cleanRule = rule.replace(/\D/g, '');
+      if (cleanCep.startsWith(cleanRule)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+};
+
+// Checks if a customer's CEP is covered by a specific delivery region's rules
+const checkCepCoverage = (customerCep: string, region: DeliveryRegion): boolean => {
+    const isIncluded = isCepMatch(customerCep, region.zips);
+    if (!isIncluded) {
+        return false;
+    }
+    const isExcluded = isCepMatch(customerCep, region.zipExclusions);
+    if (isExcluded) {
+        return false;
+    }
+    return true;
+};
+
 
 export const CartDrawer: React.FC<CartDrawerProps> = ({ 
   isOpen, 
@@ -219,15 +264,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       setAddressDistrict(data.bairro || '');
       setAddressCity(data.localidade || '');
 
-      let foundRegion: DeliveryRegion | undefined;
-
-      foundRegion = deliveryRegions.find(region => {
-         if (!region.zipPrefixes || region.zipPrefixes.length === 0) return false;
-         return region.zipPrefixes.some(prefix => {
-            const cleanPrefix = prefix.replace(/\D/g, '');
-            return cleanCep.startsWith(cleanPrefix);
-         });
-      });
+      const foundRegion = deliveryRegions.find(region => checkCepCoverage(cleanCep, region));
       
       if (foundRegion) {
          setCalculatedFee(foundRegion.price);
