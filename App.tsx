@@ -367,7 +367,7 @@ function App() {
 
   // --- CART ACTIONS ---
   const addToCart = (product: Product, quantity: number = 1, observation: string = '', selectedOptions?: CartItem['selectedOptions']) => {
-    // Always allowed to add
+    // Allowed even if store is closed (per request)
     
     const normalizedObservation = (observation || '').trim();
     const optionsKey = selectedOptions ? JSON.stringify(selectedOptions.sort((a,b) => a.choiceName.localeCompare(b.choiceName))) : '';
@@ -484,7 +484,7 @@ function App() {
 
   const navCategories = menuData.filter(cat => cat.id !== 'promocoes').filter(cat => searchScope === 'all' || cat.id === searchScope);
 
-  // Helper to get pizzas for builder (uses currently selected builder category)
+  // Helper to get pizzas for builder
   const pizzasForBuilder = menuData
     .find(c => c.id === pizzaBuilderCategory)
     ?.items || [];
@@ -551,7 +551,6 @@ function App() {
             if (category.items.length === 0) return null;
 
             // Logic to determine if we should show Half-Half options
-            // Default: if category contains 'pizza' in ID or name
             const isPizzaCategory = category.id.includes('pizza') || category.name.toLowerCase().includes('pizza');
 
             return (
@@ -661,15 +660,7 @@ function App() {
 
       <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} items={cartItems} onRemoveItem={removeFromCart} onClearCart={clearCart} onUpdateQuantity={updateQuantity} onUpdateObservation={updateObservation} whatsappNumber={storeSettings.whatsapp} storeName={storeSettings.name} deliveryRegions={storeSettings.deliveryRegions || []} paymentMethods={storeSettings.paymentMethods} />
       <InfoModal isOpen={isInfoModalOpen} onClose={() => setIsInfoModalOpen(false)} settings={storeSettings} isOpenNow={storeStatus.isOpen} />
-      
-      {/* PIZZA BUILDER MODAL */}
-      <PizzaBuilderModal 
-        isOpen={isPizzaBuilderOpen} 
-        onClose={() => setIsPizzaBuilderOpen(false)} 
-        availablePizzas={pizzasForBuilder} 
-        onAddToCart={addToCart}
-        initialFirstHalf={pizzaBuilderFirstHalf}
-      />
+      <PizzaBuilderModal isOpen={isPizzaBuilderOpen} onClose={() => setIsPizzaBuilderOpen(false)} availablePizzas={pizzasForBuilder} onAddToCart={addToCart} initialFirstHalf={pizzaBuilderFirstHalf} />
 
       {showToast && (
         <div className="fixed top-20 right-4 z-50 animate-in fade-in slide-in-from-right duration-300 pointer-events-none">
@@ -680,6 +671,7 @@ function App() {
         </div>
       )}
 
+      {/* ... Floating Cart ... */}
       {totalItems > 0 && !isCartOpen && (
         <>
           <div className="fixed bottom-4 left-4 right-4 md:hidden z-40">
