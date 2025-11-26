@@ -154,21 +154,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setIsUpdatingOrder(null);
   };
 
-  // --- PRINT LOGIC ---
+  // --- PRINT LOGIC (Optimized for 80mm/58mm Thermal Printers) ---
   const handlePrintOrder = (order: Order) => {
     const win = window.open('', '_blank');
     if (!win) return;
 
     const itemsHtml = order.items.map((item: any) => `
-        <div style="border-bottom: 1px dashed #ccc; padding: 5px 0;">
-            <div style="display:flex; justify-content:space-between; font-weight:bold;">
-                <span>${item.quantity}x ${item.name}</span>
-                <span>${settings.currencySymbol} ${(item.price * item.quantity).toFixed(2)}</span>
+        <div class="item-row">
+            <div class="qty">${item.quantity}x</div>
+            <div class="name">
+                ${item.name}
+                ${item.selectedOptions?.map((opt: any) => `
+                    <div class="option">+ ${opt.choiceName}</div>
+                `).join('') || ''}
+                ${item.observation ? `<div class="obs">OBS: ${item.observation}</div>` : ''}
             </div>
-            ${item.selectedOptions?.map((opt: any) => `
-                <div style="font-size:12px; color:#555;">+ ${opt.choiceName}</div>
-            `).join('') || ''}
-            ${item.observation ? `<div style="font-size:12px; font-style:italic;">Obs: ${item.observation}</div>` : ''}
+            <div class="price">${settings.currencySymbol} ${(item.price * item.quantity).toFixed(2)}</div>
         </div>
     `).join('');
 
@@ -177,36 +178,68 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         <head>
             <title>Pedido #${order.id}</title>
             <style>
-                body { font-family: 'Courier New', monospace; font-size: 12px; margin: 0; padding: 10px; width: 300px; }
-                h2, h3 { margin: 5px 0; text-align: center; }
-                .divider { border-top: 1px dashed #000; margin: 10px 0; }
-                .flex { display: flex; justify-content: space-between; }
-                .bold { font-weight: bold; }
                 @media print {
-                    @page { margin: 0; size: auto; }
-                    body { padding: 0; width: 100%; }
+                    @page { margin: 0; size: 80mm auto; }
+                    body { margin: 0; padding: 5px; }
                 }
+                body {
+                    font-family: 'Courier New', Courier, monospace;
+                    font-size: 12px;
+                    line-height: 1.2;
+                    color: #000;
+                    width: 100%;
+                    max-width: 80mm; /* Limita a largura para visualização na tela */
+                    margin: 0 auto;
+                    padding: 10px;
+                    background: #fff;
+                }
+                .header { text-align: center; margin-bottom: 10px; }
+                .title { font-size: 16px; font-weight: bold; text-transform: uppercase; }
+                .subtitle { font-size: 12px; }
+                .divider { border-top: 1px dashed #000; margin: 8px 0; width: 100%; }
+                .info-row { margin-bottom: 4px; }
+                .bold { font-weight: bold; }
+                .big { font-size: 14px; }
+                
+                .item-row { display: flex; align-items: flex-start; margin-bottom: 6px; }
+                .qty { font-weight: bold; width: 25px; flex-shrink: 0; }
+                .name { flex-grow: 1; word-break: break-word; }
+                .price { font-weight: bold; margin-left: 5px; white-space: nowrap; }
+                
+                .option { font-size: 11px; margin-left: 0px; color: #333; display: block; }
+                .obs { font-weight: bold; font-size: 11px; margin-top: 2px; text-transform: uppercase; }
+                
+                .summary { margin-top: 10px; }
+                .flex-between { display: flex; justify-content: space-between; }
+                
+                .footer { text-align: center; margin-top: 15px; font-size: 10px; }
             </style>
         </head>
         <body>
-            <h2>${settings.name}</h2>
-            <div style="text-align:center; margin-bottom:10px;">
-                Pedido #${order.id}<br/>
-                ${new Date(order.created_at).toLocaleString('pt-BR')}
+            <div class="header">
+                <div class="title">${settings.name}</div>
+                <div class="subtitle">${new Date(order.created_at).toLocaleString('pt-BR')}</div>
+                <div class="subtitle bold" style="margin-top:5px;">PEDIDO #${order.id}</div>
             </div>
             
             <div class="divider"></div>
             
-            <div style="margin-bottom:10px;">
-                <b>Cliente:</b> ${order.customer_name}<br/>
-                ${order.delivery_type === 'delivery' 
-                    ? `<b>Endereço:</b> ${order.address_street}, ${order.address_number}<br/>${order.address_district}<br/>${order.address_city}`
-                    : order.delivery_type === 'table' 
-                        ? `<b>Mesa:</b> ${order.table_number}`
-                        : `<b>Retirada no Balcão</b>`
-                }
-                ${order.address_complement ? `<br/>Comp: ${order.address_complement}` : ''}
+            <div class="info-row">
+                <span class="bold">CLIENTE:</span> ${order.customer_name}
             </div>
+            <div class="info-row">
+                <span class="bold">TIPO:</span> ${order.delivery_type === 'delivery' ? 'ENTREGA' : order.delivery_type === 'table' ? 'MESA' : 'RETIRADA'}
+            </div>
+            
+            ${order.delivery_type === 'delivery' ? `
+                <div class="info-row"><span class="bold">ENDEREÇO:</span></div>
+                <div>${order.address_street}, ${order.address_number}</div>
+                <div>${order.address_district}</div>
+                ${order.address_complement ? `<div>Comp: ${order.address_complement}</div>` : ''}
+                ${order.address_city ? `<div>${order.address_city}</div>` : ''}
+            ` : order.delivery_type === 'table' ? `
+                <div class="info-row big bold" style="margin-top:5px;">MESA: ${order.table_number}</div>
+            ` : ''}
 
             <div class="divider"></div>
             
@@ -214,24 +247,28 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             
             <div class="divider"></div>
             
-            <div class="flex"><span>Subtotal:</span> <span>${settings.currencySymbol} ${(order.total - (order.delivery_fee||0) + (order.discount||0)).toFixed(2)}</span></div>
-            ${order.delivery_fee > 0 ? `<div class="flex"><span>Entrega:</span> <span>${settings.currencySymbol} ${order.delivery_fee.toFixed(2)}</span></div>` : ''}
-            ${order.discount > 0 ? `<div class="flex"><span>Desconto:</span> <span>-${settings.currencySymbol} ${order.discount.toFixed(2)}</span></div>` : ''}
-            <div class="flex bold" style="font-size:14px; margin-top:5px;"><span>TOTAL:</span> <span>${settings.currencySymbol} ${order.total.toFixed(2)}</span></div>
+            <div class="summary">
+                <div class="flex-between"><span>Subtotal:</span> <span>${settings.currencySymbol} ${(order.total - (order.delivery_fee||0) + (order.discount||0)).toFixed(2)}</span></div>
+                ${order.delivery_fee > 0 ? `<div class="flex-between"><span>Taxa Entrega:</span> <span>${settings.currencySymbol} ${order.delivery_fee.toFixed(2)}</span></div>` : ''}
+                ${order.discount > 0 ? `<div class="flex-between"><span>Desconto:</span> <span>-${settings.currencySymbol} ${order.discount.toFixed(2)}</span></div>` : ''}
+                <div class="flex-between big bold" style="margin-top:5px;"><span>TOTAL:</span> <span>${settings.currencySymbol} ${order.total.toFixed(2)}</span></div>
+            </div>
             
             <div class="divider"></div>
             
-            <div><b>Pagamento:</b> ${order.payment_method}</div>
-            ${order.observation ? `<div style="margin-top:5px;"><b>Obs Pedido:</b> ${order.observation}</div>` : ''}
+            <div class="info-row">
+                <span class="bold">PAGAMENTO:</span> ${order.payment_method}
+            </div>
+            ${order.observation ? `<div class="info-row" style="margin-top:5px;"><span class="bold">OBS GERAL:</span> ${order.observation}</div>` : ''}
             
-            <div style="text-align:center; margin-top:20px;">
+            <div class="footer">
+                Sistema de Pedidos Digital<br/>
                 Obrigado pela preferência!
             </div>
             
             <script>
                 window.onload = () => { 
-                    window.print(); 
-                    // Close after print dialog closes (browser dependent, usually manual close needed)
+                    window.print();
                 }
             </script>
         </body>
