@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, MapPin, Phone, MessageCircle, Clock, CreditCard, Truck, Store, ExternalLink } from 'lucide-react';
-import { StoreSettings } from '../types';
+import { StoreSettings, WeeklySchedule } from '../types';
 
 interface InfoModalProps {
   isOpen: boolean;
@@ -8,6 +8,16 @@ interface InfoModalProps {
   settings: StoreSettings;
   isOpenNow: boolean;
 }
+
+const WEEKDAYS_PT = {
+  monday: 'Segunda',
+  tuesday: 'Terça',
+  wednesday: 'Quarta',
+  thursday: 'Quinta',
+  friday: 'Sexta',
+  saturday: 'Sábado',
+  sunday: 'Domingo'
+};
 
 export const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose, settings, isOpenNow }) => {
   if (!isOpen) return null;
@@ -32,7 +42,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose, settings,
       <div className="relative w-full max-w-lg bg-white dark:bg-stone-900 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto">
         
         {/* Header */}
-        <div className="relative h-32 bg-italian-red flex items-center justify-center">
+        <div className="relative h-32 bg-italian-red flex items-center justify-center" style={{ backgroundColor: settings.colors?.primary }}>
           <button 
             onClick={onClose}
             className="absolute top-4 right-4 bg-black/20 hover:bg-black/40 text-white p-2 rounded-full transition-colors"
@@ -53,7 +63,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose, settings,
           {/* Section: Contacts */}
           <div>
             <h3 className="text-lg font-bold text-stone-800 dark:text-stone-100 flex items-center gap-2 mb-4">
-              <Phone className="w-5 h-5 text-italian-red" /> Canais de Atendimento
+              <Phone className="w-5 h-5 text-italian-red" style={{ color: settings.colors?.primary }} /> Canais de Atendimento
             </h3>
             <div className="grid gap-3">
                {/* WhatsApp Principal */}
@@ -94,7 +104,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose, settings,
           {/* Section: Address & Map */}
           <div>
             <h3 className="text-lg font-bold text-stone-800 dark:text-stone-100 flex items-center gap-2 mb-4">
-              <MapPin className="w-5 h-5 text-italian-red" /> Localização
+              <MapPin className="w-5 h-5 text-italian-red" style={{ color: settings.colors?.primary }} /> Localização
             </h3>
             <div className="bg-stone-50 dark:bg-stone-800 rounded-xl overflow-hidden border border-stone-200 dark:border-stone-700">
                <div className="p-4">
@@ -113,29 +123,41 @@ export const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose, settings,
             </div>
           </div>
 
-          {/* Section: General Info */}
-          <div className="grid md:grid-cols-2 gap-6">
+          {/* Section: General Info & Hours */}
+          <div className="grid md:grid-cols-1 gap-6">
              <div>
                 <h3 className="text-sm font-bold text-stone-800 dark:text-stone-100 flex items-center gap-2 mb-3 uppercase tracking-wide">
                   <Clock className="w-4 h-4 text-stone-400" /> Horários
                 </h3>
-                <div className="text-sm text-stone-600 dark:text-stone-400 bg-stone-50 dark:bg-stone-800 p-3 rounded-lg border border-stone-200 dark:border-stone-700">
-                  {settings.openingHours}
+                <div className="text-sm text-stone-600 dark:text-stone-400 bg-stone-50 dark:bg-stone-800 p-4 rounded-lg border border-stone-200 dark:border-stone-700">
+                  {settings.schedule ? (
+                     <div className="space-y-2">
+                        {Object.keys(WEEKDAYS_PT).map((dayKey) => {
+                           const daySchedule = settings.schedule![dayKey as keyof WeeklySchedule];
+                           const today = new Date().getDay();
+                           const dayIndex = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'].indexOf(dayKey);
+                           const isToday = today === dayIndex;
+
+                           return (
+                              <div key={dayKey} className={`flex justify-between items-center ${isToday ? 'font-bold text-stone-800 dark:text-white' : ''}`}>
+                                 <span className="w-24">{WEEKDAYS_PT[dayKey as keyof typeof WEEKDAYS_PT]}</span>
+                                 <div className="text-right">
+                                    {daySchedule.isOpen && daySchedule.intervals.length > 0 ? (
+                                       daySchedule.intervals.map((int, i) => (
+                                          <span key={i} className="block">{int.start} - {int.end}</span>
+                                       ))
+                                    ) : (
+                                       <span className="text-red-500">Fechado</span>
+                                    )}
+                                 </div>
+                              </div>
+                           );
+                        })}
+                     </div>
+                  ) : (
+                     <p>{settings.openingHours}</p>
+                  )}
                 </div>
-             </div>
-             
-             <div>
-                <h3 className="text-sm font-bold text-stone-800 dark:text-stone-100 flex items-center gap-2 mb-3 uppercase tracking-wide">
-                  <Truck className="w-4 h-4 text-stone-400" /> Serviços
-                </h3>
-                <ul className="space-y-2">
-                   <li className="flex items-center gap-2 text-sm text-stone-600 dark:text-stone-400">
-                      <Store className="w-4 h-4 text-italian-green" /> Consumo no Local
-                   </li>
-                   <li className="flex items-center gap-2 text-sm text-stone-600 dark:text-stone-400">
-                      <Truck className="w-4 h-4 text-italian-green" /> Delivery
-                   </li>
-                </ul>
              </div>
           </div>
 

@@ -1,8 +1,6 @@
-
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { MENU_DATA, DEFAULT_SETTINGS, CATEGORY_IMAGES } from './data';
-import { Product, CartItem, Category, StoreSettings } from './types';
+import { Product, CartItem, Category, StoreSettings, WeeklySchedule } from './types';
 import { Header } from './components/Header';
 import { CategoryNav } from './components/CategoryNav';
 import { ProductCard } from './components/ProductCard';
@@ -28,33 +26,82 @@ const isValidCartItem = (item: any): item is CartItem => {
   );
 };
 
-// Helper to parse opening hours loosely (e.g. "18h às 23h")
-const checkStoreOpen = (hoursString: string): { isOpen: boolean, message: string } => {
-  const now = new Date();
-  const currentHour = now.getHours();
-  
-  // Extract numbers using regex
-  const times = hoursString.match(/(\d{1,2})/g);
-  
-  if (times && times.length >= 2) {
-    const startHour = parseInt(times[0]);
-    const endHour = parseInt(times[1]);
+// --- PHASE 1: ADVANCED SCHEDULE LOGIC ---
+const DAYS_MAP = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+const checkStoreOpenAdvanced = (schedule?: WeeklySchedule, timezone?: string): { isOpen: boolean, message: string } => {
+  if (!schedule) return { isOpen: true, message: '' }; // Fallback to always open if no schedule
+
+  try {
+    // Get current time in store's timezone
+    const timeZone = timezone || 'America/Sao_Paulo';
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-US', { 
+      timeZone, 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      hour12: false,
+      weekday: 'long'
+    });
     
-    if (endHour > startHour) {
-       if (currentHour >= startHour && currentHour < endHour) {
-         return { isOpen: true, message: 'Aberto Agora' };
-       }
+    // Hacky way to get parts because Intl API can be tricky across browsers
+    // Better approach: create a Date object relative to the Timezone
+    const tzDateString = now.toLocaleString('en-US', { timeZone });
+    const tzDate = new Date(tzDateString);
+    const dayIndex = tzDate.getDay(); // 0 = Sun
+    const currentDayKey = DAYS_MAP[dayIndex] as keyof WeeklySchedule;
+    
+    const currentHour = tzDate.getHours();
+    const currentMinute = tzDate.getMinutes();
+    const currentTimeVal = currentHour * 60 + currentMinute;
+
+    const daySchedule = schedule[currentDayKey];
+
+    if (!daySchedule || !daySchedule.isOpen) {
+       return { isOpen: false, message: 'Fechado hoje' };
+    }
+
+    // Check intervals
+    const isOpenNow = daySchedule.intervals.some(interval => {
+       const [startH, startM] = interval.start.split(':').map(Number);
+       const [endH, endM] = interval.end.split(':').map(Number);
+       
+       const startVal = startH * 60 + startM;
+       let endVal = endH * 60 + endM;
+       
+       // Handle crossing midnight (e.g. 18:00 to 02:00)
+       // If end time is smaller than start time, assume it ends the next day
+       // Note: This simple check only validates if "now" is within the start->midnight portion or midnight->end portion
+       // Ideally, complex crossing midnight logic requires checking previous day's overflow. 
+       // For simplicity in this version, we assume "End of day" is 23:59 or next day hours are separate.
+       
+       // If end is smaller, treat as up to midnight for this check (simplified)
+       if (endVal < startVal) endVal = 24 * 60; 
+
+       return currentTimeVal >= startVal && currentTimeVal < endVal;
+    });
+
+    if (isOpenNow) {
+       return { isOpen: true, message: 'Aberto Agora' };
     } else {
-       // Cross midnight
-       if (currentHour >= startHour || currentHour < endHour) {
-         return { isOpen: true, message: 'Aberto Agora' };
+       // Find next opening time today
+       const nextInterval = daySchedule.intervals.find(interval => {
+          const [startH, startM] = interval.start.split(':').map(Number);
+          const startVal = startH * 60 + startM;
+          return startVal > currentTimeVal;
+       });
+
+       if (nextInterval) {
+          return { isOpen: false, message: `Fechado. Abre às ${nextInterval.start}` };
+       } else {
+          return { isOpen: false, message: 'Fechado por hoje' };
        }
     }
-    
-    return { isOpen: false, message: `Fechado no momento. Abrimos às ${startHour}h.` };
+
+  } catch (e) {
+    console.error("Error calculating schedule", e);
+    return { isOpen: true, message: '' }; // Fail safe
   }
-  
-  return { isOpen: true, message: '' };
 };
 
 function App() {
@@ -94,36 +141,52 @@ function App() {
     return false;
   });
 
+  // --- PHASE 2: APPLY VISUAL THEME ---
+  useEffect(() => {
+    if (storeSettings.colors) {
+      const root = document.documentElement;
+      root.style.setProperty('--color-primary', storeSettings.colors.primary);
+      root.style.setProperty('--color-secondary', storeSettings.colors.secondary);
+      // You could also set background colors here if needed
+    }
+  }, [storeSettings.colors]);
+
   // Atualiza o título da página e as Meta Tags de Compartilhamento (WhatsApp)
   useEffect(() => {
-    if (storeSettings.name) {
-      document.title = storeSettings.name;
-    }
+    // Prioridade: SEO Title > Nome da Loja > Padrão
+    const pageTitle = storeSettings.seoTitle?.trim() ? storeSettings.seoTitle : (storeSettings.name || 'Cardápio Digital');
+    document.title = pageTitle;
 
     // Helper to safely update meta tags
     const updateMetaTag = (selector: string, content: string) => {
+      if (!content) return;
+
       let element = document.querySelector(selector);
       if (!element) {
-        // Create if doesn't exist (basic handling)
         element = document.createElement('meta');
-        if (selector.includes('property')) {
-           element.setAttribute('property', selector.replace("meta[property='", "").replace("']", ""));
+        
+        if (selector.startsWith('meta[property')) {
+           const property = selector.replace("meta[property='", "").replace("']", "");
+           element.setAttribute('property', property);
+        } else if (selector.startsWith('meta[name')) {
+           const name = selector.replace("meta[name='", "").replace("']", "");
+           element.setAttribute('name', name);
         }
+        
         document.head.appendChild(element);
       }
       element.setAttribute('content', content);
     };
 
     // Update Open Graph Tags
-    if (storeSettings.seoTitle || storeSettings.name) {
-       updateMetaTag("meta[property='og:title']", storeSettings.seoTitle || storeSettings.name);
-    }
-    if (storeSettings.seoDescription) {
-       updateMetaTag("meta[property='og:description']", storeSettings.seoDescription);
-    }
+    updateMetaTag("meta[property='og:title']", pageTitle);
+    updateMetaTag("meta[property='og:description']", storeSettings.seoDescription || '');
     if (storeSettings.seoBannerUrl) {
        updateMetaTag("meta[property='og:image']", storeSettings.seoBannerUrl);
     }
+    
+    // Update Standard Description
+    updateMetaTag("meta[name='description']", storeSettings.seoDescription || '');
 
   }, [storeSettings]);
 
@@ -141,8 +204,13 @@ function App() {
 
   // Check store status when settings load
   useEffect(() => {
-     if (storeSettings.openingHours) {
-        setStoreStatus(checkStoreOpen(storeSettings.openingHours));
+     // Use Advanced Check if schedule exists, otherwise legacy string check logic could go here
+     if (storeSettings.schedule) {
+        setStoreStatus(checkStoreOpenAdvanced(storeSettings.schedule, storeSettings.timezone));
+     } else if (storeSettings.openingHours) {
+        // Fallback logic could be re-implemented here if needed, 
+        // but for now let's assume if no schedule obj, it's open.
+        setStoreStatus({ isOpen: true, message: '' });
      }
      
      if (storeSettings.enableGuide !== false) {
@@ -233,17 +301,31 @@ function App() {
           }
         }
 
+        let schedule = settingsData.schedule;
+        if (typeof schedule === 'string') {
+           try { schedule = JSON.parse(schedule); } catch(e) { schedule = DEFAULT_SETTINGS.schedule; }
+        }
+
+        let colors = settingsData.colors;
+        if (typeof colors === 'string') {
+           try { colors = JSON.parse(colors); } catch(e) { colors = DEFAULT_SETTINGS.colors; }
+        }
+
         setStoreSettings({
             name: settingsData.name || DEFAULT_SETTINGS.name,
             whatsapp: settingsData.whatsapp || DEFAULT_SETTINGS.whatsapp,
             logoUrl: settingsData.logo_url || DEFAULT_SETTINGS.logoUrl,
             address: settingsData.address || DEFAULT_SETTINGS.address,
             openingHours: settingsData.opening_hours || DEFAULT_SETTINGS.openingHours,
+            schedule: schedule || DEFAULT_SETTINGS.schedule,
             phones: (settingsData.phones && Array.isArray(settingsData.phones)) ? settingsData.phones : DEFAULT_SETTINGS.phones,
             paymentMethods: (settingsData.payment_methods && Array.isArray(settingsData.payment_methods)) ? settingsData.payment_methods : DEFAULT_SETTINGS.paymentMethods,
             deliveryRegions: Array.isArray(deliveryRegions) ? deliveryRegions : DEFAULT_SETTINGS.deliveryRegions,
             enableGuide: settingsData.enable_guide ?? true,
             freeShipping: settingsData.free_shipping ?? false,
+            currencySymbol: settingsData.currency_symbol || DEFAULT_SETTINGS.currencySymbol,
+            timezone: settingsData.timezone || DEFAULT_SETTINGS.timezone,
+            colors: colors || DEFAULT_SETTINGS.colors,
             seoTitle: settingsData.seo_title || DEFAULT_SETTINGS.seoTitle,
             seoDescription: settingsData.seo_description || DEFAULT_SETTINGS.seoDescription,
             seoBannerUrl: settingsData.seo_banner_url || DEFAULT_SETTINGS.seoBannerUrl,
@@ -389,12 +471,16 @@ function App() {
           whatsapp: newSettings.whatsapp,
           address: newSettings.address,
           opening_hours: newSettings.openingHours,
+          schedule: JSON.stringify(newSettings.schedule || {}),
           phones: newSettings.phones,
           logo_url: newSettings.logoUrl,
           delivery_regions: JSON.stringify(newSettings.deliveryRegions || []),
           enable_guide: newSettings.enableGuide,
           payment_methods: newSettings.paymentMethods,
           free_shipping: newSettings.freeShipping,
+          currency_symbol: newSettings.currencySymbol,
+          timezone: newSettings.timezone,
+          colors: JSON.stringify(newSettings.colors || {}),
           seo_title: newSettings.seoTitle,
           seo_description: newSettings.seoDescription,
           seo_banner_url: newSettings.seoBannerUrl

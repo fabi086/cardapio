@@ -56,6 +56,35 @@ export interface DeliveryRegion {
   price: number;
   zipRules?: string[]; // Can be a prefix (13295), full CEP (13295000) or range (13295000-13299999)
   zipExclusions?: string[]; // Rules for CEPs to exclude from this region
+  neighborhoods?: string[]; // List of neighborhood names matching this region
+}
+
+// --- NEW TYPES FOR PHASE 1 & 2 ---
+
+export interface TimeInterval {
+  start: string; // "18:00"
+  end: string;   // "23:00"
+}
+
+export interface DaySchedule {
+  isOpen: boolean;
+  intervals: TimeInterval[];
+}
+
+export interface WeeklySchedule {
+  monday: DaySchedule;
+  tuesday: DaySchedule;
+  wednesday: DaySchedule;
+  thursday: DaySchedule;
+  friday: DaySchedule;
+  saturday: DaySchedule;
+  sunday: DaySchedule;
+}
+
+export interface StoreColors {
+  primary: string;   // Replaces italian-red
+  secondary: string; // Replaces italian-green
+  background?: string;
 }
 
 export interface StoreSettings {
@@ -63,13 +92,26 @@ export interface StoreSettings {
   logoUrl: string;
   whatsapp: string;
   address: string;
-  openingHours: string;
-  phones: string[];
-  paymentMethods: string[]; // New field for dynamic payment methods
-  deliveryRegions?: DeliveryRegion[];
-  enableGuide?: boolean; // New field to toggle onboarding tour
-  freeShipping?: boolean; // New field for global free shipping toggle
   
+  // Legacy support (simple string), will be deprecated in favor of schedule
+  openingHours: string; 
+  
+  // New Advanced Schedule
+  schedule?: WeeklySchedule;
+  
+  phones: string[];
+  paymentMethods: string[]; 
+  deliveryRegions?: DeliveryRegion[];
+  enableGuide?: boolean; 
+  freeShipping?: boolean; 
+  
+  // Localization & Currency
+  currencySymbol?: string; // R$, €, $
+  timezone?: string; // America/Sao_Paulo
+  
+  // Visual Identity
+  colors?: StoreColors;
+
   // SEO & Social Sharing
   seoTitle?: string;
   seoDescription?: string;
@@ -90,7 +132,7 @@ export interface Order {
   id: number;
   created_at: string;
   customer_name: string;
-  customer_phone?: string; // Optional, maybe captured later or via login
+  customer_phone?: string; 
   delivery_type: 'delivery' | 'pickup';
   address_street?: string;
   address_number?: string;
@@ -100,9 +142,9 @@ export interface Order {
   payment_method: string;
   total: number;
   delivery_fee: number;
-  discount: number; // New field
-  coupon_code?: string; // New field
+  discount: number;
+  coupon_code?: string; 
   status: OrderStatus;
-  items: any[]; // JSONB content of items for simplicity in archiving
+  items: any[]; 
   observation?: string;
 }

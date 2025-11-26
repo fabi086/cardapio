@@ -1,6 +1,9 @@
-import React, { useMemo, useState, useEffect } from 'react';
+
+
+
+import React, { useMemo, useState } from 'react';
 import { CartItem, DeliveryRegion, Coupon, Category, Product } from '../types';
-import { X, Trash2, ShoppingBag, Plus, Minus, Edit2, MapPin, CreditCard, User, Search, Loader2, Ticket, CheckCircle, MessageCircle, Sparkles, Banknote } from 'lucide-react';
+import { X, Trash2, ShoppingBag, Plus, Minus, Edit2, MapPin, CreditCard, User, Search, Loader2, Ticket, CheckCircle, MessageCircle, Sparkles } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 interface CartDrawerProps {
@@ -11,7 +14,6 @@ interface CartDrawerProps {
   onClearCart?: () => void;
   onUpdateQuantity?: (index: number, newQuantity: number) => void;
   onUpdateObservation?: (index: number, newObservation: string) => void;
-  onAddToCart?: (product: Product, quantity: number, observation: string, selectedOptions?: CartItem['selectedOptions']) => void;
   whatsappNumber: string;
   storeName: string;
   deliveryRegions?: DeliveryRegion[];
@@ -28,7 +30,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onClearCart,
   onUpdateQuantity,
   onUpdateObservation,
-  onAddToCart,
   whatsappNumber,
   storeName,
   deliveryRegions = [],
@@ -41,10 +42,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const [customerName, setCustomerName] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Cash Change State
-  const [needsChange, setNeedsChange] = useState(false);
-  const [changeFor, setChangeFor] = useState('');
   
   // Success State (To prevent duplicates and handle iOS redirection)
   const [orderSuccess, setOrderSuccess] = useState(false);
@@ -137,12 +134,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
      return [];
   }, [items, menuData]);
 
-  // FIX: Implemented correct quick add functionality using onAddToCart.
   const handleQuickAdd = (product: Product) => {
-     if (onAddToCart) {
-        onAddToCart(product, 1, '', []);
-     } else {
-        alert("Por favor, feche o carrinho e adicione o item através do menu principal.");
+     if (onUpdateQuantity) { 
+        // Placeholder for quick add
      }
   };
   
@@ -194,8 +188,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   };
 
   // --- CEP LOGIC ---
-  const performCepSearch = async (cepToSearch: string) => {
-    const cleanCep = cepToSearch.replace(/\D/g, '');
+  const handleCepSearch = async () => {
+    const cleanCep = cep.replace(/\D/g, '');
     
     if (cleanCep.length !== 8) {
       setCepError('CEP deve ter 8 dígitos');
@@ -223,54 +217,63 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       setAddressDistrict(data.bairro || '');
       setAddressCity(data.localidade || '');
 
-      const cepMatchesRule = (cep: string, rule: string): boolean => {
-        const cleanRule = rule.replace(/\D/g, '');
-
-        if (rule.includes('-')) { // Range check
-            const parts = cleanRule.split('-');
-            if (parts.length === 2) {
-                const start = parseInt(parts[0], 10);
-                const end = parseInt(parts[1], 10);
-                const cepNum = parseInt(cep, 10);
-                if (!isNaN(start) && !isNaN(end) && !isNaN(cepNum)) {
-                    return cepNum >= start && cepNum <= end;
-                }
-            }
-            return false;
-        } else { // Prefix or full CEP check
-            return cep.startsWith(cleanRule);
-        }
-      };
-
       let foundRegion: DeliveryRegion | undefined;
 
-      regionLoop: for (const region of deliveryRegions) {
-          // 1. Check exclusions first
-          if (region.zipExclusions && region.zipExclusions.length > 0) {
-              for (const exclusionRule of region.zipExclusions) {
-                  if (cepMatchesRule(cleanCep, exclusionRule)) {
-                      continue regionLoop; // This CEP is excluded, skip to the next region
-                  }
-              }
-          }
+      // First check by ZIP code rules
+      foundRegion = deliveryRegions.find(region => {
+         // Check exclusions first
+         if (region.zipExclusions && region.zipExclusions.some(ex => {
+             return cleanCep.startsWith(ex.replace(/\D/g, ''));
+         })) return false;
 
-          // 2. Check inclusions
-          if (region.zipRules && region.zipRules.length > 0) {
-              for (const inclusionRule of region.zipRules) {
-                  if (cepMatchesRule(cleanCep, inclusionRule)) {
-                      foundRegion = region;
-                      break regionLoop; // Found a matching region, stop searching
-                  }
-              }
-          }
-      }
+         if (!region.zipRules || region.zipRules.length === 0) return false;
+         return region.zipRules.some(rule => {
+            if (rule.includes('-')) {
+               // Range logic
+               const [start, end] = rule.split('-').map(r => parseInt(r.replace(/\D/g, '')));
+               const current = parseInt(cleanCep);
+               return current >= start && current <= end;
+            } else {
+               const cleanPrefix = rule.replace(/\D/g, '');
+               return cleanCep.startsWith(cleanPrefix);
+            }
+         });
+      });
       
+      // If found by ZIP, we're good
       if (foundRegion) {
          setCalculatedFee(foundRegion.price);
          setMatchedRegionName(foundRegion.name);
       } else {
-         setCepError('Não realizamos entregas para esta região/CEP no momento.');
-         setCalculatedFee(null);
+         // If NOT found by ZIP, we check neighborhood as fallback (sometimes APIs return different zip for same neighborhood)
+         const district = data.bairro || '';
+         if (district) {
+             const normNeighborhood = district.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+             
+             foundRegion = deliveryRegions.find(region => {
+                const hasListMatch = region.neighborhoods?.some(n => {
+                    const normN = n.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+                    return normN === normNeighborhood || normNeighborhood.includes(normN) || normN.includes(normNeighborhood);
+                });
+                
+                // Also check Region Name itself
+                const normRegionName = region.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+                const nameMatch = normRegionName === normNeighborhood || normNeighborhood.includes(normRegionName) || normRegionName.includes(normNeighborhood);
+
+                return hasListMatch || nameMatch;
+             });
+
+             if (foundRegion) {
+                 setCalculatedFee(foundRegion.price);
+                 setMatchedRegionName(foundRegion.name);
+             } else {
+                 setCepError('Não realizamos entregas para esta região/CEP no momento.');
+                 setCalculatedFee(null);
+             }
+         } else {
+             setCepError('Não realizamos entregas para esta região/CEP no momento.');
+             setCalculatedFee(null);
+         }
       }
 
     } catch (error) {
@@ -280,32 +283,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       setIsFetchingCep(false);
     }
   };
-
-  const handleCepSearch = () => performCepSearch(cep);
-
-  // --- AUTO FILL USER DATA ---
-  useEffect(() => {
-    if (isOpen) {
-       const saved = localStorage.getItem('spagnolli_user_data');
-       if (saved) {
-          try {
-             const p = JSON.parse(saved);
-             if (!customerName && p.name) setCustomerName(p.name);
-             if (!cep && p.cep) setCep(p.cep);
-             if (!addressStreet && p.street) setAddressStreet(p.street);
-             if (!addressNumber && p.number) setAddressNumber(p.number);
-             if (!addressDistrict && p.district) setAddressDistrict(p.district);
-             if (!addressCity && p.city) setAddressCity(p.city);
-             if (!addressComplement && p.complement) setAddressComplement(p.complement);
-             
-             // Try to calc fee if CEP exists and wasn't calculated yet
-             if (p.cep && p.cep.replace(/\D/g, '').length === 8 && calculatedFee === null) {
-                performCepSearch(p.cep);
-             }
-          } catch(e) { console.error(e); }
-       }
-    }
-  }, [isOpen]);
 
   const handleCheckout = async () => {
     if (items.length === 0) return;
@@ -330,31 +307,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       }
     }
 
-    // Cash Change Validation
-    if (paymentMethod === 'Dinheiro' && needsChange) {
-       const changeVal = parseFloat(changeFor.replace(',', '.'));
-       if (!changeFor || isNaN(changeVal)) {
-          alert('Por favor, informe para quanto você precisa de troco.');
-          return;
-       }
-       if (changeVal < total) {
-          alert(`O valor para troco deve ser maior ou igual ao total do pedido (R$ ${total.toFixed(2)}).`);
-          return;
-       }
-    }
-
     setIsSubmitting(true);
     let orderId = null;
-
-    // Build Payment String for Storage & Message
-    let finalPaymentMethod = paymentMethod;
-    if (paymentMethod === 'Dinheiro') {
-        if (needsChange) {
-            finalPaymentMethod = `Dinheiro (Troco para R$ ${changeFor})`;
-        } else {
-            finalPaymentMethod = `Dinheiro (Sem troco)`;
-        }
-    }
 
     // --- 1. SAVE TO SUPABASE (KDS Integration) ---
     if (supabase) {
@@ -367,7 +321,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           address_district: addressDistrict,
           address_city: addressCity,
           address_complement: addressComplement,
-          payment_method: finalPaymentMethod,
+          payment_method: paymentMethod,
           total: total,
           delivery_fee: deliveryFee,
           status: 'pending',
@@ -382,7 +336,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
            console.error("Erro ao salvar pedido no DB:", error);
         } else if (data && data.length > 0) {
            orderId = data[0].id;
-           
            // Save to local storage for tracking
            try {
              const savedOrders = JSON.parse(localStorage.getItem('spagnolli_my_orders') || '[]');
@@ -393,17 +346,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
            } catch (e) {
              console.error("Failed to save order ID to local storage", e);
            }
-
-           // Save user info for future autofill
-           localStorage.setItem('spagnolli_user_data', JSON.stringify({
-              name: customerName,
-              cep: cep,
-              street: addressStreet,
-              number: addressNumber,
-              district: addressDistrict,
-              city: addressCity,
-              complement: addressComplement
-           }));
         }
       } catch (err) {
         console.error("Erro inesperado ao salvar pedido:", err);
@@ -470,7 +412,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       message += `📍 *Vou retirar no local*\n`;
     }
     
-    message += `💳 Pagamento: ${finalPaymentMethod}\n`;
+    message += `💳 Pagamento: ${paymentMethod}\n`;
     
     message += `\n_Enviado via Cardápio Digital_`;
 
@@ -680,7 +622,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                              </div>
                              <button 
                                className="w-full bg-orange-100 hover:bg-orange-200 text-orange-800 text-xs font-bold py-1.5 rounded transition-colors"
-                               onClick={() => handleQuickAdd(prod)}
+                               onClick={() => {
+                                  alert("Por favor, feche o carrinho e adicione o item através do menu principal.");
+                               }}
                              >
                                + Adicionar
                              </button>
@@ -874,62 +818,17 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                       </h3>
                       <div className="grid grid-cols-1 gap-2">
                           {availablePaymentMethods.map(method => (
-                            <div key={method}>
-                                <label className={`flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors ${paymentMethod === method ? 'bg-green-50 dark:bg-green-900/30 border-italian-green' : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-700'}`}>
-                                    <input 
-                                      type="radio" 
-                                      name="payment" 
-                                      value={method} 
-                                      checked={paymentMethod === method}
-                                      onChange={() => {
-                                        setPaymentMethod(method);
-                                        if (method !== 'Dinheiro') {
-                                           setNeedsChange(false);
-                                           setChangeFor('');
-                                        }
-                                      }}
-                                      className="text-italian-green focus:ring-italian-green"
-                                    />
-                                    <span className="text-sm font-medium text-stone-700 dark:text-stone-300">{method}</span>
-                                </label>
-                                
-                                {method === 'Dinheiro' && paymentMethod === 'Dinheiro' && (
-                                   <div className="mt-2 ml-7 p-3 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg animate-in fade-in slide-in-from-top-1">
-                                      <p className="text-xs font-bold text-stone-600 dark:text-stone-400 mb-2">Precisa de troco?</p>
-                                      <div className="flex gap-2 mb-3">
-                                         <button 
-                                           onClick={() => setNeedsChange(false)}
-                                           className={`flex-1 py-1.5 text-xs font-bold rounded border transition-colors ${!needsChange ? 'bg-stone-700 text-white border-stone-700' : 'bg-white text-stone-500 border-stone-300 dark:bg-stone-900 dark:border-stone-600'}`}
-                                         >
-                                           Não preciso
-                                         </button>
-                                         <button 
-                                           onClick={() => setNeedsChange(true)}
-                                           className={`flex-1 py-1.5 text-xs font-bold rounded border transition-colors ${needsChange ? 'bg-italian-green text-white border-italian-green' : 'bg-white text-stone-500 border-stone-300 dark:bg-stone-900 dark:border-stone-600'}`}
-                                         >
-                                           Preciso de troco
-                                         </button>
-                                      </div>
-                                      
-                                      {needsChange && (
-                                        <div>
-                                           <label className="block text-xs font-bold text-stone-500 mb-1">Troco para quanto?</label>
-                                           <div className="relative">
-                                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-500 text-sm">R$</span>
-                                              <input 
-                                                type="text"
-                                                inputMode="decimal" 
-                                                value={changeFor}
-                                                onChange={(e) => setChangeFor(e.target.value)}
-                                                placeholder="Ex: 50,00"
-                                                className="w-full pl-9 p-2 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-600 rounded-md text-sm outline-none focus:border-italian-green focus:ring-1 focus:ring-italian-green"
-                                              />
-                                           </div>
-                                        </div>
-                                      )}
-                                   </div>
-                                )}
-                            </div>
+                            <label key={method} className={`flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors ${paymentMethod === method ? 'bg-green-50 dark:bg-green-900/30 border-italian-green' : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-700'}`}>
+                                <input 
+                                  type="radio" 
+                                  name="payment" 
+                                  value={method} 
+                                  checked={paymentMethod === method}
+                                  onChange={() => setPaymentMethod(method)}
+                                  className="text-italian-green focus:ring-italian-green"
+                                />
+                                <span className="text-sm font-medium text-stone-700 dark:text-stone-300">{method}</span>
+                            </label>
                           ))}
                       </div>
                     </div>

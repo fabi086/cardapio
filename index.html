@@ -3,11 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Spagnolli Pizzaria</title>
+    <title>Cardápio Digital</title>
     
-    <!-- Open Graph / WhatsApp Sharing Meta Tags -->
-    <meta property="og:title" content="Spagnolli Pizzaria - Cardápio Digital" />
-    <meta property="og:description" content="Peça as melhores pizzas e esfihas de Itupeva diretamente pelo nosso cardápio digital." />
+    <!-- Open Graph / WhatsApp Sharing Meta Tags (Serão atualizadas via JS, mas mantemos um fallback) -->
+    <meta property="og:title" content="Cardápio Digital" />
+    <meta property="og:description" content="Faça seu pedido online de forma rápida e prática." />
     <meta property="og:image" content="https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=1200&auto=format&fit=crop" />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="pt_BR" />
@@ -22,8 +22,8 @@
         theme: {
           extend: {
             colors: {
-              'italian-red': '#C8102E',
-              'italian-green': '#008C45',
+              'italian-red': 'var(--color-primary)',
+              'italian-green': 'var(--color-secondary)',
               'italian-white': '#F4F5F0',
               'gold-accent': '#FFD700',
             },
@@ -36,6 +36,12 @@
       }
     </script>
     <style>
+      /* Default Theme Variables */
+      :root {
+        --color-primary: #C8102E;
+        --color-secondary: #008C45;
+      }
+
       /* Custom scrollbar for category nav */
       .hide-scrollbar::-webkit-scrollbar {
         display: none;

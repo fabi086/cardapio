@@ -1,6 +1,16 @@
 
 
-import { Category, StoreSettings } from './types';
+import { Category, StoreSettings, WeeklySchedule } from './types';
+
+const DEFAULT_SCHEDULE: WeeklySchedule = {
+  monday: { isOpen: true, intervals: [{ start: '18:00', end: '23:00' }] },
+  tuesday: { isOpen: true, intervals: [{ start: '18:00', end: '23:00' }] },
+  wednesday: { isOpen: true, intervals: [{ start: '18:00', end: '23:00' }] },
+  thursday: { isOpen: true, intervals: [{ start: '18:00', end: '23:00' }] },
+  friday: { isOpen: true, intervals: [{ start: '18:00', end: '23:59' }] },
+  saturday: { isOpen: true, intervals: [{ start: '18:00', end: '23:59' }] },
+  sunday: { isOpen: true, intervals: [{ start: '18:00', end: '23:00' }] },
+};
 
 // Default Settings (Fallback)
 export const DEFAULT_SETTINGS: StoreSettings = {
@@ -8,7 +18,8 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   logoUrl: '/logo.png',
   whatsapp: '5511999147399',
   address: 'Av. Itália, 112 - Centro, Itupeva - SP',
-  openingHours: 'Aberto todos os dias das 18h às 23h',
+  openingHours: 'Aberto todos os dias das 18h às 23h', // Fallback text
+  schedule: DEFAULT_SCHEDULE,
   phones: ['4496-4188', '4496-4186', '(11) 99914-7399'],
   paymentMethods: ['Dinheiro', 'PIX', 'Cartão de Crédito', 'Cartão de Débito'],
   deliveryRegions: [
@@ -17,18 +28,29 @@ export const DEFAULT_SETTINGS: StoreSettings = {
       name: 'Itupeva (Geral)', 
       price: 7.00, 
       zipRules: ['13295'],
-      zipExclusions: []
+      zipExclusions: [],
+      neighborhoods: ['Jardim Primavera', 'Santa Fé']
     },
     { 
       id: 'centro', 
       name: 'Centro (Itupeva)', 
       price: 5.00,
-      zipRules: ['13295000-13295299'], // Example range for Centro
-      zipExclusions: []
+      zipRules: ['13295000-13295299'], 
+      zipExclusions: [],
+      neighborhoods: ['Centro', 'Jardim São Vicente']
     }
   ],
   enableGuide: true,
   freeShipping: false,
+  
+  // New Phase 1 & 2 Defaults
+  currencySymbol: 'R$',
+  timezone: 'America/Sao_Paulo',
+  colors: {
+    primary: '#C8102E', // Standard Italian Red
+    secondary: '#008C45', // Standard Italian Green
+  },
+
   seoTitle: 'Spagnolli Pizzaria - Cardápio Digital',
   seoDescription: 'Peça as melhores pizzas e esfihas de Itupeva diretamente pelo nosso cardápio digital. Rápido, fácil e delicioso!',
   seoBannerUrl: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=1200&auto=format&fit=crop'
