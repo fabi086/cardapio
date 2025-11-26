@@ -430,8 +430,35 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       discount: discountAmount
     };
 
-    // --- 2. GENERATE WHATSAPP MESSAGE (Do this first so we have the URL ready) ---
-    let message = `*NOVO PEDIDO - ${storeName}*\n`; // ID will be added if DB save works
+    // --- 2. SAVE TO BACKEND (BLOCKING) ---
+    // We MUST save before generating the message/redirecting to ensure the order exists
+    // and to get the ID for the message.
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.from('orders').insert([dbPayload]).select();
+        
+        if (error) {
+            console.error("Erro ao salvar pedido no banco:", error);
+            alert("Houve um problema ao salvar seu pedido no sistema, mas vamos te redirecionar para o WhatsApp.");
+        } else if (data && data.length > 0) {
+            orderId = data[0].id;
+            
+            // Save to local history
+            try {
+                const savedOrders = JSON.parse(localStorage.getItem('spagnolli_my_orders') || '[]');
+                if (!savedOrders.includes(orderId)) {
+                    savedOrders.unshift(orderId);
+                    localStorage.setItem('spagnolli_my_orders', JSON.stringify(savedOrders.slice(0, 10)));
+                }
+            } catch (e) { console.error(e); }
+        }
+      } catch (err) {
+         console.error("Erro de conexão:", err);
+      }
+    }
+
+    // --- 3. GENERATE WHATSAPP MESSAGE ---
+    let message = `*NOVO PEDIDO ${orderId ? `#${orderId} ` : ''}- ${storeName}*\n`;
     message += `------------------------------\n`;
     
     items.forEach((item) => {
@@ -498,36 +525,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     // Base URL for WhatsApp
     let url = `https://wa.me/${cleanNumber}?text=${encodedMessage}`;
 
-    // --- 3. SAVE TO BACKEND (Optimistic/Non-blocking) ---
-    if (supabase) {
-      // We try to save, but if it fails, we still redirect to WhatsApp
-      supabase.from('orders').insert([dbPayload]).select()
-        .then(({ data, error }) => {
-            if (error) {
-                console.error("Erro ao salvar pedido no banco:", error);
-                // We don't stop the user flow, just log it.
-            } else if (data && data.length > 0) {
-                orderId = data[0].id;
-                // Update the message URL with the ID if possible? 
-                // It's too late for the auto-redirect, but we can update the link in the success modal.
-                const msgWithId = message.replace('*NOVO PEDIDO -', `*NOVO PEDIDO #${orderId} -`);
-                const newUrl = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(msgWithId)}`;
-                setLastOrderUrl(newUrl);
-                
-                // Save to local history
-                try {
-                    const savedOrders = JSON.parse(localStorage.getItem('spagnolli_my_orders') || '[]');
-                    if (!savedOrders.includes(orderId)) {
-                        savedOrders.unshift(orderId);
-                        localStorage.setItem('spagnolli_my_orders', JSON.stringify(savedOrders.slice(0, 10)));
-                    }
-                } catch (e) { console.error(e); }
-            }
-        });
-    }
-
     // --- 4. FINALIZE & REDIRECT ---
-    setLastOrderUrl(url); // Set initial URL (without ID) immediately
+    setLastOrderUrl(url);
     setOrderSuccess(true);
     setIsSubmitting(false);
     if (onClearCart) onClearCart();

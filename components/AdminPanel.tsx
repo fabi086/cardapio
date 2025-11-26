@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Category, Product, StoreSettings, ProductOption, ProductChoice, Order, Coupon, DeliveryRegion, WeeklySchedule, Table } from '../types';
-import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Ticket, QrCode, Clock, CreditCard, LayoutDashboard, ShoppingBag, Palette, Phone, Share2, Calendar, Printer, Filter, ChevronDown, ChevronUp, AlertTriangle, User, Truck, Utensils, Minus, Type, Ban } from 'lucide-react';
+import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Ticket, QrCode, Clock, CreditCard, LayoutDashboard, ShoppingBag, Palette, Phone, Share2, Calendar, Printer, Filter, ChevronDown, ChevronUp, AlertTriangle, User, Truck, Utensils, Minus, Type, Ban, Wifi, WifiOff } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 interface AdminPanelProps {
@@ -51,6 +51,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'menu' | 'coupons' | 'tables' | 'settings'>('dashboard');
+  const [isConnected, setIsConnected] = useState<boolean | null>(null);
   
   // Dashboard State
   const [orders, setOrders] = useState<Order[]>([]);
@@ -121,6 +122,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       setSettingsForm(settings); 
     }
   }, [settings]);
+
+  useEffect(() => {
+    const checkConnection = async () => {
+       if (!supabase) {
+          setIsConnected(false);
+          return;
+       }
+       const { error } = await supabase.from('settings').select('id').limit(1);
+       setIsConnected(!error);
+    };
+    checkConnection();
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated && supabase) {
@@ -466,6 +479,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="flex items-center gap-3">
               <button onClick={onBack} className="p-2 hover:bg-stone-100 rounded-full transition-colors text-stone-600"><ArrowLeft className="w-5 h-5" /></button>
               <h1 className="font-bold text-xl text-stone-800 hidden md:block">Gerenciar Sistema</h1>
+              
+              {/* Connection Status Indicator */}
+              <div className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold ${isConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                 {isConnected ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+                 {isConnected ? 'Online' : 'Offline'}
+              </div>
             </div>
             <div className="flex gap-2">
                <button onClick={fetchOrders} className="p-2 bg-stone-100 border border-stone-200 hover:bg-stone-200 rounded-full text-stone-600" title="Atualizar Pedidos"><RefreshCw className="w-4 h-4"/></button>
@@ -788,7 +807,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
         )}
 
-        {/* --- COUPONS, TABLES & SETTINGS (Content Unchanged) --- */}
+        {/* ... (Rest of components like menu, settings, etc. remain same) ... */}
         {activeTab === 'coupons' && (
            <div className={CARD_STYLE}>
               <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-bold flex items-center gap-2 text-stone-900"><Ticket className="w-5 h-5 text-italian-red"/> Cupons de Desconto</h2><button onClick={() => setIsAddingCoupon(!isAddingCoupon)} className="bg-stone-900 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-black transition-colors shadow-sm"><Plus className="w-4 h-4"/> Novo Cupom</button></div>
