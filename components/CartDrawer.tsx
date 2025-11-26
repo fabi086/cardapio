@@ -1,9 +1,6 @@
-
-
-
 import React, { useMemo, useState, useEffect } from 'react';
 import { CartItem, DeliveryRegion, Coupon, Category, Product } from '../types';
-import { X, Trash2, ShoppingBag, Plus, Minus, Edit2, MapPin, CreditCard, User, Search, Loader2, Ticket, CheckCircle, MessageCircle, Sparkles } from 'lucide-react';
+import { X, Trash2, ShoppingBag, Plus, Minus, Edit2, MapPin, CreditCard, User, Search, Loader2, Ticket, CheckCircle, MessageCircle, Sparkles, Banknote } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 interface CartDrawerProps {
@@ -14,7 +11,6 @@ interface CartDrawerProps {
   onClearCart?: () => void;
   onUpdateQuantity?: (index: number, newQuantity: number) => void;
   onUpdateObservation?: (index: number, newObservation: string) => void;
-  // FIX: Added missing onAddToCart prop for upsell functionality.
   onAddToCart?: (product: Product, quantity: number, observation: string, selectedOptions?: CartItem['selectedOptions']) => void;
   whatsappNumber: string;
   storeName: string;
@@ -45,6 +41,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const [customerName, setCustomerName] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Cash Change State
+  const [needsChange, setNeedsChange] = useState(false);
+  const [changeFor, setChangeFor] = useState('');
   
   // Success State (To prevent duplicates and handle iOS redirection)
   const [orderSuccess, setOrderSuccess] = useState(false);
@@ -193,7 +193,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     setCouponCode('');
   };
 
-  // FIX: Replaced buggy CEP logic with a robust implementation that handles ranges, prefixes, and exclusions.
   // --- CEP LOGIC ---
   const performCepSearch = async (cepToSearch: string) => {
     const cleanCep = cepToSearch.replace(/\D/g, '');
@@ -284,7 +283,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
   const handleCepSearch = () => performCepSearch(cep);
 
-  // FIX: Added useEffect to auto-fill user data from local storage.
   // --- AUTO FILL USER DATA ---
   useEffect(() => {
     if (isOpen) {
@@ -332,8 +330,31 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       }
     }
 
+    // Cash Change Validation
+    if (paymentMethod === 'Dinheiro' && needsChange) {
+       const changeVal = parseFloat(changeFor.replace(',', '.'));
+       if (!changeFor || isNaN(changeVal)) {
+          alert('Por favor, informe para quanto você precisa de troco.');
+          return;
+       }
+       if (changeVal < total) {
+          alert(`O valor para troco deve ser maior ou igual ao total do pedido (R$ ${total.toFixed(2)}).`);
+          return;
+       }
+    }
+
     setIsSubmitting(true);
     let orderId = null;
+
+    // Build Payment String for Storage & Message
+    let finalPaymentMethod = paymentMethod;
+    if (paymentMethod === 'Dinheiro') {
+        if (needsChange) {
+            finalPaymentMethod = `Dinheiro (Troco para R$ ${changeFor})`;
+        } else {
+            finalPaymentMethod = `Dinheiro (Sem troco)`;
+        }
+    }
 
     // --- 1. SAVE TO SUPABASE (KDS Integration) ---
     if (supabase) {
@@ -346,7 +367,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           address_district: addressDistrict,
           address_city: addressCity,
           address_complement: addressComplement,
-          payment_method: paymentMethod,
+          payment_method: finalPaymentMethod,
           total: total,
           delivery_fee: deliveryFee,
           status: 'pending',
@@ -449,7 +470,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       message += `📍 *Vou retirar no local*\n`;
     }
     
-    message += `💳 Pagamento: ${paymentMethod}\n`;
+    message += `💳 Pagamento: ${finalPaymentMethod}\n`;
     
     message += `\n_Enviado via Cardápio Digital_`;
 
@@ -853,17 +874,62 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                       </h3>
                       <div className="grid grid-cols-1 gap-2">
                           {availablePaymentMethods.map(method => (
-                            <label key={method} className={`flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors ${paymentMethod === method ? 'bg-green-50 dark:bg-green-900/30 border-italian-green' : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-700'}`}>
-                                <input 
-                                  type="radio" 
-                                  name="payment" 
-                                  value={method} 
-                                  checked={paymentMethod === method}
-                                  onChange={() => setPaymentMethod(method)}
-                                  className="text-italian-green focus:ring-italian-green"
-                                />
-                                <span className="text-sm font-medium text-stone-700 dark:text-stone-300">{method}</span>
-                            </label>
+                            <div key={method}>
+                                <label className={`flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors ${paymentMethod === method ? 'bg-green-50 dark:bg-green-900/30 border-italian-green' : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-700'}`}>
+                                    <input 
+                                      type="radio" 
+                                      name="payment" 
+                                      value={method} 
+                                      checked={paymentMethod === method}
+                                      onChange={() => {
+                                        setPaymentMethod(method);
+                                        if (method !== 'Dinheiro') {
+                                           setNeedsChange(false);
+                                           setChangeFor('');
+                                        }
+                                      }}
+                                      className="text-italian-green focus:ring-italian-green"
+                                    />
+                                    <span className="text-sm font-medium text-stone-700 dark:text-stone-300">{method}</span>
+                                </label>
+                                
+                                {method === 'Dinheiro' && paymentMethod === 'Dinheiro' && (
+                                   <div className="mt-2 ml-7 p-3 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg animate-in fade-in slide-in-from-top-1">
+                                      <p className="text-xs font-bold text-stone-600 dark:text-stone-400 mb-2">Precisa de troco?</p>
+                                      <div className="flex gap-2 mb-3">
+                                         <button 
+                                           onClick={() => setNeedsChange(false)}
+                                           className={`flex-1 py-1.5 text-xs font-bold rounded border transition-colors ${!needsChange ? 'bg-stone-700 text-white border-stone-700' : 'bg-white text-stone-500 border-stone-300 dark:bg-stone-900 dark:border-stone-600'}`}
+                                         >
+                                           Não preciso
+                                         </button>
+                                         <button 
+                                           onClick={() => setNeedsChange(true)}
+                                           className={`flex-1 py-1.5 text-xs font-bold rounded border transition-colors ${needsChange ? 'bg-italian-green text-white border-italian-green' : 'bg-white text-stone-500 border-stone-300 dark:bg-stone-900 dark:border-stone-600'}`}
+                                         >
+                                           Preciso de troco
+                                         </button>
+                                      </div>
+                                      
+                                      {needsChange && (
+                                        <div>
+                                           <label className="block text-xs font-bold text-stone-500 mb-1">Troco para quanto?</label>
+                                           <div className="relative">
+                                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-500 text-sm">R$</span>
+                                              <input 
+                                                type="text"
+                                                inputMode="decimal" 
+                                                value={changeFor}
+                                                onChange={(e) => setChangeFor(e.target.value)}
+                                                placeholder="Ex: 50,00"
+                                                className="w-full pl-9 p-2 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-600 rounded-md text-sm outline-none focus:border-italian-green focus:ring-1 focus:ring-italian-green"
+                                              />
+                                           </div>
+                                        </div>
+                                      )}
+                                   </div>
+                                )}
+                            </div>
                           ))}
                       </div>
                     </div>

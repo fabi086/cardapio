@@ -278,7 +278,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
                     </div>
                     
                     <button onClick={handleAdd} disabled={isAdded} className={`flex-1 h-10 rounded-lg font-medium text-xs md:text-sm transition-all shadow-sm flex items-center justify-center gap-1 ${isAdded ? 'bg-green-600 text-white scale-105' : 'bg-italian-green text-white hover:bg-green-800'}`}>
-                      {isAdded ? <><Check className="w-4 h-4" /> Add!</> : `Add R$ ${totalPrice.toFixed(2).replace('.',',')}`}
+                      {isAdded ? <><Check className="w-4 h-4" /> Add!</> : `Add no carrinho R$ ${totalPrice.toFixed(2).replace('.',',')}`}
                     </button>
                   </div>
                </>

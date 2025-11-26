@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { Category, Product, StoreSettings, ProductOption, ProductChoice, Order, Coupon, DeliveryRegion } from '../types';
-import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Layers, Megaphone, Tag, List, HelpCircle, Utensils, Phone, CreditCard, Truck, Receipt, ClipboardList, Clock, Printer, Ticket, LayoutDashboard, DollarSign, TrendingUp, ShoppingBag, Calendar, PieChart, BarChart3, Filter, Ban } from 'lucide-react';
+import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Layers, Megaphone, Tag, List, HelpCircle, Utensils, Phone, CreditCard, Truck, Receipt, ClipboardList, Clock, Printer, Ticket, LayoutDashboard, DollarSign, TrendingUp, ShoppingBag, Calendar, PieChart, BarChart3, Filter, Ban, Star, Zap, Leaf, Flame } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 interface AdminPanelProps {
@@ -17,11 +18,18 @@ interface AdminPanelProps {
   onDeleteCategory?: (id: string) => void;
 }
 
+const AVAILABLE_TAGS = [
+  { id: 'popular', label: 'Mais Pedidos', icon: Star, color: 'bg-yellow-400 text-yellow-900 border-yellow-500' },
+  { id: 'new', label: 'Novidades', icon: Zap, color: 'bg-blue-500 text-white border-blue-600' },
+  { id: 'vegetarian', label: 'Vegetariano', icon: Leaf, color: 'bg-green-500 text-white border-green-600' },
+  { id: 'spicy', label: 'Picante', icon: Flame, color: 'bg-red-500 text-white border-red-600' }
+];
+
 export const AdminPanel: React.FC<AdminPanelProps> = ({ 
   menuData, 
   settings, 
   onUpdateProduct, 
-  onAddProduct,
+  onAddProduct, 
   onDeleteProduct,
   onUpdateSettings,
   onResetMenu, 
@@ -48,7 +56,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     image: '',
     price: 0,
     subcategory: '',
-    ingredients: []
+    ingredients: [],
+    tags: []
   });
 
   // Ingredient State
@@ -426,8 +435,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleAddNew = () => {
     if (!newProductForm.name || !newProductForm.price) { alert('Preencha pelo menos nome e preço.'); return; }
     const categoryId = newProductForm.category || menuData[0].id;
-    onAddProduct(categoryId, { name: newProductForm.name, description: newProductForm.description || '', price: Number(newProductForm.price), category: categoryId, image: newProductForm.image, code: newProductForm.code, subcategory: newProductForm.subcategory, ingredients: newProductForm.ingredients || [] });
-    setIsAddingNew(false); setNewProductForm({ category: menuData[0]?.id, image: '', price: 0, subcategory: '', ingredients: [] }); alert('Produto adicionado!');
+    onAddProduct(categoryId, { name: newProductForm.name, description: newProductForm.description || '', price: Number(newProductForm.price), category: categoryId, image: newProductForm.image, code: newProductForm.code, subcategory: newProductForm.subcategory, ingredients: newProductForm.ingredients || [], tags: newProductForm.tags || [] });
+    setIsAddingNew(false); setNewProductForm({ category: menuData[0]?.id, image: '', price: 0, subcategory: '', ingredients: [], tags: [] }); alert('Produto adicionado!');
   };
   const handleAddOptionGroup = () => {
     if (!newOptionName) return;
@@ -487,6 +496,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const startEditingCategory = (category: Category) => { setEditingCategoryId(category.id); setEditCategoryName(category.name); setEditCategoryImage(category.image || ''); };
   const cancelEditingCategory = () => { setEditingCategoryId(null); setEditCategoryName(''); setEditCategoryImage(''); };
   const triggerDeleteCategory = (id: string) => { if (onDeleteCategory) { onDeleteCategory(id); } };
+
+  // Tag Helpers
+  const toggleNewTag = (tagId: string) => {
+    setNewProductForm(prev => {
+      const current = prev.tags || [];
+      return { ...prev, tags: current.includes(tagId) ? current.filter(t => t !== tagId) : [...current, tagId] };
+    });
+  };
+
+  const toggleEditTag = (tagId: string) => {
+    setEditForm(prev => {
+      const current = prev.tags || [];
+      return { ...prev, tags: current.includes(tagId) ? current.filter(t => t !== tagId) : [...current, tagId] };
+    });
+  };
 
   // Dashboard calculations
   const filteredOrders = orders.filter(o => o.status !== 'cancelled');
@@ -1288,6 +1312,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <h3 className="font-bold text-lg mb-4 text-stone-800">Novo Produto</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                      <div>
+                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1">Código (Opcional)</label>
+                        <input type="text" value={newProductForm.code || ''} onChange={(e) => setNewProductForm({...newProductForm, code: e.target.value})} className="w-full p-2 bg-stone-50 border border-stone-200 rounded-lg text-sm text-stone-900" placeholder="Ex: 901"/>
+                     </div>
+                     <div>
                         <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1">Nome</label>
                         <input type="text" value={newProductForm.name || ''} onChange={(e) => setNewProductForm({...newProductForm, name: e.target.value})} className="w-full p-2 bg-stone-50 border border-stone-200 rounded-lg text-sm text-stone-900" />
                      </div>
@@ -1333,6 +1361,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         <input type="text" placeholder="Ex: Long Neck, Lata" value={newProductForm.subcategory || ''} onChange={(e) => setNewProductForm({...newProductForm, subcategory: e.target.value})} className="w-full p-2 bg-stone-50 border border-stone-200 rounded-lg text-sm text-stone-900" />
                      </div>
                      
+                     {/* Tags Selection */}
+                     <div className="md:col-span-2">
+                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2 flex items-center gap-1"><Tag className="w-3 h-3"/> Tags / Marcadores</label>
+                        <div className="flex flex-wrap gap-2">
+                           {AVAILABLE_TAGS.map(tag => {
+                              const isSelected = (newProductForm.tags || []).includes(tag.id);
+                              const Icon = tag.icon;
+                              return (
+                                <button
+                                  key={tag.id}
+                                  type="button"
+                                  onClick={() => toggleNewTag(tag.id)}
+                                  className={`text-xs px-3 py-1.5 rounded-full border font-bold transition-all flex items-center gap-1.5 ${isSelected ? tag.color : 'bg-stone-50 text-stone-500 border-stone-200 hover:bg-stone-100'}`}
+                                >
+                                  <Icon className="w-3 h-3" />
+                                  {tag.label}
+                                  {isSelected && <Check className="w-3 h-3 ml-1" />}
+                                </button>
+                              )
+                           })}
+                        </div>
+                     </div>
+
                      <div className="md:col-span-2">
                         <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1">Ingredientes</label>
                         <div className="flex gap-2 mb-2">
@@ -1385,6 +1436,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                               <div className="space-y-4 animate-in fade-in">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                    <div>
+                                      <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1">Código (Opcional)</label>
+                                      <input type="text" value={editForm.code || ''} onChange={(e) => setEditForm({...editForm, code: e.target.value})} className="w-full p-2 bg-stone-50 border border-stone-200 rounded-lg text-sm text-stone-900" placeholder="Ex: 901"/>
+                                   </div>
+                                   <div>
                                       <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1">Nome</label>
                                       <input type="text" value={editForm.name || ''} onChange={(e) => setEditForm({...editForm, name: e.target.value})} className="w-full p-2 bg-stone-50 border border-stone-200 rounded-lg text-sm text-stone-900" />
                                    </div>
@@ -1431,6 +1486,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                    <div>
                                       <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1">Subcategoria (Opcional)</label>
                                       <input type="text" value={editForm.subcategory || ''} onChange={(e) => setEditForm({...editForm, subcategory: e.target.value})} className="w-full p-2 bg-stone-50 border border-stone-200 rounded-lg text-sm text-stone-900" />
+                                   </div>
+
+                                   {/* Tags Selection for Edit */}
+                                   <div className="md:col-span-2">
+                                      <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2 flex items-center gap-1"><Tag className="w-3 h-3"/> Tags / Marcadores</label>
+                                      <div className="flex flex-wrap gap-2">
+                                         {AVAILABLE_TAGS.map(tag => {
+                                            const isSelected = (editForm.tags || []).includes(tag.id);
+                                            const Icon = tag.icon;
+                                            return (
+                                              <button
+                                                key={tag.id}
+                                                type="button"
+                                                onClick={() => toggleEditTag(tag.id)}
+                                                className={`text-xs px-3 py-1.5 rounded-full border font-bold transition-all flex items-center gap-1.5 ${isSelected ? tag.color : 'bg-stone-50 text-stone-500 border-stone-200 hover:bg-stone-100'}`}
+                                              >
+                                                <Icon className="w-3 h-3" />
+                                                {tag.label}
+                                                {isSelected && <Check className="w-3 h-3 ml-1" />}
+                                              </button>
+                                            )
+                                         })}
+                                      </div>
                                    </div>
 
                                    {/* Ingredients for Editing */}
@@ -1521,7 +1599,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                     )}
                                   </div>
                                   <div>
-                                    <h4 className="font-bold text-stone-800">{product.name}</h4>
+                                    <h4 className="font-bold text-stone-800">
+                                      {product.code && <span className="text-xs text-stone-500 bg-stone-100 px-1 rounded mr-1">#{product.code}</span>}
+                                      {product.name}
+                                    </h4>
                                     <p className="text-sm text-stone-500 line-clamp-1">{product.description}</p>
                                     <p className="text-italian-green font-bold mt-1">R$ {product.price.toFixed(2).replace('.', ',')}</p>
                                     {product.ingredients && product.ingredients.length > 0 && (
