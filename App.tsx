@@ -1,6 +1,8 @@
 
 
 
+
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { MENU_DATA, DEFAULT_SETTINGS, CATEGORY_IMAGES } from './data';
 import { Product, CartItem, Category, StoreSettings, WeeklySchedule } from './types';
@@ -178,8 +180,13 @@ function App() {
     }
   }, [storeSettings.colors, storeSettings.fontFamily]);
 
+  // Force Title Update Logic
   useEffect(() => {
-    const pageTitle = storeSettings.seoTitle?.trim() ? storeSettings.seoTitle : (storeSettings.name || 'Cardápio Digital');
+    // Priority: SEO Title -> Store Name -> Default
+    const pageTitle = storeSettings.seoTitle?.trim() 
+        ? storeSettings.seoTitle 
+        : (storeSettings.name ? storeSettings.name : 'Cardápio Digital');
+        
     document.title = pageTitle;
 
     const updateMetaTag = (selector: string, content: string) => {
@@ -206,7 +213,7 @@ function App() {
     }
     updateMetaTag("meta[name='description']", storeSettings.seoDescription || '');
 
-  }, [storeSettings]);
+  }, [storeSettings.name, storeSettings.seoTitle, storeSettings.seoDescription, storeSettings.seoBannerUrl]);
 
   useEffect(() => {
     if (isDarkMode) {

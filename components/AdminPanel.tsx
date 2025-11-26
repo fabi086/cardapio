@@ -1,6 +1,4 @@
 
-
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Category, Product, StoreSettings, ProductOption, ProductChoice, Order, Coupon, DeliveryRegion, WeeklySchedule, Table } from '../types';
 import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Ticket, QrCode, Clock, CreditCard, LayoutDashboard, ShoppingBag, Palette, Phone, Share2, Calendar, Printer, Filter, ChevronDown, ChevronUp, AlertTriangle, User, Truck, Utensils, Minus, Type } from 'lucide-react';
@@ -32,7 +30,7 @@ const WEEKDAYS_PT = {
 
 const FONTS_LIST = ['Outfit', 'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Poppins', 'Inter'];
 
-// Standard Input Style for Consistency
+// Standard Input Style - Forced White Background
 const INPUT_STYLE = "w-full p-3 bg-white border border-stone-300 rounded-lg text-stone-900 focus:ring-2 focus:ring-italian-red focus:border-italian-red outline-none transition-all placeholder-stone-400";
 const LABEL_STYLE = "block text-sm font-bold text-stone-700 mb-1";
 const CARD_STYLE = "bg-white p-6 rounded-xl shadow-sm border border-stone-200";
@@ -107,6 +105,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [newPhone, setNewPhone] = useState('');
   
   const [isProcessingImage, setIsProcessingImage] = useState(false);
+  const [isProcessingLogo, setIsProcessingLogo] = useState(false);
+  const [isProcessingBanner, setIsProcessingBanner] = useState(false);
 
   // Initialize settings form when props change
   useEffect(() => { 
@@ -152,6 +152,94 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       alert('Erro ao atualizar status');
     }
     setIsUpdatingOrder(null);
+  };
+
+  // --- PRINT LOGIC ---
+  const handlePrintOrder = (order: Order) => {
+    const win = window.open('', '_blank');
+    if (!win) return;
+
+    const itemsHtml = order.items.map((item: any) => `
+        <div style="border-bottom: 1px dashed #ccc; padding: 5px 0;">
+            <div style="display:flex; justify-content:space-between; font-weight:bold;">
+                <span>${item.quantity}x ${item.name}</span>
+                <span>${settings.currencySymbol} ${(item.price * item.quantity).toFixed(2)}</span>
+            </div>
+            ${item.selectedOptions?.map((opt: any) => `
+                <div style="font-size:12px; color:#555;">+ ${opt.choiceName}</div>
+            `).join('') || ''}
+            ${item.observation ? `<div style="font-size:12px; font-style:italic;">Obs: ${item.observation}</div>` : ''}
+        </div>
+    `).join('');
+
+    const receiptHtml = `
+        <html>
+        <head>
+            <title>Pedido #${order.id}</title>
+            <style>
+                body { font-family: 'Courier New', monospace; font-size: 12px; margin: 0; padding: 10px; width: 300px; }
+                h2, h3 { margin: 5px 0; text-align: center; }
+                .divider { border-top: 1px dashed #000; margin: 10px 0; }
+                .flex { display: flex; justify-content: space-between; }
+                .bold { font-weight: bold; }
+                @media print {
+                    @page { margin: 0; size: auto; }
+                    body { padding: 0; width: 100%; }
+                }
+            </style>
+        </head>
+        <body>
+            <h2>${settings.name}</h2>
+            <div style="text-align:center; margin-bottom:10px;">
+                Pedido #${order.id}<br/>
+                ${new Date(order.created_at).toLocaleString('pt-BR')}
+            </div>
+            
+            <div class="divider"></div>
+            
+            <div style="margin-bottom:10px;">
+                <b>Cliente:</b> ${order.customer_name}<br/>
+                ${order.delivery_type === 'delivery' 
+                    ? `<b>Endereço:</b> ${order.address_street}, ${order.address_number}<br/>${order.address_district}<br/>${order.address_city}`
+                    : order.delivery_type === 'table' 
+                        ? `<b>Mesa:</b> ${order.table_number}`
+                        : `<b>Retirada no Balcão</b>`
+                }
+                ${order.address_complement ? `<br/>Comp: ${order.address_complement}` : ''}
+            </div>
+
+            <div class="divider"></div>
+            
+            <div>${itemsHtml}</div>
+            
+            <div class="divider"></div>
+            
+            <div class="flex"><span>Subtotal:</span> <span>${settings.currencySymbol} ${(order.total - (order.delivery_fee||0) + (order.discount||0)).toFixed(2)}</span></div>
+            ${order.delivery_fee > 0 ? `<div class="flex"><span>Entrega:</span> <span>${settings.currencySymbol} ${order.delivery_fee.toFixed(2)}</span></div>` : ''}
+            ${order.discount > 0 ? `<div class="flex"><span>Desconto:</span> <span>-${settings.currencySymbol} ${order.discount.toFixed(2)}</span></div>` : ''}
+            <div class="flex bold" style="font-size:14px; margin-top:5px;"><span>TOTAL:</span> <span>${settings.currencySymbol} ${order.total.toFixed(2)}</span></div>
+            
+            <div class="divider"></div>
+            
+            <div><b>Pagamento:</b> ${order.payment_method}</div>
+            ${order.observation ? `<div style="margin-top:5px;"><b>Obs Pedido:</b> ${order.observation}</div>` : ''}
+            
+            <div style="text-align:center; margin-top:20px;">
+                Obrigado pela preferência!
+            </div>
+            
+            <script>
+                window.onload = () => { 
+                    window.print(); 
+                    // Close after print dialog closes (browser dependent, usually manual close needed)
+                }
+            </script>
+        </body>
+        </html>
+    `;
+
+    win.document.write(receiptHtml);
+    win.document.close();
   };
 
   // --- ORDER EDIT LOGIC ---
@@ -321,6 +409,36 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         alert("Erro ao processar imagem");
       } finally {
         setIsProcessingImage(false);
+      }
+    }
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setIsProcessingLogo(true);
+      try {
+        const compressedBase64 = await compressImage(file);
+        setSettingsForm(prev => ({ ...prev, logoUrl: compressedBase64 }));
+      } catch (err) {
+        alert("Erro ao processar logo");
+      } finally {
+        setIsProcessingLogo(false);
+      }
+    }
+  };
+
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setIsProcessingBanner(true);
+      try {
+        const compressedBase64 = await compressImage(file);
+        setSettingsForm(prev => ({ ...prev, seoBannerUrl: compressedBase64 }));
+      } catch (err) {
+        alert("Erro ao processar banner");
+      } finally {
+        setIsProcessingBanner(false);
       }
     }
   };
@@ -718,31 +836,33 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {orders.filter(o => orderFilter === 'all' || o.status === orderFilter).map(order => (
                         <div key={order.id} className="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden flex flex-col hover:shadow-md transition-shadow">
-                        {/* Card Header */}
-                        <div className={`p-4 flex justify-between items-start border-b border-stone-100 ${
-                            order.status === 'pending' ? 'bg-yellow-50' : 
-                            order.status === 'preparing' ? 'bg-blue-50' :
-                            order.status === 'delivery' ? 'bg-orange-50' :
-                            order.status === 'completed' ? 'bg-green-50' : 'bg-stone-50'
-                        }`}>
+                        {/* Card Header - SIMPLIFIED - WHITE BG */}
+                        <div className="p-4 flex justify-between items-start border-b border-stone-100 bg-white">
                             <div>
                                 <div className="flex items-center gap-2">
                                     <span className="font-mono font-bold text-stone-800 text-lg">#{order.id}</span>
                                     {order.delivery_type === 'table' ? (
-                                    <span className="bg-purple-100 text-purple-700 text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1"><Utensils className="w-3 h-3"/> Mesa {order.table_number}</span>
+                                        <span className="bg-purple-100 text-purple-700 text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1"><Utensils className="w-3 h-3"/> Mesa {order.table_number}</span>
                                     ) : order.delivery_type === 'delivery' ? (
-                                    <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1"><Truck className="w-3 h-3"/> Entrega</span>
+                                        <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1"><Truck className="w-3 h-3"/> Entrega</span>
                                     ) : (
-                                    <span className="bg-stone-100 text-stone-700 text-xs font-bold px-2 py-0.5 rounded-full">Retirada</span>
+                                        <span className="bg-stone-100 text-stone-700 text-xs font-bold px-2 py-0.5 rounded-full">Retirada</span>
                                     )}
                                 </div>
                                 <div className="text-xs text-stone-500 mt-1 flex items-center gap-1">
                                     <Clock className="w-3 h-3"/> {new Date(order.created_at).toLocaleTimeString().slice(0,5)} - {new Date(order.created_at).toLocaleDateString()}
                                 </div>
                             </div>
-                            <div className="text-right">
+                            <div className="text-right flex flex-col items-end">
                                 <p className="font-bold text-italian-green text-xl">{settings.currencySymbol} {order.total.toFixed(2)}</p>
-                                <p className="text-[10px] uppercase font-bold tracking-wider text-stone-500">{order.status === 'pending' ? 'Pendente' : order.status === 'preparing' ? 'Preparando' : order.status === 'delivery' ? 'Em Rota' : order.status === 'completed' ? 'Concluído' : 'Cancelado'}</p>
+                                <div className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full mt-1 ${
+                                    order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                    order.status === 'preparing' ? 'bg-blue-100 text-blue-800' :
+                                    order.status === 'delivery' ? 'bg-orange-100 text-orange-800' :
+                                    order.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                }`}>
+                                    {order.status === 'pending' ? 'Pendente' : order.status === 'preparing' ? 'Preparando' : order.status === 'delivery' ? 'Em Rota' : order.status === 'completed' ? 'Concluído' : 'Cancelado'}
+                                </div>
                             </div>
                         </div>
 
@@ -776,30 +896,47 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         </div>
 
                         {/* Actions */}
-                        <div className="p-3 border-t border-stone-100 bg-stone-50 grid grid-cols-2 gap-3">
-                            {(order.status === 'pending' || order.status === 'preparing') && (
-                                <button 
-                                    onClick={() => handleEditOrder(order)} 
-                                    className="col-span-2 bg-white border border-stone-300 text-stone-700 py-2.5 rounded-lg text-sm font-bold hover:bg-stone-100 hover:border-stone-400 flex items-center justify-center gap-2 transition-all shadow-sm"
-                                >
-                                    <Edit3 className="w-4 h-4" /> Editar / Alterar Itens
-                                </button>
-                            )}
+                        <div className="p-3 border-t border-stone-100 bg-white grid grid-cols-4 gap-2">
+                            {/* PRINT BUTTON */}
+                            <button 
+                                onClick={() => handlePrintOrder(order)} 
+                                className="col-span-1 bg-stone-100 text-stone-600 rounded-lg hover:bg-stone-200 flex items-center justify-center transition-colors"
+                                title="Imprimir Pedido"
+                            >
+                                <Printer className="w-5 h-5" />
+                            </button>
 
-                            {order.status === 'pending' && (
-                                <button onClick={() => handleUpdateOrderStatus(order.id, 'preparing')} className="bg-blue-600 text-white py-2.5 rounded-lg text-sm font-bold hover:bg-blue-700 shadow-sm transition-all">Aprovar (Preparo)</button>
-                            )}
-                            {order.status === 'preparing' && (
-                                <button onClick={() => handleUpdateOrderStatus(order.id, 'delivery')} className="bg-orange-500 text-white py-2.5 rounded-lg text-sm font-bold hover:bg-orange-600 shadow-sm transition-all">Saiu p/ Entrega</button>
-                            )}
-                            {order.status === 'delivery' && (
-                                <button onClick={() => handleUpdateOrderStatus(order.id, 'completed')} className="bg-green-600 text-white py-2.5 rounded-lg text-sm font-bold hover:bg-green-700 shadow-sm transition-all">Concluir</button>
-                            )}
-                            
-                            {(order.status !== 'completed' && order.status !== 'cancelled') && (
-                                <button onClick={() => { if(window.confirm('Cancelar este pedido?')) handleUpdateOrderStatus(order.id, 'cancelled'); }} className="bg-white border border-red-200 text-red-500 py-2.5 rounded-lg text-sm font-bold hover:bg-red-50 transition-all">Cancelar</button>
-                            )}
+                            {/* EDIT BUTTON */}
+                            <button 
+                                onClick={() => handleEditOrder(order)} 
+                                className="col-span-1 bg-stone-100 text-stone-600 rounded-lg hover:bg-stone-200 flex items-center justify-center transition-colors"
+                                title="Editar Pedido"
+                            >
+                                <Edit3 className="w-5 h-5" />
+                            </button>
+
+                            {/* ACTION BUTTONS */}
+                            <div className="col-span-2 flex gap-2">
+                                {order.status === 'pending' && (
+                                    <button onClick={() => handleUpdateOrderStatus(order.id, 'preparing')} className="w-full bg-blue-600 text-white py-2.5 rounded-lg text-xs font-bold hover:bg-blue-700 shadow-sm transition-all">Aprovar</button>
+                                )}
+                                {order.status === 'preparing' && (
+                                    <button onClick={() => handleUpdateOrderStatus(order.id, 'delivery')} className="w-full bg-orange-500 text-white py-2.5 rounded-lg text-xs font-bold hover:bg-orange-600 shadow-sm transition-all">Enviar</button>
+                                )}
+                                {order.status === 'delivery' && (
+                                    <button onClick={() => handleUpdateOrderStatus(order.id, 'completed')} className="w-full bg-green-600 text-white py-2.5 rounded-lg text-xs font-bold hover:bg-green-700 shadow-sm transition-all">Concluir</button>
+                                )}
+                                {(order.status === 'completed' || order.status === 'cancelled') && (
+                                    <button disabled className="w-full bg-stone-100 text-stone-400 py-2.5 rounded-lg text-xs font-bold cursor-not-allowed">Arquivado</button>
+                                )}
+                            </div>
                         </div>
+                        
+                        {(order.status !== 'completed' && order.status !== 'cancelled') && (
+                             <div className="px-3 pb-3 bg-white">
+                                 <button onClick={() => { if(window.confirm('Cancelar este pedido?')) handleUpdateOrderStatus(order.id, 'cancelled'); }} className="w-full text-red-400 hover:text-red-600 text-xs font-bold py-1 transition-all">Cancelar Pedido</button>
+                             </div>
+                        )}
                         </div>
                     ))}
                   </div>
@@ -828,6 +965,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                                           ))}
                                                       </div>
                                                       <div className="mt-2 flex gap-2">
+                                                          <button onClick={() => handlePrintOrder(order)} className="bg-stone-100 text-stone-600 p-1 rounded"><Printer className="w-3 h-3"/></button>
                                                           {order.status === 'pending' && <button onClick={() => handleUpdateOrderStatus(order.id, 'preparing')} className="flex-1 bg-blue-50 text-blue-600 text-[10px] py-1 rounded font-bold">Aprovar</button>}
                                                           {order.status === 'preparing' && <button onClick={() => handleUpdateOrderStatus(order.id, 'completed')} className="flex-1 bg-green-50 text-green-600 text-[10px] py-1 rounded font-bold">Concluir</button>}
                                                       </div>
@@ -1127,24 +1265,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                            </div>
                         </div>
 
-                        {/* Image Upload */}
-                        <div className="bg-white p-6 rounded-xl border border-stone-200 shadow-sm">
-                           <label className={LABEL_STYLE}>Imagem do Produto</label>
-                           <div className="border-2 border-dashed border-stone-300 rounded-xl p-6 text-center hover:bg-stone-50 transition-colors">
+                        {/* Image Upload Compact */}
+                        <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-sm flex items-center gap-4">
+                           <div className="shrink-0">
                               <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, isAddingNew)} className="hidden" id="img-upload" />
-                              <label htmlFor="img-upload" className="cursor-pointer flex flex-col items-center gap-2 w-full h-full">
-                                 {isProcessingImage ? <RefreshCw className="w-8 h-8 animate-spin text-stone-400"/> : (
+                              <label htmlFor="img-upload" className="cursor-pointer block relative group w-24 h-24 bg-stone-100 rounded-lg overflow-hidden border border-stone-300 hover:border-italian-red transition-colors">
+                                 {isProcessingImage ? <div className="absolute inset-0 flex items-center justify-center"><RefreshCw className="w-6 h-6 animate-spin text-stone-400"/></div> : (
                                     (isAddingNew ? newProductForm.image : editForm.image) ? (
-                                       <img src={isAddingNew ? newProductForm.image : editForm.image} className="h-40 object-contain rounded-lg shadow-sm" />
+                                       <img src={isAddingNew ? newProductForm.image : editForm.image} className="w-full h-full object-cover" />
                                     ) : (
-                                       <>
-                                          <div className="bg-stone-100 p-4 rounded-full"><ImageIcon className="w-8 h-8 text-stone-400" /></div>
-                                          <span className="text-sm font-bold text-stone-600">Clique para enviar uma foto</span>
-                                          <span className="text-xs text-stone-400">JPG, PNG ou WebP</span>
-                                       </>
+                                       <div className="absolute inset-0 flex flex-col items-center justify-center text-stone-400 group-hover:text-italian-red">
+                                          <ImageIcon className="w-8 h-8" />
+                                          <span className="text-[10px] font-bold mt-1">+ Foto</span>
+                                       </div>
                                     )
                                  )}
                               </label>
+                           </div>
+                           <div>
+                              <label className={LABEL_STYLE}>Imagem do Produto</label>
+                              <p className="text-sm text-stone-500">
+                                 Dimensão Recomendada: <strong>800x800px (Quadrada)</strong>
+                              </p>
+                              <p className="text-xs text-stone-400 mt-1">Formatos: JPG, PNG, WebP</p>
                            </div>
                         </div>
 
@@ -1384,6 +1527,28 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         </div>
                     </div>
 
+                    {/* Logo Upload Compact */}
+                    <div className="flex items-center gap-4 bg-stone-50 p-3 rounded-lg border border-stone-200">
+                       <div className="shrink-0">
+                          <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" id="logo-upload" />
+                          <label htmlFor="logo-upload" className="cursor-pointer block relative w-20 h-20 bg-white rounded-full overflow-hidden border border-stone-300 hover:border-italian-red transition-colors group">
+                             {isProcessingLogo ? <div className="absolute inset-0 flex items-center justify-center"><RefreshCw className="w-5 h-5 animate-spin text-stone-400"/></div> : (
+                                settingsForm.logoUrl ? (
+                                   <img src={settingsForm.logoUrl} className="w-full h-full object-cover" />
+                                ) : (
+                                   <div className="absolute inset-0 flex flex-col items-center justify-center text-stone-400 group-hover:text-italian-red">
+                                      <ImageIcon className="w-6 h-6" />
+                                   </div>
+                                )
+                             )}
+                          </label>
+                       </div>
+                       <div>
+                          <label className={LABEL_STYLE}>Logotipo da Loja</label>
+                          <p className="text-sm text-stone-500">Recomendado: <strong>500x500px</strong> (Quadrado/Redondo)</p>
+                       </div>
+                    </div>
+
                     <div>
                         <label className={LABEL_STYLE}>Endereço Completo</label>
                         <input 
@@ -1613,14 +1778,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                          placeholder="Descrição que aparece ao compartilhar o link..."
                        />
                     </div>
-                    <div>
-                       <label className={LABEL_STYLE}>URL da Imagem (Banner)</label>
-                       <input 
-                         value={settingsForm.seoBannerUrl || ''} 
-                         onChange={e => setSettingsForm({...settingsForm, seoBannerUrl: e.target.value})}
-                         className={INPUT_STYLE}
-                         placeholder="https://..."
-                       />
+                    
+                    {/* Banner Image Upload Compact */}
+                    <div className="flex items-center gap-4 bg-stone-50 p-3 rounded-lg border border-stone-200">
+                       <div className="shrink-0">
+                          <input type="file" accept="image/*" onChange={handleBannerUpload} className="hidden" id="banner-upload" />
+                          <label htmlFor="banner-upload" className="cursor-pointer block relative w-40 h-24 bg-white rounded-lg overflow-hidden border border-stone-300 hover:border-italian-red transition-colors group">
+                             {isProcessingBanner ? <div className="absolute inset-0 flex items-center justify-center"><RefreshCw className="w-6 h-6 animate-spin text-stone-400"/></div> : (
+                                settingsForm.seoBannerUrl ? (
+                                   <img src={settingsForm.seoBannerUrl} className="w-full h-full object-cover" />
+                                ) : (
+                                   <div className="absolute inset-0 flex flex-col items-center justify-center text-stone-400 group-hover:text-italian-red">
+                                      <ImageIcon className="w-8 h-8" />
+                                   </div>
+                                )
+                             )}
+                          </label>
+                       </div>
+                       <div>
+                          <label className={LABEL_STYLE}>Imagem de Compartilhamento</label>
+                          <p className="text-sm text-stone-500">Recomendado: <strong>1200x630px</strong> (Horizontal)</p>
+                       </div>
                     </div>
                  </div>
               </div>
