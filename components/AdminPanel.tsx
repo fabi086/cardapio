@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Category, Product, StoreSettings, ProductOption, ProductChoice, Order, Coupon, DeliveryRegion, WeeklySchedule, Table } from '../types';
-import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Ticket, QrCode, Clock, CreditCard, LayoutDashboard, ShoppingBag, Palette, Phone, Share2, Calendar, Printer, Filter, ChevronDown, ChevronUp, AlertTriangle, User, Truck, Utensils, Minus, Type } from 'lucide-react';
+import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Ticket, QrCode, Clock, CreditCard, LayoutDashboard, ShoppingBag, Palette, Phone, Share2, Calendar, Printer, Filter, ChevronDown, ChevronUp, AlertTriangle, User, Truck, Utensils, Minus, Type, Ban } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 interface AdminPanelProps {
@@ -90,6 +90,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [couponForm, setCouponForm] = useState<Partial<Coupon>>({ type: 'percent', active: true });
   const [isAddingCoupon, setIsAddingCoupon] = useState(false);
+  const [editingCouponId, setEditingCouponId] = useState<number | null>(null);
 
   // Tables State
   const [tables, setTables] = useState<Table[]>([]);
@@ -121,6 +122,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       fetchOrders();
       if (activeTab === 'coupons') fetchCoupons();
       if (activeTab === 'tables') fetchTables();
+
+      // REALTIME SUBSCRIPTION FOR ORDERS
+      const orderSubscription = supabase
+        .channel('realtime-orders')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
+           console.log('Change received!', payload);
+           fetchOrders(); // Refresh orders on any change
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(orderSubscription);
+      };
     }
   }, [isAuthenticated, activeTab]);
 
@@ -649,19 +663,51 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   // --- Coupon Logic ---
+  const handleEditCoupon = (coupon: Coupon) => {
+    setEditingCouponId(coupon.id);
+    setCouponForm({
+      code: coupon.code,
+      type: coupon.type,
+      discount_value: coupon.discount_value,
+      min_order_value: coupon.min_order_value,
+      end_date: coupon.end_date ? new Date(coupon.end_date).toISOString().split('T')[0] : '',
+      active: coupon.active
+    });
+    setIsAddingCoupon(true);
+  };
+
+  const cancelEditCoupon = () => {
+    setEditingCouponId(null);
+    setCouponForm({ type: 'percent', active: true });
+    setIsAddingCoupon(false);
+  };
+
   const handleSaveCoupon = async () => {
     if (!couponForm.code || !couponForm.discount_value) return;
     if (supabase) {
       const payload = { ...couponForm, code: couponForm.code.toUpperCase().trim(), discount_value: Number(couponForm.discount_value) };
       if (!payload.min_order_value) payload.min_order_value = 0;
       
-      const { error } = await supabase.from('coupons').insert([payload]);
-      if (!error) { 
-        setCouponForm({ type: 'percent', active: true }); 
-        setIsAddingCoupon(false); 
-        fetchCoupons(); 
-      } else { 
-        alert('Erro ao criar cupom. Verifique se o código já existe.'); 
+      if (editingCouponId) {
+        // Update existing
+        const { error } = await supabase.from('coupons').update(payload).eq('id', editingCouponId);
+        if (!error) {
+          alert('Cupom atualizado com sucesso!');
+          cancelEditCoupon();
+          fetchCoupons();
+        } else {
+          alert('Erro ao atualizar cupom.');
+        }
+      } else {
+        // Create new
+        const { error } = await supabase.from('coupons').insert([payload]);
+        if (!error) { 
+          setCouponForm({ type: 'percent', active: true }); 
+          setIsAddingCoupon(false); 
+          fetchCoupons(); 
+        } else { 
+          alert('Erro ao criar cupom. Verifique se o código já existe.'); 
+        }
       }
     }
   };
@@ -1138,6 +1184,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         {/* --- MENU MANAGEMENT --- */}
         {activeTab === 'menu' && (
           <div className="space-y-6 animate-in fade-in">
+             {/* ... (Menu Content remains mostly the same, just ensuring white backgrounds are consistent) */}
              <div className="flex flex-col md:flex-row gap-4 bg-white p-4 rounded-xl shadow-sm border border-stone-200">
                 <input 
                   type="text" 
@@ -1156,6 +1203,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
              {menuData.map(category => (
                <div key={category.id} className="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden">
+                 {/* ... (Category content) ... */}
                  <div className="p-4 bg-stone-50 border-b border-stone-200 flex justify-between items-center">
                     <div className="flex items-center gap-3">
                        {editingCategoryId === category.id ? (
@@ -1443,6 +1491,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
               {isAddingCoupon && (
                  <div className="bg-stone-50 p-6 rounded-xl border border-stone-200 space-y-4 mb-6 animate-in fade-in">
+                    <div className="flex justify-between items-center mb-2">
+                        <h4 className="font-bold text-lg text-stone-800">{editingCouponId ? 'Editar Cupom' : 'Criar Novo Cupom'}</h4>
+                        <button onClick={cancelEditCoupon} className="text-stone-500 hover:text-stone-800 text-sm flex items-center gap-1"><X className="w-4 h-4"/> Cancelar</button>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                        <div>
                           <label className={LABEL_STYLE}>Código</label>
@@ -1477,7 +1529,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           <label className="font-bold text-stone-700">Cupom Ativo</label>
                        </div>
                     </div>
-                    <button onClick={handleSaveCoupon} className="bg-green-600 text-white w-full py-3 rounded-lg font-bold hover:bg-green-700 shadow-sm">Salvar Cupom</button>
+                    <button onClick={handleSaveCoupon} className="bg-green-600 text-white w-full py-3 rounded-lg font-bold hover:bg-green-700 shadow-sm">
+                        {editingCouponId ? 'Atualizar Cupom' : 'Salvar Cupom'}
+                    </button>
                  </div>
               )}
 
@@ -1491,7 +1545,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                              {c.min_order_value ? ` (Min: ${settings.currencySymbol} ${c.min_order_value})` : ''}
                           </p>
                        </div>
-                       <button onClick={() => handleDeleteCoupon(c.id)} className="text-red-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-full transition-colors"><Trash2 className="w-5 h-5" /></button>
+                       <div className="flex gap-2">
+                           <button onClick={() => handleEditCoupon(c)} className="text-stone-400 hover:text-stone-600 p-2 hover:bg-stone-50 rounded-full transition-colors"><Edit3 className="w-5 h-5" /></button>
+                           <button onClick={() => handleDeleteCoupon(c.id)} className="text-red-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-full transition-colors"><Trash2 className="w-5 h-5" /></button>
+                       </div>
                     </div>
                  ))}
                  {coupons.length === 0 && <div className="text-center text-stone-400 py-8 bg-stone-50 rounded-xl border border-stone-100"><Ticket className="w-10 h-10 mx-auto mb-2 opacity-20"/><p>Nenhum cupom criado.</p></div>}

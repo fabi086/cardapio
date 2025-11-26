@@ -427,7 +427,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           coupon_code: appliedCoupon ? appliedCoupon.code : null,
           discount: discountAmount
         };
-        const { data } = await supabase.from('orders').insert([payload]).select();
+        const { data, error } = await supabase.from('orders').insert([payload]).select();
+        if (error) {
+            console.error("Erro ao salvar pedido:", error);
+            alert("Atenção: Houve um problema ao salvar seu pedido no sistema administrativo. O link do WhatsApp será gerado, mas o pedido pode não aparecer no painel.");
+        }
         if (data && data.length > 0) {
            orderId = data[0].id;
            try {
