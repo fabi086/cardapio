@@ -1,8 +1,4 @@
 
-
-
-
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { MENU_DATA, DEFAULT_SETTINGS, CATEGORY_IMAGES } from './data';
 import { Product, CartItem, Category, StoreSettings, WeeklySchedule } from './types';
@@ -449,8 +445,6 @@ function App() {
   // --- ACTIONS ---
   const handleUpdateProduct = async (catId: string, pId: number, updates: Partial<Product>) => {
      setMenuData(prev => prev.map(c => {
-        // Since products can be in multiple categories now, we update the whole state logic
-        // But for performance, we just re-fetch data is cleaner, or map simply:
         return { 
            ...c, 
            items: c.items.map(p => p.id === pId ? {...p, ...updates} : p) 
@@ -463,7 +457,6 @@ function App() {
         if (updates.additional_categories) payload.additional_categories = JSON.stringify(updates.additional_categories);
         
         await supabase.from('products').update(payload).eq('id', pId);
-        // Trigger fetch to ensure category sorting/filtering is correct
         fetchData();
      }
   };
@@ -518,10 +511,19 @@ function App() {
           seo_banner_url: newSettings.seoBannerUrl,
           enable_table_order: newSettings.enableTableOrder
        };
-       if (settingsId) await supabase.from('settings').update(payload).eq('id', settingsId);
-       else {
-          const { data } = await supabase.from('settings').insert([payload]).select();
-          if(data) setSettingsId(data[0].id);
+       
+       try {
+           if (settingsId) {
+              const { error } = await supabase.from('settings').update(payload).eq('id', settingsId);
+              if(error) throw error;
+           } else {
+              const { data, error } = await supabase.from('settings').insert([payload]).select();
+              if(error) throw error;
+              if(data) setSettingsId(data[0].id);
+           }
+       } catch (e) {
+           console.error("Error saving settings:", e);
+           throw e; // Propagate error to AdminPanel
        }
      }
   };
@@ -670,7 +672,9 @@ function App() {
       <CategoryNav categories={navCategories} activeCategory={activeCategory} onSelectCategory={handleCategorySelect} />
 
       <main className="max-w-5xl mx-auto px-4 pt-6">
+        {/* ... Main Content ... */}
         <div id="tour-search" className="relative w-full max-w-3xl mx-auto mb-6">
+           {/* ... Search bar ... */}
            <div className="flex flex-col md:flex-row gap-3 mb-3">
              <div className="relative flex-1">
                 <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Buscar por nome, ingrediente ou código..." className="w-full pl-10 pr-10 py-3 bg-white border rounded-xl shadow-sm text-sm dark:bg-stone-800 dark:border-stone-700 dark:text-white outline-none focus:ring-2 focus:ring-italian-green" />

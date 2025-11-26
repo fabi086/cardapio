@@ -17,7 +17,7 @@ interface CartDrawerProps {
   storeName: string;
   deliveryRegions?: DeliveryRegion[];
   paymentMethods?: string[];
-  freeShipping?: boolean; // Global free shipping setting
+  freeShipping?: boolean; 
   menuData?: Category[];
   currencySymbol?: string;
   tableNumber?: string | null;
@@ -46,7 +46,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const [customerName, setCustomerName] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
   
-  // For cash payments: "change for"
   const [needChange, setNeedChange] = useState(false);
   const [changeFor, setChangeFor] = useState('');
 
@@ -82,7 +81,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     ? paymentMethods 
     : ['Dinheiro', 'Cartão de Crédito', 'Cartão de Débito', 'PIX'];
 
-  // Effect to handle table mode
   useEffect(() => {
     if (tableNumber) {
       setDeliveryType('table');
@@ -91,7 +89,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     }
   }, [tableNumber]);
 
-  // Load user data from local storage
   useEffect(() => {
     if (isOpen) {
        const savedName = localStorage.getItem('spagnolli_user_name');
@@ -124,7 +121,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const discountAmount = useMemo(() => {
     if (!appliedCoupon) return 0;
     
-    // Check minimum order value
     if (appliedCoupon.min_order_value && subtotal < appliedCoupon.min_order_value) {
        return 0; 
     }
@@ -134,27 +130,21 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     } else if (appliedCoupon.type === 'percent') {
        return subtotal * (appliedCoupon.discount_value / 100);
     } else if (appliedCoupon.type === 'free_shipping') {
-       return 0; // Discount is applied on shipping
+       return 0; 
     }
     
-    return subtotal * (appliedCoupon.discount_value / 100); // Fallback
+    return subtotal * (appliedCoupon.discount_value / 100);
   }, [subtotal, appliedCoupon]);
 
   const deliveryFee = useMemo(() => {
     if (deliveryType === 'pickup' || deliveryType === 'table') return 0;
-    
-    // Check free shipping coupon
     if (appliedCoupon && appliedCoupon.type === 'free_shipping') return 0;
-    
-    // Check global free shipping
     if (calculatedFee !== null && freeShipping) return 0;
-
     return calculatedFee !== null ? calculatedFee : 0;
   }, [deliveryType, calculatedFee, freeShipping, appliedCoupon]);
 
   const total = Math.max(0, (subtotal + deliveryFee) - discountAmount);
 
-  // --- UPSELL LOGIC ---
   const upsellItems = useMemo(() => {
      if (!menuData || menuData.length === 0) return [];
      if (items.length === 0) return [];
@@ -186,7 +176,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
      return [];
   }, [items, menuData]);
 
-  // --- COUPON LOGIC ---
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) return;
     setCouponError('');
@@ -256,12 +245,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     setCouponCode('');
   };
 
-  // --- REGION LOGIC ---
   const checkRegion = (cepInput: string, neighborhoodInput: string) => {
     const cleanCep = cepInput.replace(/\D/g, '');
     const cleanNeighborhood = neighborhoodInput.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 
-    // 1. Try by CEP Logic first
     if (cleanCep.length === 8) {
         const foundByCep = deliveryRegions.find(region => {
             if (region.zipExclusions && region.zipExclusions.some(ex => cleanCep.startsWith(ex.replace(/\D/g, '')))) return false;
@@ -286,7 +273,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         }
     }
 
-    // 2. Try by Neighborhood Name
     if (cleanNeighborhood.length > 2) {
         const foundByName = deliveryRegions.find(region => {
             const hasListMatch = region.neighborhoods?.some(n => {
@@ -308,7 +294,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         }
     }
 
-    // 3. Not Found
     setCalculatedFee(null);
     setMatchedRegionName('');
     return false;
@@ -353,7 +338,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     }
   };
 
-  // Re-check region when manual neighborhood changes
   useEffect(() => {
      if (unknownCepMode && manualNeighborhood.length > 2) {
          const found = checkRegion('', manualNeighborhood);
@@ -367,7 +351,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     if (!customerName.trim()) { alert('Por favor, informe seu nome.'); return; }
     if (!paymentMethod) { alert('Por favor, selecione a forma de pagamento.'); return; }
     
-    // Delivery Validation
     if (deliveryType === 'delivery') {
       if (unknownCepMode) {
           if (!addressStreet.trim() || !addressNumber.trim() || !manualNeighborhood.trim()) {
@@ -385,7 +368,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       }
     }
 
-    // Save user info locally
     localStorage.setItem('spagnolli_user_name', customerName);
     if(deliveryType === 'delivery') {
         localStorage.setItem('spagnolli_user_street', addressStreet);
@@ -400,8 +382,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     setIsSubmitting(true);
     let orderId = null;
 
-    // --- 1. PREPARE DATA FOR DB ---
-    // Clean items to ensure they are valid JSON for Supabase (remove React nodes or circular deps)
+    // Sanitize items for DB
     const cleanItems = items.map(i => ({
       id: i.id,
       name: i.name,
@@ -430,20 +411,15 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       discount: discountAmount
     };
 
-    // --- 2. SAVE TO BACKEND (BLOCKING) ---
-    // We MUST save before generating the message/redirecting to ensure the order exists
-    // and to get the ID for the message.
     if (supabase) {
       try {
         const { data, error } = await supabase.from('orders').insert([dbPayload]).select();
         
         if (error) {
             console.error("Erro ao salvar pedido no banco:", error);
-            alert("Houve um problema ao salvar seu pedido no sistema, mas vamos te redirecionar para o WhatsApp.");
+            alert("Erro ao salvar pedido no sistema: " + error.message + ". Você será redirecionado para o WhatsApp, mas o pedido pode não aparecer no painel.");
         } else if (data && data.length > 0) {
             orderId = data[0].id;
-            
-            // Save to local history
             try {
                 const savedOrders = JSON.parse(localStorage.getItem('spagnolli_my_orders') || '[]');
                 if (!savedOrders.includes(orderId)) {
@@ -452,12 +428,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 }
             } catch (e) { console.error(e); }
         }
-      } catch (err) {
+      } catch (err: any) {
          console.error("Erro de conexão:", err);
+         alert("Erro de conexão ao salvar pedido: " + err.message);
       }
     }
 
-    // --- 3. GENERATE WHATSAPP MESSAGE ---
     let message = `*NOVO PEDIDO ${orderId ? `#${orderId} ` : ''}- ${storeName}*\n`;
     message += `------------------------------\n`;
     
@@ -522,17 +498,15 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     let cleanNumber = whatsappNumber.replace(/\D/g, ''); 
     if (cleanNumber.length >= 10 && cleanNumber.length <= 11) cleanNumber = '55' + cleanNumber;
     
-    // Base URL for WhatsApp
-    let url = `https://wa.me/${cleanNumber}?text=${encodedMessage}`;
+    const url = `https://wa.me/${cleanNumber}?text=${encodedMessage}`;
 
-    // --- 4. FINALIZE & REDIRECT ---
     setLastOrderUrl(url);
     setOrderSuccess(true);
     setIsSubmitting(false);
     if (onClearCart) onClearCart();
     
-    // Automatic Redirect
-    window.location.href = url;
+    // Use window.open to keep app state alive in background
+    window.open(url, '_blank');
   };
 
   const handleEditObservation = (index: number, currentObs: string) => {
