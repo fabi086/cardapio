@@ -260,7 +260,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     setCouponCode('');
   };
 
-  // --- REGION LOGIC (Updated to support Name Check) ---
+  // --- REGION LOGIC ---
   const checkRegion = (cepInput: string, neighborhoodInput: string) => {
     const cleanCep = cepInput.replace(/\D/g, '');
     const cleanNeighborhood = neighborhoodInput.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
@@ -362,7 +362,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
      if (unknownCepMode && manualNeighborhood.length > 2) {
          const found = checkRegion('', manualNeighborhood);
          if (!found) {
-             // Don't show error immediately, let user finish typing or assume "To Consult"
+             // Don't show error immediately
          }
      }
   }, [manualNeighborhood, unknownCepMode]);
@@ -382,8 +382,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             return;
           }
       } else {
-        if (calculatedFee === null && !unknownCepMode) { // Allow if unknown mode is effectively "Consult"
-           // If we are in "Consult" mode (no fee found), we allow it but warn
+        if (calculatedFee === null && !unknownCepMode) { 
            if (!window.confirm("A taxa de entrega não foi calculada automaticamente. Deseja consultar o valor com o atendente?")) return;
         }
         if (!addressStreet.trim() || !addressNumber.trim() || !addressDistrict.trim()) {
@@ -408,12 +407,13 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     setIsSubmitting(true);
     let orderId = null;
 
+    // --- SAVE TO BACKEND (SILENTLY) ---
     if (supabase) {
       try {
         const payload = {
           customer_name: customerName,
           delivery_type: deliveryType,
-          table_number: tableNumber, // Module 3
+          table_number: tableNumber,
           address_street: addressStreet,
           address_number: addressNumber,
           address_district: unknownCepMode ? manualNeighborhood : addressDistrict,
@@ -429,8 +429,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         };
         const { data, error } = await supabase.from('orders').insert([payload]).select();
         if (error) {
-            console.error("Erro ao salvar pedido:", error);
-            alert("Atenção: Houve um problema ao salvar seu pedido no sistema administrativo. O link do WhatsApp será gerado, mas o pedido pode não aparecer no painel.");
+            console.error("Erro silencioso ao salvar pedido:", error);
+            // We do NOT alert the user here. We proceed to WhatsApp.
         }
         if (data && data.length > 0) {
            orderId = data[0].id;
@@ -511,12 +511,16 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     let cleanNumber = whatsappNumber.replace(/\D/g, ''); 
     if (cleanNumber.length >= 10 && cleanNumber.length <= 11) cleanNumber = '55' + cleanNumber;
 
+    // IMPORTANT: We do not automatically redirect to prevent "Download WhatsApp" errors.
+    // We construct the URL and let the user click the button in the success modal.
     const url = `https://wa.me/${cleanNumber}?text=${encodedMessage}`;
     setLastOrderUrl(url);
     setOrderSuccess(true);
     setIsSubmitting(false);
     if (onClearCart) onClearCart();
-    window.location.href = url;
+    
+    // No window.location.href here. 
+    // The user must click the button in the success modal.
   };
 
   const handleEditObservation = (index: number, currentObs: string) => {
@@ -547,15 +551,17 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                  <CheckCircle className="w-12 h-12 text-green-600" />
               </div>
               <div className="space-y-2">
-                 <h2 className="text-2xl font-bold text-stone-800 dark:text-white">Pedido Realizado!</h2>
-                 <p className="text-stone-500 dark:text-stone-400">Seu pedido foi registrado.</p>
+                 <h2 className="text-2xl font-bold text-stone-800 dark:text-white">Pronto!</h2>
+                 <p className="text-stone-500 dark:text-stone-400">
+                    Para finalizar, envie o pedido para nosso WhatsApp clicando abaixo:
+                 </p>
               </div>
               <div className="bg-white dark:bg-stone-800 p-4 rounded-xl shadow-sm border border-stone-200 dark:border-stone-700 w-full">
-                 <a href={lastOrderUrl} target="_blank" rel="noreferrer" className="w-full bg-italian-green text-white py-3.5 rounded-xl font-bold text-lg flex items-center justify-center gap-2 hover:bg-green-700 transition-colors shadow-lg">
+                 <a href={lastOrderUrl} target="_blank" rel="noreferrer" className="w-full bg-italian-green text-white py-3.5 rounded-xl font-bold text-lg flex items-center justify-center gap-2 hover:bg-green-700 transition-colors shadow-lg animate-pulse">
                     <MessageCircle className="w-6 h-6" /> Enviar no WhatsApp
                  </a>
               </div>
-              <button onClick={handleCloseSuccess} className="text-stone-400 hover:text-stone-600 font-medium text-sm">Fechar e Voltar</button>
+              <button onClick={handleCloseSuccess} className="text-stone-400 hover:text-stone-600 font-medium text-sm">Fechar</button>
            </div>
         ) : (
           <>
@@ -568,6 +574,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-6">
+              {/* (Content remains unchanged, only logic updated above) */}
               <div className="space-y-3">
                 <h3 className="font-bold text-stone-700 dark:text-stone-300 text-sm uppercase tracking-wider border-b border-stone-200 dark:border-stone-700 pb-2">Itens do Carrinho</h3>
                 
