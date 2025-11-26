@@ -137,7 +137,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             schema: 'public', 
             table: 'orders' 
         }, (payload) => {
-           console.log('Realtime Update:', payload);
            // Debounce fetch slightly to ensure data consistency
            setTimeout(fetchOrders, 500);
         })
@@ -167,10 +166,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     if (data) setTables(data as Table[]);
   };
 
-  // ... (Rest of the component logic is identical to the previous version, just keeping the realtime subscription improvement)
-  // I am truncating the repetitive parts to save tokens, as only the Realtime Logic needed strengthening here.
-  // Assume the rest of AdminPanel logic (CRUD, etc) remains exactly as provided in the context.
-  // Re-implementing the core parts to ensure file integrity:
+  // ... (Rest of the logic)
 
   const handleUpdateOrderStatus = async (orderId: number, newStatus: string) => {
     if (!supabase) return;
@@ -184,7 +180,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setIsUpdatingOrder(null);
   };
 
-  // --- PRINT LOGIC (Optimized for 80mm/58mm Thermal Printers) ---
+  // --- PRINT LOGIC ---
   const handlePrintOrder = (order: Order) => {
     const win = window.open('', '_blank');
     if (!win) return;
@@ -395,9 +391,55 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleRemoveRegion = (id: string) => { const updatedRegions = settingsForm.deliveryRegions?.filter(r => r.id !== id) || []; setSettingsForm({ ...settingsForm, deliveryRegions: updatedRegions }); };
   const handleAddPhone = () => { if(newPhone) { setSettingsForm({...settingsForm, phones: [...settingsForm.phones, newPhone]}); setNewPhone(''); } };
   const handleRemovePhone = (idx: number) => { setSettingsForm({...settingsForm, phones: settingsForm.phones.filter((_, i) => i !== idx)}); };
-  const handleEditCoupon = (coupon: Coupon) => { setEditingCouponId(coupon.id); setCouponForm({ code: coupon.code, type: coupon.type, discount_value: coupon.discount_value, min_order_value: coupon.min_order_value, end_date: coupon.end_date ? new Date(coupon.end_date).toISOString().split('T')[0] : '', active: coupon.active }); setIsAddingCoupon(true); };
-  const cancelEditCoupon = () => { setEditingCouponId(null); setCouponForm({ type: 'percent', active: true }); setIsAddingCoupon(false); };
-  const handleSaveCoupon = async () => { if (!couponForm.code || !couponForm.discount_value) return; if (supabase) { const payload = { ...couponForm, code: couponForm.code.toUpperCase().trim(), discount_value: Number(couponForm.discount_value) }; if (!payload.min_order_value) payload.min_order_value = 0; if (editingCouponId) { const { error } = await supabase.from('coupons').update(payload).eq('id', editingCouponId); if (!error) { alert('Cupom atualizado com sucesso!'); cancelEditCoupon(); fetchCoupons(); } else { alert('Erro ao atualizar cupom.'); } } else { const { error } = await supabase.from('coupons').insert([payload]); if (!error) { setCouponForm({ type: 'percent', active: true }); setIsAddingCoupon(false); fetchCoupons(); } else { alert('Erro ao criar cupom. Verifique se o código já existe.'); } } } };
+  
+  // COUPONS LOGIC
+  const handleEditCoupon = (coupon: Coupon) => { 
+      setEditingCouponId(coupon.id); 
+      setCouponForm({ 
+          code: coupon.code, 
+          type: coupon.type, 
+          discount_value: coupon.discount_value, 
+          min_order_value: coupon.min_order_value, 
+          end_date: coupon.end_date ? new Date(coupon.end_date).toISOString().split('T')[0] : '', 
+          active: coupon.active 
+      }); 
+      setIsAddingCoupon(true); 
+  };
+  
+  const cancelEditCoupon = () => { 
+      setEditingCouponId(null); 
+      setCouponForm({ type: 'percent', active: true }); 
+      setIsAddingCoupon(false); 
+  };
+  
+  const handleSaveCoupon = async () => { 
+      if (!couponForm.code || !couponForm.discount_value) return; 
+      if (supabase) { 
+          const payload: any = { ...couponForm, code: couponForm.code.toUpperCase().trim(), discount_value: Number(couponForm.discount_value) }; 
+          if (!payload.min_order_value) payload.min_order_value = 0; 
+          
+          if (editingCouponId) { 
+              const { error } = await supabase.from('coupons').update(payload).eq('id', editingCouponId); 
+              if (!error) { 
+                  alert('Cupom atualizado com sucesso!'); 
+                  cancelEditCoupon(); 
+                  fetchCoupons(); 
+              } else { 
+                  alert('Erro ao atualizar cupom.'); 
+              } 
+          } else { 
+              const { error } = await supabase.from('coupons').insert([payload]); 
+              if (!error) { 
+                  setCouponForm({ type: 'percent', active: true }); 
+                  setIsAddingCoupon(false); 
+                  fetchCoupons(); 
+              } else { 
+                  alert('Erro ao criar cupom. Verifique se o código já existe.'); 
+              } 
+          } 
+      } 
+  };
+  
   const handleDeleteCoupon = async (id: number) => { if (window.confirm('Excluir cupom?')) { if (supabase) { await supabase.from('coupons').delete().eq('id', id); fetchCoupons(); } } };
   const handleAddTable = async () => { if (!newTableNumber) return; if (supabase) { const { error } = await supabase.from('tables').insert([{ number: newTableNumber, active: true }]); if(!error) { setNewTableNumber(''); fetchTables(); } } };
   const handleDeleteTable = async (id: number) => { if(window.confirm('Remover mesa?')) { if(supabase) { await supabase.from('tables').delete().eq('id', id); fetchTables(); } } };
@@ -689,10 +731,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
            </div>
         )}
 
-        {/* Reused components for Menu, Coupons, Tables, Settings... (omitted for brevity as they are unchanged) */}
-        {/* ... (Paste the rest of the AdminPanel content from the previous file, ensuring the structure remains intact) ... */}
-        
-        {/* --- MENU MANAGEMENT (Content unchanged) --- */}
+        {/* ... (Rest of components like menu, settings, etc. remain same) ... */}
         {activeTab === 'menu' && (
           <div className="space-y-6 animate-in fade-in">
              <div className="flex flex-col md:flex-row gap-4 bg-white p-4 rounded-xl shadow-sm border border-stone-200">

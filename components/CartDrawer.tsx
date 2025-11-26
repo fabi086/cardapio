@@ -126,7 +126,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     
     // Check minimum order value
     if (appliedCoupon.min_order_value && subtotal < appliedCoupon.min_order_value) {
-       return 0; // Or handle invalid state elsewhere
+       return 0; 
     }
 
     if (appliedCoupon.type === 'fixed') {
@@ -137,7 +137,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
        return 0; // Discount is applied on shipping
     }
     
-    return subtotal * (appliedCoupon.discount_value / 100); // Fallback to percent (legacy)
+    return subtotal * (appliedCoupon.discount_value / 100); // Fallback
   }, [subtotal, appliedCoupon]);
 
   const deliveryFee = useMemo(() => {
@@ -220,8 +220,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
       if (data) {
         const coupon = data as Coupon;
-        
-        // Date validation
         const now = new Date();
         if (coupon.start_date && new Date(coupon.start_date) > now) {
             setCouponError('Este cupom ainda não está válido.');
@@ -233,8 +231,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             setAppliedCoupon(null);
             return;
         }
-
-        // Min order validation
         if (coupon.min_order_value && subtotal < coupon.min_order_value) {
             setCouponError(`Valor mínimo do pedido: ${currencySymbol} ${coupon.min_order_value.toFixed(2)}`);
             setAppliedCoupon(null);
@@ -361,9 +357,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   useEffect(() => {
      if (unknownCepMode && manualNeighborhood.length > 2) {
          const found = checkRegion('', manualNeighborhood);
-         if (!found) {
-             // Don't show error immediately
-         }
      }
   }, [manualNeighborhood, unknownCepMode]);
 
@@ -392,7 +385,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       }
     }
 
-    // Save user info
+    // Save user info locally
     localStorage.setItem('spagnolli_user_name', customerName);
     if(deliveryType === 'delivery') {
         localStorage.setItem('spagnolli_user_street', addressStreet);
@@ -407,46 +400,38 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     setIsSubmitting(true);
     let orderId = null;
 
-    // --- SAVE TO BACKEND (SILENTLY) ---
-    if (supabase) {
-      try {
-        const payload = {
-          customer_name: customerName,
-          delivery_type: deliveryType,
-          table_number: tableNumber,
-          address_street: addressStreet,
-          address_number: addressNumber,
-          address_district: unknownCepMode ? manualNeighborhood : addressDistrict,
-          address_city: addressCity,
-          address_complement: addressComplement,
-          payment_method: paymentMethod,
-          total: total,
-          delivery_fee: deliveryFee,
-          status: 'pending',
-          items: items, 
-          coupon_code: appliedCoupon ? appliedCoupon.code : null,
-          discount: discountAmount
-        };
-        const { data, error } = await supabase.from('orders').insert([payload]).select();
-        if (error) {
-            console.error("Erro silencioso ao salvar pedido:", error);
-            // We do NOT alert the user here. We proceed to WhatsApp.
-        }
-        if (data && data.length > 0) {
-           orderId = data[0].id;
-           try {
-             const savedOrders = JSON.parse(localStorage.getItem('spagnolli_my_orders') || '[]');
-             if (!savedOrders.includes(orderId)) {
-               savedOrders.unshift(orderId);
-               localStorage.setItem('spagnolli_my_orders', JSON.stringify(savedOrders.slice(0, 10)));
-             }
-           } catch (e) { console.error(e); }
-        }
-      } catch (err) { console.error("Erro inesperado ao salvar pedido:", err); }
-    }
+    // --- 1. PREPARE DATA FOR DB ---
+    // Clean items to ensure they are valid JSON for Supabase (remove React nodes or circular deps)
+    const cleanItems = items.map(i => ({
+      id: i.id,
+      name: i.name,
+      quantity: i.quantity,
+      price: i.price,
+      selectedOptions: i.selectedOptions,
+      observation: i.observation,
+      code: i.code
+    }));
 
-    // --- GENERATE MESSAGE ---
-    let message = `*NOVO PEDIDO ${orderId ? `#${orderId} ` : ''}- ${storeName}*\n`;
+    const dbPayload = {
+      customer_name: customerName,
+      delivery_type: deliveryType,
+      table_number: tableNumber,
+      address_street: addressStreet,
+      address_number: addressNumber,
+      address_district: unknownCepMode ? manualNeighborhood : addressDistrict,
+      address_city: addressCity,
+      address_complement: addressComplement,
+      payment_method: paymentMethod,
+      total: total,
+      delivery_fee: deliveryFee,
+      status: 'pending',
+      items: cleanItems, 
+      coupon_code: appliedCoupon ? appliedCoupon.code : null,
+      discount: discountAmount
+    };
+
+    // --- 2. GENERATE WHATSAPP MESSAGE (Do this first so we have the URL ready) ---
+    let message = `*NOVO PEDIDO - ${storeName}*\n`; // ID will be added if DB save works
     message += `------------------------------\n`;
     
     items.forEach((item) => {
@@ -504,23 +489,51 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         message += ` (Troco para ${currencySymbol} ${changeFor})`;
     }
     message += `\n`;
-    
     message += `\n_Enviado via Cardápio Digital_`;
 
     const encodedMessage = encodeURIComponent(message);
     let cleanNumber = whatsappNumber.replace(/\D/g, ''); 
     if (cleanNumber.length >= 10 && cleanNumber.length <= 11) cleanNumber = '55' + cleanNumber;
+    
+    // Base URL for WhatsApp
+    let url = `https://wa.me/${cleanNumber}?text=${encodedMessage}`;
 
-    // IMPORTANT: We do not automatically redirect to prevent "Download WhatsApp" errors.
-    // We construct the URL and let the user click the button in the success modal.
-    const url = `https://wa.me/${cleanNumber}?text=${encodedMessage}`;
-    setLastOrderUrl(url);
+    // --- 3. SAVE TO BACKEND (Optimistic/Non-blocking) ---
+    if (supabase) {
+      // We try to save, but if it fails, we still redirect to WhatsApp
+      supabase.from('orders').insert([dbPayload]).select()
+        .then(({ data, error }) => {
+            if (error) {
+                console.error("Erro ao salvar pedido no banco:", error);
+                // We don't stop the user flow, just log it.
+            } else if (data && data.length > 0) {
+                orderId = data[0].id;
+                // Update the message URL with the ID if possible? 
+                // It's too late for the auto-redirect, but we can update the link in the success modal.
+                const msgWithId = message.replace('*NOVO PEDIDO -', `*NOVO PEDIDO #${orderId} -`);
+                const newUrl = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(msgWithId)}`;
+                setLastOrderUrl(newUrl);
+                
+                // Save to local history
+                try {
+                    const savedOrders = JSON.parse(localStorage.getItem('spagnolli_my_orders') || '[]');
+                    if (!savedOrders.includes(orderId)) {
+                        savedOrders.unshift(orderId);
+                        localStorage.setItem('spagnolli_my_orders', JSON.stringify(savedOrders.slice(0, 10)));
+                    }
+                } catch (e) { console.error(e); }
+            }
+        });
+    }
+
+    // --- 4. FINALIZE & REDIRECT ---
+    setLastOrderUrl(url); // Set initial URL (without ID) immediately
     setOrderSuccess(true);
     setIsSubmitting(false);
     if (onClearCart) onClearCart();
     
-    // No window.location.href here. 
-    // The user must click the button in the success modal.
+    // Automatic Redirect
+    window.location.href = url;
   };
 
   const handleEditObservation = (index: number, currentObs: string) => {
@@ -553,7 +566,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               <div className="space-y-2">
                  <h2 className="text-2xl font-bold text-stone-800 dark:text-white">Pronto!</h2>
                  <p className="text-stone-500 dark:text-stone-400">
-                    Para finalizar, envie o pedido para nosso WhatsApp clicando abaixo:
+                    Seu pedido foi gerado. Se o WhatsApp não abriu automaticamente, clique abaixo:
                  </p>
               </div>
               <div className="bg-white dark:bg-stone-800 p-4 rounded-xl shadow-sm border border-stone-200 dark:border-stone-700 w-full">
@@ -574,7 +587,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-6">
-              {/* (Content remains unchanged, only logic updated above) */}
               <div className="space-y-3">
                 <h3 className="font-bold text-stone-700 dark:text-stone-300 text-sm uppercase tracking-wider border-b border-stone-200 dark:border-stone-700 pb-2">Itens do Carrinho</h3>
                 
