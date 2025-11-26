@@ -1,7 +1,9 @@
 
+
+
 import React, { useState, useEffect } from 'react';
 import { Category, Product, StoreSettings, ProductOption, ProductChoice, Order, Coupon, DeliveryRegion } from '../types';
-import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Layers, Megaphone, Tag, List, HelpCircle, Utensils, Phone, CreditCard, Truck, Receipt, ClipboardList, Clock, Printer, Ticket, LayoutDashboard, DollarSign, TrendingUp, ShoppingBag, Calendar, PieChart, BarChart3, Filter, Ban, Star, Zap, Leaf, Flame, Loader2 } from 'lucide-react';
+import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Layers, Megaphone, Tag, List, HelpCircle, Utensils, Phone, CreditCard, Truck, Receipt, ClipboardList, Clock, Printer, Ticket, LayoutDashboard, DollarSign, TrendingUp, ShoppingBag, Calendar, PieChart, BarChart3, Filter, Ban, Star, Zap, Leaf, Flame, Loader2, Share2, Globe } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 interface AdminPanelProps {
@@ -486,6 +488,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
+  const handleSeoBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) { 
+        setIsProcessingImage(true);
+        try {
+            const compressedBase64 = await compressImage(file);
+            setSettingsForm(prev => ({...prev, seoBannerUrl: compressedBase64}));
+        } finally {
+            setIsProcessingImage(false);
+        }
+    }
+  };
+
   const startEditing = (product: Product) => { setEditingProduct(product.id); setEditForm(JSON.parse(JSON.stringify(product))); setTempIngredient(''); };
   const saveEdit = (originalCategoryId: string) => { if (editingProduct && editForm) { onUpdateProduct(originalCategoryId, editingProduct, editForm); setEditingProduct(null); setEditForm({}); } };
   const handleDelete = (categoryId: string, productId: number) => { if (window.confirm('Tem certeza que deseja excluir este produto?')) { onDeleteProduct(categoryId, productId); } };
@@ -693,7 +708,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         {/* --- TAB: DASHBOARD --- */}
         {activeTab === 'dashboard' && (
            <div className="space-y-6 animate-in fade-in">
-              {/* Filters */}
+              {/* ... Dashboard Content ... */}
               <div className="bg-white p-2 rounded-lg shadow-sm border border-stone-200 inline-flex flex-wrap items-center gap-1 overflow-x-auto max-w-full">
                  <button onClick={() => setDateFilter('today')} className={`px-4 py-2 rounded-md text-sm font-bold transition-colors whitespace-nowrap ${dateFilter === 'today' ? 'bg-italian-green text-white' : 'text-stone-500 hover:bg-stone-100'}`}>Hoje</button>
                  <button onClick={() => setDateFilter('yesterday')} className={`px-4 py-2 rounded-md text-sm font-bold transition-colors whitespace-nowrap ${dateFilter === 'yesterday' ? 'bg-italian-green text-white' : 'text-stone-500 hover:bg-stone-100'}`}>Ontem</button>
@@ -713,7 +728,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     />
                  </div>
               </div>
-
+              
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                  {/* Card 1: Vendas */}
                  <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
@@ -790,14 +805,131 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         {/* --- TAB: ORDERS (KDS) --- */}
         {activeTab === 'orders' && (
           <div className="space-y-6 animate-in fade-in">
-             {/* ... Orders content (no changes) ... */}
+             {/* ... Orders content ... */}
+             <div className="bg-white p-4 rounded-xl shadow-sm border border-stone-200 flex justify-between items-center">
+               <h2 className="text-xl font-bold text-stone-800 flex items-center gap-2">
+                 <ClipboardList className="w-5 h-5 text-italian-red" /> Pedidos
+               </h2>
+               
+               <div className="flex bg-stone-100 p-1 rounded-lg">
+                  <button onClick={() => setOrderFilter('active')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${orderFilter === 'active' ? 'bg-white shadow-sm text-italian-green' : 'text-stone-500'}`}>Ativos</button>
+                  <button onClick={() => setOrderFilter('all')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${orderFilter === 'all' ? 'bg-white shadow-sm text-italian-green' : 'text-stone-500'}`}>Todos</button>
+               </div>
+             </div>
+             
+             {ordersLoading && <div className="text-center py-8"><RefreshCw className="w-8 h-8 animate-spin mx-auto text-stone-400"/></div>}
+             
+             {!ordersLoading && orders.length === 0 && (
+                <div className="text-center py-12 bg-white rounded-xl border border-stone-200">
+                   <p className="text-stone-500 font-medium">Nenhum pedido encontrado.</p>
+                </div>
+             )}
+             
+             <div className="space-y-4">
+                {orders.map(order => (
+                   <div key={order.id} className="bg-white border border-stone-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                      {order.status === 'cancelled' && <div className="absolute inset-0 bg-stone-100/50 backdrop-blur-[1px] z-10 flex items-center justify-center pointer-events-none"><span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-bold border border-red-200 transform -rotate-12">CANCELADO</span></div>}
+                      <div className="flex flex-col md:flex-row justify-between gap-4">
+                         <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                               <span className="bg-stone-800 text-white text-xs font-bold px-2 py-0.5 rounded">#{order.id}</span>
+                               <span className="text-xs text-stone-500 font-medium flex items-center gap-1"><Clock className="w-3 h-3"/> {new Date(order.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}</span>
+                               <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase border ${order.delivery_type === 'delivery' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-orange-50 text-orange-700 border-orange-200'}`}>
+                                  {order.delivery_type === 'delivery' ? 'Entrega' : 'Retirada'}
+                               </span>
+                            </div>
+                            <h3 className="font-bold text-lg text-stone-800">{order.customer_name}</h3>
+                            <div className="text-sm text-stone-600 mt-1 space-y-1">
+                               {order.delivery_type === 'delivery' ? (
+                                  <p className="flex items-start gap-1"><MapPin className="w-4 h-4 mt-0.5 shrink-0 text-stone-400"/> {order.address_street}, {order.address_number} - {order.address_district}</p>
+                               ) : (
+                                  <p className="flex items-center gap-1 text-orange-600 font-medium"><Truck className="w-4 h-4"/> Cliente retira no balcão</p>
+                               )}
+                               <p className="flex items-center gap-1"><CreditCard className="w-4 h-4 text-stone-400"/> {order.payment_method}</p>
+                            </div>
+                         </div>
+                         
+                         <div className="w-full md:w-64 bg-stone-50 rounded-lg p-3 border border-stone-100">
+                            <ul className="space-y-1 mb-3">
+                               {order.items.map((item: any, idx: number) => (
+                                  <li key={idx} className="text-sm flex justify-between">
+                                     <span className="font-bold text-stone-700">{item.quantity}x {item.name}</span>
+                                     <span className="text-stone-500 text-xs">R$ {(item.price * item.quantity).toFixed(2)}</span>
+                                  </li>
+                               ))}
+                            </ul>
+                            <div className="border-t border-stone-200 pt-2 flex justify-between items-center">
+                               <span className="text-sm font-bold text-stone-600">Total</span>
+                               <span className="text-lg font-bold text-italian-green">R$ {order.total.toFixed(2)}</span>
+                            </div>
+                         </div>
+                      </div>
+                      
+                      <div className="mt-4 pt-4 border-t border-stone-100 flex flex-wrap gap-2 justify-end">
+                         <button onClick={() => handlePrintOrder(order)} className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold rounded-lg flex items-center gap-1 transition-colors">
+                            <Printer className="w-4 h-4" /> Imprimir
+                         </button>
+                         {order.status !== 'cancelled' && (
+                            <>
+                               {order.status !== 'completed' && (
+                                  <>
+                                    <button onClick={() => handleUpdateOrderStatus(order.id, 'preparing')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${order.status === 'preparing' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'}`}>Em Preparo</button>
+                                    <button onClick={() => handleUpdateOrderStatus(order.id, 'delivery')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${order.status === 'delivery' ? 'bg-orange-500 text-white' : 'bg-orange-50 text-orange-700 hover:bg-orange-100'}`}>Saiu p/ Entrega</button>
+                                    <button onClick={() => handleUpdateOrderStatus(order.id, 'completed')} className="px-3 py-1.5 bg-green-50 text-green-700 hover:bg-green-100 rounded-lg text-xs font-bold transition-colors">Concluir</button>
+                                  </>
+                               )}
+                               <button onClick={() => handleUpdateOrderStatus(order.id, 'cancelled')} className="px-3 py-1.5 bg-red-50 text-red-700 hover:bg-red-100 rounded-lg text-xs font-bold transition-colors">Cancelar</button>
+                            </>
+                         )}
+                      </div>
+                   </div>
+                ))}
+             </div>
           </div>
         )}
 
         {/* --- TAB: COUPONS --- */}
         {activeTab === 'coupons' && (
           <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200 animate-in fade-in slide-in-from-bottom-2 space-y-8">
-             {/* ... Coupons content (no changes) ... */}
+             <div className="bg-stone-50 p-4 rounded-lg border border-stone-200">
+                 <h3 className="font-bold text-sm text-stone-700 mb-2">Criar Novo Cupom</h3>
+                 <div className="flex gap-2">
+                   <input 
+                     type="text" 
+                     placeholder="Código (Ex: WELCOME10)" 
+                     className="flex-1 p-2 bg-white border border-stone-300 rounded-lg text-sm text-stone-900 uppercase"
+                     value={newCouponCode}
+                     onChange={(e) => setNewCouponCode(e.target.value)}
+                   />
+                   <input 
+                     type="number" 
+                     placeholder="% Desconto" 
+                     className="w-24 p-2 bg-white border border-stone-300 rounded-lg text-sm text-stone-900"
+                     value={newCouponDiscount}
+                     onChange={(e) => setNewCouponDiscount(e.target.value)}
+                   />
+                   <button 
+                     onClick={handleAddCoupon}
+                     className="bg-italian-green text-white px-4 rounded-lg text-sm font-bold hover:bg-green-700"
+                   >
+                     Criar
+                   </button>
+                 </div>
+              </div>
+              
+              <div className="space-y-2">
+                 <h3 className="font-bold text-stone-800">Cupons Ativos</h3>
+                 {coupons.length === 0 && <p className="text-stone-400 text-sm">Nenhum cupom criado.</p>}
+                 {coupons.map(coupon => (
+                    <div key={coupon.id} className="flex justify-between items-center p-3 bg-white border border-stone-200 rounded-lg">
+                       <div>
+                          <span className="font-bold text-stone-800 block">{coupon.code}</span>
+                          <span className="text-xs text-green-600 font-bold">{coupon.discount_percent}% OFF</span>
+                       </div>
+                       <button onClick={() => handleDeleteCoupon(coupon.id)} className="text-stone-400 hover:text-red-500 p-2"><Trash2 className="w-4 h-4"/></button>
+                    </div>
+                 ))}
+              </div>
           </div>
         )}
 
@@ -906,7 +1038,78 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         {/* --- TAB: SETTINGS --- */}
         {activeTab === 'settings' && (
            <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200 animate-in fade-in slide-in-from-bottom-2 space-y-8">
-              {/* ... Settings content (no changes) ... */}
+              
+              {/* SEO & SHARING SECTION - NEW */}
+              <div>
+                <h2 className="text-xl font-bold text-stone-800 mb-6 flex items-center gap-2">
+                  <Share2 className="w-5 h-5 text-italian-red" /> SEO & Compartilhamento (WhatsApp)
+                </h2>
+                
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                   <p className="text-xs text-blue-800">
+                      Configure como o link do seu cardápio aparecerá quando enviado no WhatsApp, Facebook, etc.
+                   </p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                   <div>
+                      <label className="block text-sm font-bold text-stone-700 mb-1">Título da Página (Nome da Loja)</label>
+                      <input 
+                        type="text" 
+                        value={settingsForm.seoTitle || settingsForm.name} 
+                        onChange={(e) => setSettingsForm({...settingsForm, seoTitle: e.target.value})} 
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 text-sm"
+                        placeholder="Ex: Spagnolli Pizzaria - O Melhor de Itupeva"
+                      />
+                   </div>
+                   
+                   <div>
+                      <label className="block text-sm font-bold text-stone-700 mb-1">Descrição Curta</label>
+                      <textarea 
+                        rows={2}
+                        value={settingsForm.seoDescription || ''} 
+                        onChange={(e) => setSettingsForm({...settingsForm, seoDescription: e.target.value})} 
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-md text-stone-900 text-sm"
+                        placeholder="Ex: Peça as melhores pizzas e esfihas pelo nosso cardápio digital."
+                      />
+                   </div>
+
+                   <div>
+                      <label className="block text-sm font-bold text-stone-700 mb-2 flex items-center gap-2">
+                        <ImageIcon className="w-4 h-4 text-italian-red" /> Imagem de Compartilhamento (Banner)
+                      </label>
+                      <div className="flex flex-col md:flex-row items-start gap-4 bg-stone-50 p-3 rounded-lg border border-stone-200 relative">
+                          {isProcessingImage && <div className="absolute inset-0 bg-black/10 rounded-lg flex items-center justify-center z-10"><Loader2 className="w-6 h-6 animate-spin text-italian-green"/></div>}
+                          
+                          <div className="w-full md:w-48 h-28 bg-stone-200 rounded-md overflow-hidden flex-shrink-0 border border-stone-300">
+                            {settingsForm.seoBannerUrl ? (
+                              <img src={settingsForm.seoBannerUrl} alt="Preview" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-stone-400">
+                                <ImageIcon className="w-8 h-8" />
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="flex-1 w-full">
+                            <input 
+                              type="file" 
+                              className="w-full text-xs text-stone-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-italian-green file:text-white hover:file:bg-green-700 cursor-pointer mb-2"
+                              accept="image/*" 
+                              onChange={handleSeoBannerUpload} 
+                            />
+                            <p className="text-[10px] text-stone-500">
+                              Recomendado: Imagem horizontal (1200x630px).<br/>
+                              Essa imagem aparecerá como miniatura ao enviar o link.
+                            </p>
+                          </div>
+                      </div>
+                   </div>
+                </div>
+              </div>
+
+              <hr className="border-stone-200" />
+
               <div>
                 <h2 className="text-xl font-bold text-stone-800 mb-6 flex items-center gap-2">
                   <Settings className="w-5 h-5 text-italian-red" /> Dados do Estabelecimento
@@ -958,7 +1161,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                    {/* ... Existing Inputs ... */}
                    <div>
-                      <label className="block text-sm font-bold text-stone-700 mb-1">Nome</label>
+                      <label className="block text-sm font-bold text-stone-700 mb-1">Nome da Loja (Interno)</label>
                       <input 
                         type="text" 
                         value={settingsForm.name} 
@@ -1047,7 +1250,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                    </div>
 
                    <div className="md:col-span-2">
-                      <label className="block text-sm font-bold text-stone-700 mb-1">URL do Logo</label>
+                      <label className="block text-sm font-bold text-stone-700 mb-1">URL do Logo (Barra de Navegação)</label>
                       <input 
                         type="text" 
                         value={settingsForm.logoUrl} 
@@ -1066,14 +1269,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </h2>
                 
                 {/* Region Editing Form */}
-                {/* ... (Existing Region Code) ... */}
-                {/* Simplified for brevity as logic is unchanged */}
+                <div className="bg-stone-50 p-4 rounded-lg border border-stone-200 mb-4">
+                   <h3 className="font-bold text-sm text-stone-700 mb-2">{editingRegionId ? 'Editar Região' : 'Adicionar Nova Região'}</h3>
+                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 mb-2">
+                      <input type="text" placeholder="Nome (Ex: Centro)" value={newRegionName} onChange={(e) => setNewRegionName(e.target.value)} className="p-2 border rounded text-sm" />
+                      <input type="number" step="0.01" placeholder="Preço (R$)" value={newRegionPrice} onChange={(e) => setNewRegionPrice(e.target.value)} className="p-2 border rounded text-sm" />
+                      <input type="text" placeholder="CEPs/Faixas (Ex: 13295-000, 13295...)" value={newRegionZips} onChange={(e) => setNewRegionZips(e.target.value)} className="p-2 border rounded text-sm" />
+                      <input type="text" placeholder="Excluir CEPs (Ex: 13295-999)" value={newRegionExclusions} onChange={(e) => setNewRegionExclusions(e.target.value)} className="p-2 border rounded text-sm" />
+                   </div>
+                   <div className="flex gap-2">
+                      <button onClick={handleAddRegion} className="bg-italian-green text-white px-4 py-2 rounded text-sm font-bold hover:bg-green-700">{editingRegionId ? 'Atualizar Região' : 'Adicionar Região'}</button>
+                      {editingRegionId && <button onClick={cancelEditingRegion} className="bg-stone-300 text-stone-700 px-4 py-2 rounded text-sm font-bold hover:bg-stone-400">Cancelar</button>}
+                   </div>
+                </div>
+
                 <div className="space-y-2">
                    {(settingsForm.deliveryRegions || []).map((region, idx) => (
                       <div key={idx} className="flex justify-between p-3 bg-white border rounded-lg items-start">
                          <div>
                             <span className="font-bold">{region.name}</span> <span className="text-green-600 font-bold">R$ {region.price.toFixed(2)}</span>
-                            {/* ... */}
+                            {region.zipRules && region.zipRules.length > 0 && <p className="text-xs text-stone-500">CEPs: {region.zipRules.join(', ')}</p>}
+                            {region.zipExclusions && region.zipExclusions.length > 0 && <p className="text-xs text-red-500">Exceções: {region.zipExclusions.join(', ')}</p>}
                          </div>
                          <div className="flex gap-2">
                             <button onClick={() => startEditingRegion(region)} className="p-1 text-stone-400 hover:text-blue-500"><Edit3 className="w-4 h-4"/></button>

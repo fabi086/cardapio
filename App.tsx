@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { MENU_DATA, DEFAULT_SETTINGS, CATEGORY_IMAGES } from './data';
 import { Product, CartItem, Category, StoreSettings } from './types';
@@ -93,12 +94,38 @@ function App() {
     return false;
   });
 
-  // Atualiza o título da página (aba do navegador) quando o nome da loja muda
+  // Atualiza o título da página e as Meta Tags de Compartilhamento (WhatsApp)
   useEffect(() => {
     if (storeSettings.name) {
       document.title = storeSettings.name;
     }
-  }, [storeSettings.name]);
+
+    // Helper to safely update meta tags
+    const updateMetaTag = (selector: string, content: string) => {
+      let element = document.querySelector(selector);
+      if (!element) {
+        // Create if doesn't exist (basic handling)
+        element = document.createElement('meta');
+        if (selector.includes('property')) {
+           element.setAttribute('property', selector.replace("meta[property='", "").replace("']", ""));
+        }
+        document.head.appendChild(element);
+      }
+      element.setAttribute('content', content);
+    };
+
+    // Update Open Graph Tags
+    if (storeSettings.seoTitle || storeSettings.name) {
+       updateMetaTag("meta[property='og:title']", storeSettings.seoTitle || storeSettings.name);
+    }
+    if (storeSettings.seoDescription) {
+       updateMetaTag("meta[property='og:description']", storeSettings.seoDescription);
+    }
+    if (storeSettings.seoBannerUrl) {
+       updateMetaTag("meta[property='og:image']", storeSettings.seoBannerUrl);
+    }
+
+  }, [storeSettings]);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -216,7 +243,10 @@ function App() {
             paymentMethods: (settingsData.payment_methods && Array.isArray(settingsData.payment_methods)) ? settingsData.payment_methods : DEFAULT_SETTINGS.paymentMethods,
             deliveryRegions: Array.isArray(deliveryRegions) ? deliveryRegions : DEFAULT_SETTINGS.deliveryRegions,
             enableGuide: settingsData.enable_guide ?? true,
-            freeShipping: settingsData.free_shipping ?? false
+            freeShipping: settingsData.free_shipping ?? false,
+            seoTitle: settingsData.seo_title || DEFAULT_SETTINGS.seoTitle,
+            seoDescription: settingsData.seo_description || DEFAULT_SETTINGS.seoDescription,
+            seoBannerUrl: settingsData.seo_banner_url || DEFAULT_SETTINGS.seoBannerUrl,
         });
       } else {
         setStoreSettings(DEFAULT_SETTINGS);
@@ -364,7 +394,10 @@ function App() {
           delivery_regions: JSON.stringify(newSettings.deliveryRegions || []),
           enable_guide: newSettings.enableGuide,
           payment_methods: newSettings.paymentMethods,
-          free_shipping: newSettings.freeShipping
+          free_shipping: newSettings.freeShipping,
+          seo_title: newSettings.seoTitle,
+          seo_description: newSettings.seoDescription,
+          seo_banner_url: newSettings.seoBannerUrl
        };
        if (settingsId) await supabase.from('settings').update(payload).eq('id', settingsId);
        else {

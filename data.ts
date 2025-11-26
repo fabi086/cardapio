@@ -28,7 +28,10 @@ export const DEFAULT_SETTINGS: StoreSettings = {
     }
   ],
   enableGuide: true,
-  freeShipping: false
+  freeShipping: false,
+  seoTitle: 'Spagnolli Pizzaria - Cardápio Digital',
+  seoDescription: 'Peça as melhores pizzas e esfihas de Itupeva diretamente pelo nosso cardápio digital. Rápido, fácil e delicioso!',
+  seoBannerUrl: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=1200&auto=format&fit=crop'
 };
 
 export const WHATSAPP_NUMBER = DEFAULT_SETTINGS.whatsapp; // Legacy support if needed

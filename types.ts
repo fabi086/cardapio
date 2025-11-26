@@ -69,6 +69,11 @@ export interface StoreSettings {
   deliveryRegions?: DeliveryRegion[];
   enableGuide?: boolean; // New field to toggle onboarding tour
   freeShipping?: boolean; // New field for global free shipping toggle
+  
+  // SEO & Social Sharing
+  seoTitle?: string;
+  seoDescription?: string;
+  seoBannerUrl?: string;
 }
 
 export interface Coupon {
