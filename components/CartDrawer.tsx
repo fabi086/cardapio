@@ -382,33 +382,33 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     setIsSubmitting(true);
     let orderId = null;
 
-    // Sanitize items for DB
+    // Sanitize items for DB (ensure pure JSON)
     const cleanItems = items.map(i => ({
       id: i.id,
       name: i.name,
       quantity: i.quantity,
       price: i.price,
-      selectedOptions: i.selectedOptions,
-      observation: i.observation,
-      code: i.code
+      selectedOptions: i.selectedOptions || [],
+      observation: i.observation || '',
+      code: i.code || ''
     }));
 
     const dbPayload = {
       customer_name: customerName,
       delivery_type: deliveryType,
-      table_number: tableNumber,
-      address_street: addressStreet,
-      address_number: addressNumber,
+      table_number: tableNumber || null,
+      address_street: addressStreet || '',
+      address_number: addressNumber || '',
       address_district: unknownCepMode ? manualNeighborhood : addressDistrict,
-      address_city: addressCity,
-      address_complement: addressComplement,
+      address_city: addressCity || '',
+      address_complement: addressComplement || '',
       payment_method: paymentMethod,
-      total: total,
-      delivery_fee: deliveryFee,
+      total: Number(total.toFixed(2)), // Ensure number
+      delivery_fee: Number(deliveryFee.toFixed(2)), // Ensure number
       status: 'pending',
       items: cleanItems, 
       coupon_code: appliedCoupon ? appliedCoupon.code : null,
-      discount: discountAmount
+      discount: Number(discountAmount.toFixed(2))
     };
 
     if (supabase) {
@@ -416,8 +416,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         const { data, error } = await supabase.from('orders').insert([dbPayload]).select();
         
         if (error) {
-            console.error("Erro ao salvar pedido no banco:", error);
-            alert("Erro ao salvar pedido no sistema: " + error.message + ". Você será redirecionado para o WhatsApp, mas o pedido pode não aparecer no painel.");
+            console.error("Erro Supabase:", error);
+            // CRITICAL: Show alert so user knows DB failed
+            alert(`ATENÇÃO: Erro ao salvar pedido no sistema (${error.message || 'Erro desconhecido'}). O pedido será enviado apenas pelo WhatsApp.`);
         } else if (data && data.length > 0) {
             orderId = data[0].id;
             try {
@@ -429,8 +430,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             } catch (e) { console.error(e); }
         }
       } catch (err: any) {
-         console.error("Erro de conexão:", err);
-         alert("Erro de conexão ao salvar pedido: " + err.message);
+         console.error("Erro Conexão:", err);
+         alert("Erro de conexão com o sistema: " + err.message);
       }
     }
 
@@ -551,7 +552,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
            </div>
         ) : (
           <>
-            <div className="p-4 bg-italian-red text-white flex items-center justify-between shadow-md shrink-0">
+            <div className="p-4 bg-italian-red text-white flex items-center justify-between shadow-md shrink-0" style={{ backgroundColor: 'var(--color-primary)' }}>
               <div className="flex items-center gap-2">
                 <ShoppingBag className="w-5 h-5" />
                 <h2 className="font-bold text-lg">Seu Pedido {tableNumber ? `(Mesa ${tableNumber})` : ''}</h2>
