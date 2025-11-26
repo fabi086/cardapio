@@ -393,23 +393,28 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       code: i.code || ''
     }));
 
-    const dbPayload = {
+    // Construct payload DYNAMICALLY to avoid sending missing columns (like table_number) if they are null
+    // This helps prevent "schema cache" errors if the DB is outdated
+    const dbPayload: any = {
       customer_name: customerName,
       delivery_type: deliveryType,
-      table_number: tableNumber || null,
       address_street: addressStreet || '',
       address_number: addressNumber || '',
       address_district: unknownCepMode ? manualNeighborhood : addressDistrict,
       address_city: addressCity || '',
       address_complement: addressComplement || '',
       payment_method: paymentMethod,
-      total: Number(total.toFixed(2)), // Ensure number
-      delivery_fee: Number(deliveryFee.toFixed(2)), // Ensure number
+      total: Number(total.toFixed(2)),
+      delivery_fee: Number(deliveryFee.toFixed(2)),
       status: 'pending',
-      items: cleanItems, 
-      coupon_code: appliedCoupon ? appliedCoupon.code : null,
-      discount: Number(discountAmount.toFixed(2))
+      items: cleanItems
     };
+
+    // Only add these optional fields if they have values
+    // This prevents sending 'null' to columns that might not exist yet in old schemas
+    if (tableNumber) dbPayload.table_number = tableNumber;
+    if (appliedCoupon) dbPayload.coupon_code = appliedCoupon.code;
+    if (discountAmount > 0) dbPayload.discount = Number(discountAmount.toFixed(2));
 
     if (supabase) {
       try {
@@ -417,8 +422,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         
         if (error) {
             console.error("Erro Supabase:", error);
-            // CRITICAL: Show alert so user knows DB failed
-            alert(`ATENÇÃO: Erro ao salvar pedido no sistema (${error.message || 'Erro desconhecido'}). O pedido será enviado apenas pelo WhatsApp.`);
+            let errorMsg = `Erro ao salvar pedido: ${error.message}. `;
+            if (error.message.includes('column') && error.message.includes('schema cache')) {
+               errorMsg += " (Seu banco de dados está desatualizado. Copie o código do schema.sql e rode no Supabase).";
+            }
+            alert(`ATENÇÃO: ${errorMsg} O pedido será enviado apenas pelo WhatsApp.`);
         } else if (data && data.length > 0) {
             orderId = data[0].id;
             try {
@@ -824,3 +832,4 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     </div>
   );
 };
+    
