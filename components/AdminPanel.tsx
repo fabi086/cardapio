@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Category, Product, StoreSettings, ProductOption, ProductChoice, Order, Coupon, DeliveryRegion, WeeklySchedule, Table } from '../types';
-import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Ticket, QrCode, Clock, CreditCard, LayoutDashboard, ShoppingBag, Palette, Phone, Share2, Calendar, Printer, Filter, ChevronDown, ChevronUp, AlertTriangle, User, Truck, Utensils, Minus, Type, Ban, Wifi, WifiOff, Loader2 } from 'lucide-react';
+import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Ticket, QrCode, Clock, CreditCard, LayoutDashboard, ShoppingBag, Palette, Phone, Share2, Calendar, Printer, Filter, ChevronDown, ChevronUp, AlertTriangle, User, Truck, Utensils, Minus, Type, Ban, Wifi, WifiOff, Loader2, Database } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 interface AdminPanelProps {
@@ -51,6 +51,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [password, setPassword] = useState('');
   const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'menu' | 'coupons' | 'tables' | 'settings'>('dashboard');
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
+  const [dbError, setDbError] = useState<string | null>(null);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   
   // Dashboard State
@@ -127,16 +128,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     const checkConnection = async () => {
        if (!supabase) {
           setIsConnected(false);
+          setDbError("Cliente Supabase não inicializado.");
           return;
        }
+       // Check if 'settings' table exists
        const { error } = await supabase.from('settings').select('id').limit(1);
-       setIsConnected(!error);
+       
+       if (error) {
+          setIsConnected(false);
+          if (error.code === '42P01') {
+             setDbError("Tabelas não encontradas. Execute o SQL de instalação.");
+          } else {
+             setDbError(`Erro de conexão: ${error.message}`);
+          }
+       } else {
+          setIsConnected(true);
+          setDbError(null);
+       }
     };
     checkConnection();
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated && supabase) {
+    if (isAuthenticated && supabase && isConnected) {
       fetchOrders();
       if (activeTab === 'coupons') fetchCoupons();
       if (activeTab === 'tables') fetchTables();
@@ -156,7 +170,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         supabase.removeChannel(orderSubscription);
       };
     }
-  }, [isAuthenticated, activeTab]);
+  }, [isAuthenticated, activeTab, isConnected]);
 
   const fetchOrders = async () => {
     if (!supabase) return;
@@ -481,6 +495,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     <div className="min-h-screen bg-stone-50 pb-20 text-stone-800 font-sans">
       <header className="bg-white border-b border-stone-200 sticky top-0 z-30 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 pt-4">
+          
+          {/* Database Error Warning */}
+          {dbError && (
+             <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded shadow-sm animate-in fade-in slide-in-from-top">
+                <div className="flex items-center gap-2 font-bold"><Database className="w-5 h-5"/> ATENÇÃO: Banco de Dados Não Configurado</div>
+                <p className="text-sm mt-1">O sistema não consegue salvar dados porque as tabelas não existem ou estão incorretas.</p>
+                <div className="mt-2 bg-white p-2 rounded border border-red-200 text-xs font-mono overflow-x-auto">
+                   {dbError}
+                </div>
+                <p className="text-xs mt-2 font-bold">SOLUÇÃO: Copie o arquivo schema.sql e rode no SQL Editor do Supabase.</p>
+             </div>
+          )}
+
           <div className="flex justify-between items-center mb-4">
             <div className="flex items-center gap-3">
               <button onClick={onBack} className="p-2 hover:bg-stone-100 rounded-full transition-colors text-stone-600"><ArrowLeft className="w-5 h-5" /></button>
