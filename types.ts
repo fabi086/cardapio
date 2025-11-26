@@ -21,6 +21,7 @@ export interface Product {
   price: number;
   category: string;
   category_id?: string;
+  additional_categories?: string[]; // New: Allow product in multiple categories
   subcategory?: string; // New field for grouping (e.g. "Long Neck", "Lata")
   image?: string;
   options?: ProductOption[]; // New field for customization
@@ -82,9 +83,11 @@ export interface WeeklySchedule {
 }
 
 export interface StoreColors {
-  primary: string;   // Replaces italian-red
-  secondary: string; // Replaces italian-green
-  background?: string;
+  primary: string;   // Main Action Color (Buttons, Accents)
+  secondary: string; // Secondary Accent
+  headerBackground?: string; // Specific for Top Bar
+  headerText?: string;       // Specific for Top Bar Text
+  background?: string;       // App Background
 }
 
 export interface StoreSettings {
@@ -111,6 +114,7 @@ export interface StoreSettings {
   
   // Visual Identity
   colors?: StoreColors;
+  fontFamily?: string; // 'Outfit', 'Roboto', 'Open Sans', 'Lato'
 
   // SEO & Social Sharing
   seoTitle?: string;

@@ -1,4 +1,6 @@
 
+
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { MENU_DATA, DEFAULT_SETTINGS, CATEGORY_IMAGES } from './data';
 import { Product, CartItem, Category, StoreSettings, WeeklySchedule } from './types';
@@ -142,19 +144,39 @@ function App() {
     const tableParam = params.get('mesa');
     if (tableParam) {
       setTableNumber(tableParam);
-      // Optional: Clear table from URL so it doesn't persist if they share the specific link improperly?
-      // For now, keep it so refresh works.
     }
   }, []);
 
   // --- PHASE 2: APPLY VISUAL THEME ---
   useEffect(() => {
+    const root = document.documentElement;
     if (storeSettings.colors) {
-      const root = document.documentElement;
       root.style.setProperty('--color-primary', storeSettings.colors.primary);
       root.style.setProperty('--color-secondary', storeSettings.colors.secondary);
+      
+      // Apply granular colors if available, otherwise fallback to primary/secondary or defaults
+      const headerBg = storeSettings.colors.headerBackground || storeSettings.colors.primary;
+      const headerText = storeSettings.colors.headerText || '#FFFFFF';
+      root.style.setProperty('--header-bg', headerBg);
+      root.style.setProperty('--header-text', headerText);
     }
-  }, [storeSettings.colors]);
+
+    if (storeSettings.fontFamily) {
+      root.style.setProperty('font-family', `"${storeSettings.fontFamily}", sans-serif`);
+      // Inject font from Google Fonts dynamically if needed
+      const linkId = 'dynamic-font-link';
+      let link = document.getElementById(linkId) as HTMLLinkElement;
+      if (!link) {
+        link = document.createElement('link');
+        link.id = linkId;
+        link.rel = 'stylesheet';
+        document.head.appendChild(link);
+      }
+      // Basic Google Fonts support for common fonts
+      const fontName = storeSettings.fontFamily.replace(/ /g, '+');
+      link.href = `https://fonts.googleapis.com/css2?family=${fontName}:wght@300;400;600;700&display=swap`;
+    }
+  }, [storeSettings.colors, storeSettings.fontFamily]);
 
   useEffect(() => {
     const pageTitle = storeSettings.seoTitle?.trim() ? storeSettings.seoTitle : (storeSettings.name || 'Cardápio Digital');
@@ -254,16 +276,32 @@ function App() {
           name: cat.name,
           image: cat.image || CATEGORY_IMAGES[cat.id] || null,
           items: products
-            .filter((prod: any) => prod.category_id === cat.id)
+            .filter((prod: any) => {
+               // Check main category OR additional categories
+               let additionalCats: string[] = [];
+               try {
+                  if (prod.additional_categories) {
+                     additionalCats = typeof prod.additional_categories === 'string' 
+                        ? JSON.parse(prod.additional_categories) 
+                        : prod.additional_categories;
+                  }
+               } catch (e) {}
+               
+               return prod.category_id === cat.id || (additionalCats && additionalCats.includes(cat.id));
+            })
             .sort((a: any, b: any) => a.id - b.id)
             .map((prod: any) => {
               let opts = prod.options;
               if (typeof opts === 'string') {
                 try { opts = JSON.parse(opts); } catch(e) { opts = []; }
               }
+              let addCats = prod.additional_categories;
+              if (typeof addCats === 'string') {
+                 try { addCats = JSON.parse(addCats); } catch(e) { addCats = []; }
+              }
               const ingredients = Array.isArray(prod.ingredients) ? prod.ingredients : [];
               const tags = Array.isArray(prod.tags) ? prod.tags : [];
-              return { ...prod, options: opts || [], ingredients, tags };
+              return { ...prod, options: opts || [], ingredients, tags, additional_categories: addCats || [] };
             })
         }));
         setMenuData(structuredMenu);
@@ -302,6 +340,7 @@ function App() {
             currencySymbol: settingsData.currency_symbol || DEFAULT_SETTINGS.currencySymbol,
             timezone: settingsData.timezone || DEFAULT_SETTINGS.timezone,
             colors: colors || DEFAULT_SETTINGS.colors,
+            fontFamily: settingsData.font_family || 'Outfit',
             seoTitle: settingsData.seo_title || DEFAULT_SETTINGS.seoTitle,
             seoDescription: settingsData.seo_description || DEFAULT_SETTINGS.seoDescription,
             seoBannerUrl: settingsData.seo_banner_url || DEFAULT_SETTINGS.seoBannerUrl,
@@ -403,14 +442,22 @@ function App() {
   // --- ACTIONS ---
   const handleUpdateProduct = async (catId: string, pId: number, updates: Partial<Product>) => {
      setMenuData(prev => prev.map(c => {
-        if(c.id !== catId) return c;
-        return { ...c, items: c.items.map(p => p.id === pId ? {...p, ...updates} : p) };
+        // Since products can be in multiple categories now, we update the whole state logic
+        // But for performance, we just re-fetch data is cleaner, or map simply:
+        return { 
+           ...c, 
+           items: c.items.map(p => p.id === pId ? {...p, ...updates} : p) 
+        };
      }));
      if (supabase) {
         const payload: any = { ...updates };
         if (updates.options) payload.options = JSON.stringify(updates.options);
         if (updates.tags) payload.tags = updates.tags;
+        if (updates.additional_categories) payload.additional_categories = JSON.stringify(updates.additional_categories);
+        
         await supabase.from('products').update(payload).eq('id', pId);
+        // Trigger fetch to ensure category sorting/filtering is correct
+        fetchData();
      }
   };
 
@@ -425,7 +472,8 @@ function App() {
            ...product, 
            category_id: catId,
            options: JSON.stringify(product.options || []),
-           tags: product.tags || []
+           tags: product.tags || [],
+           additional_categories: JSON.stringify(product.additional_categories || [])
         };
         await supabase.from('products').insert([payload]);
         fetchData();
@@ -434,8 +482,7 @@ function App() {
 
   const handleDeleteProduct = async (catId: string, pId: number) => {
      setMenuData(prev => prev.map(c => {
-        if(c.id === catId) return { ...c, items: c.items.filter(p => p.id !== pId) };
-        return c;
+        return { ...c, items: c.items.filter(p => p.id !== pId) };
      }));
      if(supabase) await supabase.from('products').delete().eq('id', pId);
   };
@@ -458,6 +505,7 @@ function App() {
           currency_symbol: newSettings.currencySymbol,
           timezone: newSettings.timezone,
           colors: JSON.stringify(newSettings.colors || {}),
+          font_family: newSettings.fontFamily,
           seo_title: newSettings.seoTitle,
           seo_description: newSettings.seoDescription,
           seo_banner_url: newSettings.seoBannerUrl,

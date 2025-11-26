@@ -131,7 +131,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
       <div id={`product-${product.id}`} className="absolute -top-28 left-0 w-full h-0 opacity-0 pointer-events-none" />
 
       <div 
-        className="h-40 w-full bg-stone-100 relative overflow-hidden group cursor-pointer dark:bg-stone-800"
+        className="h-40 w-full bg-stone-100 relative overflow-hidden cursor-pointer dark:bg-stone-800"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <OptimizedImage 
@@ -139,7 +139,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
           alt={product.name} 
           width={400} 
           fill
-          className="transition-transform duration-500 group-hover:scale-105"
+          className="transition-transform duration-700 ease-out group-hover/card:scale-110"
         />
         
         {product.tags && product.tags.length > 0 && (
@@ -147,9 +147,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
               {product.tags.map(tag => (
                  <span key={tag} className={`text-[10px] font-bold px-2 py-0.5 rounded shadow-sm uppercase tracking-wider ${
                     tag === 'popular' ? 'bg-yellow-400 text-yellow-900' : 
-                    tag === 'vegetarian' ? 'bg-green-500 text-white' : 
-                    tag === 'spicy' ? 'bg-red-500 text-white' :
-                    tag === 'new' ? 'bg-blue-500 text-white' : 'bg-stone-800 text-white'
+                    tag === 'vegetarian' ? 'bg-green-50 text-white' : 
+                    tag === 'spicy' ? 'bg-red-50 text-white' :
+                    tag === 'new' ? 'bg-blue-50 text-white' : 'bg-stone-800 text-white'
                  }`}>
                     {tag === 'popular' && '★ Popular'}
                     {tag === 'vegetarian' && 'Vegetariano'}
