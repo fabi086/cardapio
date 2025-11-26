@@ -1,6 +1,8 @@
+
 import React, { useState } from 'react';
 import { Product, CartItem } from '../types';
-import { Plus, Minus, ImageOff, Check, ChevronUp, Share2, PieChart } from 'lucide-react';
+import { Plus, Minus, Check, ChevronUp, Share2, PieChart } from 'lucide-react';
+import { OptimizedImage } from './OptimizedImage';
 
 interface ProductCardProps {
   product: Product;
@@ -14,7 +16,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
   const [quantity, setQuantity] = useState(1);
   const [isExpanded, setIsExpanded] = useState(false);
   const [observation, setObservation] = useState('');
-  const [imageError, setImageError] = useState(false);
   const [isAdded, setIsAdded] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   
@@ -132,11 +133,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
         className="h-40 w-full bg-stone-100 relative overflow-hidden group cursor-pointer dark:bg-stone-800"
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        {product.image && !imageError ? (
-          <img src={product.image} alt={product.name} onError={() => setImageError(true)} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-stone-300 bg-stone-100 dark:bg-stone-800 dark:text-stone-600"><ImageOff className="w-8 h-8" /></div>
-        )}
+        <OptimizedImage 
+          src={product.image} 
+          alt={product.name} 
+          width={400} // Tamanho ideal para cards
+          fill
+          className="transition-transform duration-500 group-hover:scale-105"
+        />
         
         {product.tags && product.tags.length > 0 && (
            <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">

@@ -1,6 +1,8 @@
+
 import React, { useRef } from 'react';
 import { Category } from '../types';
-import { ChevronLeft, ChevronRight, ImageOff } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { OptimizedImage } from './OptimizedImage';
 
 interface CategoryNavProps {
   categories: Category[];
@@ -49,17 +51,13 @@ export const CategoryNav: React.FC<CategoryNavProps> = ({ categories, activeCate
                       : 'hover:scale-105 hover:shadow-md'
                   }`}
                 >
-                   {cat.image ? (
-                     <img 
-                       src={cat.image} 
-                       alt={cat.name} 
-                       className="w-full h-full object-cover"
-                     />
-                   ) : (
-                     <div className="w-full h-full bg-white dark:bg-stone-800 flex items-center justify-center">
-                        <ImageOff className="w-6 h-6 text-stone-300" />
-                     </div>
-                   )}
+                   <OptimizedImage 
+                     src={cat.image} 
+                     alt={cat.name} 
+                     width={150} // Thumbnail pequeno
+                     fill
+                     className="transition-transform duration-300"
+                   />
                    {activeCategory === cat.id && (
                      <div className="absolute inset-0 bg-italian-red/10" />
                    )}

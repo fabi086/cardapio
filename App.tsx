@@ -93,6 +93,13 @@ function App() {
     return false;
   });
 
+  // Atualiza o título da página (aba do navegador) quando o nome da loja muda
+  useEffect(() => {
+    if (storeSettings.name) {
+      document.title = storeSettings.name;
+    }
+  }, [storeSettings.name]);
+
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');

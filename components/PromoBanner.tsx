@@ -1,6 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { Product } from '../types';
 import { ChevronLeft, ChevronRight, ShoppingBag } from 'lucide-react';
+import { OptimizedImage } from './OptimizedImage';
 
 interface PromoBannerProps {
   promotions: Product[];
@@ -37,12 +39,15 @@ export const PromoBanner: React.FC<PromoBannerProps> = ({ promotions, onAddToCar
     <div className="relative w-full h-64 md:h-72 rounded-2xl overflow-hidden shadow-lg mb-8 group bg-stone-900">
       {/* Background Image with Overlay */}
       <div className="absolute inset-0">
-        <img 
-          src={currentPromo.image || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=1000&auto=format&fit=crop'} 
+        <OptimizedImage 
+          key={currentPromo.id} // Force re-render on change
+          src={currentPromo.image || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=1000&auto=format&fit=crop'}
           alt={currentPromo.name}
-          className="w-full h-full object-cover opacity-60 transition-transform duration-700 hover:scale-105"
+          width={1000} // Banner precisa de mais qualidade
+          fill
+          className="opacity-60 transition-transform duration-700 hover:scale-105"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/50 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/50 to-transparent pointer-events-none" />
       </div>
 
       {/* Content */}
