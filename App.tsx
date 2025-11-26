@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { MENU_DATA, DEFAULT_SETTINGS, CATEGORY_IMAGES } from './data';
 import { Product, CartItem, Category, StoreSettings, WeeklySchedule } from './types';
@@ -36,16 +37,14 @@ const checkStoreOpenAdvanced = (schedule?: WeeklySchedule, timezone?: string): {
     // Get current time in store's timezone
     const timeZone = timezone || 'America/Sao_Paulo';
     const now = new Date();
+    // Validate timezone validity roughly
     const formatter = new Intl.DateTimeFormat('en-US', { 
       timeZone, 
       hour: '2-digit', 
       minute: '2-digit', 
-      hour12: false,
-      weekday: 'long'
+      hour12: false
     });
     
-    // Hacky way to get parts because Intl API can be tricky across browsers
-    // Better approach: create a Date object relative to the Timezone
     const tzDateString = now.toLocaleString('en-US', { timeZone });
     const tzDate = new Date(tzDateString);
     const dayIndex = tzDate.getDay(); // 0 = Sun
@@ -69,13 +68,6 @@ const checkStoreOpenAdvanced = (schedule?: WeeklySchedule, timezone?: string): {
        const startVal = startH * 60 + startM;
        let endVal = endH * 60 + endM;
        
-       // Handle crossing midnight (e.g. 18:00 to 02:00)
-       // If end time is smaller than start time, assume it ends the next day
-       // Note: This simple check only validates if "now" is within the start->midnight portion or midnight->end portion
-       // Ideally, complex crossing midnight logic requires checking previous day's overflow. 
-       // For simplicity in this version, we assume "End of day" is 23:59 or next day hours are separate.
-       
-       // If end is smaller, treat as up to midnight for this check (simplified)
        if (endVal < startVal) endVal = 24 * 60; 
 
        return currentTimeVal >= startVal && currentTimeVal < endVal;
@@ -131,6 +123,9 @@ function App() {
   // Order Tracker State
   const [isTrackerOpen, setIsTrackerOpen] = useState(false);
 
+  // Table Mode State
+  const [tableNumber, setTableNumber] = useState<string | null>(null);
+
   // Theme State
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -141,30 +136,35 @@ function App() {
     return false;
   });
 
+  // Check for Table Param in URL (?mesa=10)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tableParam = params.get('mesa');
+    if (tableParam) {
+      setTableNumber(tableParam);
+      // Optional: Clear table from URL so it doesn't persist if they share the specific link improperly?
+      // For now, keep it so refresh works.
+    }
+  }, []);
+
   // --- PHASE 2: APPLY VISUAL THEME ---
   useEffect(() => {
     if (storeSettings.colors) {
       const root = document.documentElement;
       root.style.setProperty('--color-primary', storeSettings.colors.primary);
       root.style.setProperty('--color-secondary', storeSettings.colors.secondary);
-      // You could also set background colors here if needed
     }
   }, [storeSettings.colors]);
 
-  // Atualiza o título da página e as Meta Tags de Compartilhamento (WhatsApp)
   useEffect(() => {
-    // Prioridade: SEO Title > Nome da Loja > Padrão
     const pageTitle = storeSettings.seoTitle?.trim() ? storeSettings.seoTitle : (storeSettings.name || 'Cardápio Digital');
     document.title = pageTitle;
 
-    // Helper to safely update meta tags
     const updateMetaTag = (selector: string, content: string) => {
       if (!content) return;
-
       let element = document.querySelector(selector);
       if (!element) {
         element = document.createElement('meta');
-        
         if (selector.startsWith('meta[property')) {
            const property = selector.replace("meta[property='", "").replace("']", "");
            element.setAttribute('property', property);
@@ -172,20 +172,16 @@ function App() {
            const name = selector.replace("meta[name='", "").replace("']", "");
            element.setAttribute('name', name);
         }
-        
         document.head.appendChild(element);
       }
       element.setAttribute('content', content);
     };
 
-    // Update Open Graph Tags
     updateMetaTag("meta[property='og:title']", pageTitle);
     updateMetaTag("meta[property='og:description']", storeSettings.seoDescription || '');
     if (storeSettings.seoBannerUrl) {
        updateMetaTag("meta[property='og:image']", storeSettings.seoBannerUrl);
     }
-    
-    // Update Standard Description
     updateMetaTag("meta[name='description']", storeSettings.seoDescription || '');
 
   }, [storeSettings]);
@@ -202,14 +198,10 @@ function App() {
 
   const toggleTheme = () => setIsDarkMode(!isDarkMode);
 
-  // Check store status when settings load
   useEffect(() => {
-     // Use Advanced Check if schedule exists, otherwise legacy string check logic could go here
      if (storeSettings.schedule) {
         setStoreStatus(checkStoreOpenAdvanced(storeSettings.schedule, storeSettings.timezone));
      } else if (storeSettings.openingHours) {
-        // Fallback logic could be re-implemented here if needed, 
-        // but for now let's assume if no schedule obj, it's open.
         setStoreStatus({ isOpen: true, message: '' });
      }
      
@@ -248,21 +240,9 @@ function App() {
     }
 
     try {
-      const { data: categories, error: catError } = await supabase
-        .from('categories')
-        .select('*')
-        .order('order_index');
-      
-      const { data: products, error: prodError } = await supabase
-        .from('products')
-        .select('*');
-
-      const { data: settingsData, error: settingsError } = await supabase
-        .from('settings')
-        .select('*')
-        .order('id', { ascending: true }) 
-        .limit(1)
-        .maybeSingle();
+      const { data: categories, error: catError } = await supabase.from('categories').select('*').order('order_index');
+      const { data: products, error: prodError } = await supabase.from('products').select('*');
+      const { data: settingsData, error: settingsError } = await supabase.from('settings').select('*').order('id', { ascending: true }).limit(1).maybeSingle();
 
       if (catError) throw catError;
       if (prodError) throw prodError;
@@ -294,11 +274,7 @@ function App() {
         
         let deliveryRegions = settingsData.delivery_regions;
         if (typeof deliveryRegions === 'string') {
-          try {
-            deliveryRegions = JSON.parse(deliveryRegions);
-          } catch (e) {
-            deliveryRegions = DEFAULT_SETTINGS.deliveryRegions;
-          }
+          try { deliveryRegions = JSON.parse(deliveryRegions); } catch (e) { deliveryRegions = DEFAULT_SETTINGS.deliveryRegions; }
         }
 
         let schedule = settingsData.schedule;
@@ -329,6 +305,7 @@ function App() {
             seoTitle: settingsData.seo_title || DEFAULT_SETTINGS.seoTitle,
             seoDescription: settingsData.seo_description || DEFAULT_SETTINGS.seoDescription,
             seoBannerUrl: settingsData.seo_banner_url || DEFAULT_SETTINGS.seoBannerUrl,
+            enableTableOrder: settingsData.enable_table_order ?? false
         });
       } else {
         setStoreSettings(DEFAULT_SETTINGS);
@@ -483,7 +460,8 @@ function App() {
           colors: JSON.stringify(newSettings.colors || {}),
           seo_title: newSettings.seoTitle,
           seo_description: newSettings.seoDescription,
-          seo_banner_url: newSettings.seoBannerUrl
+          seo_banner_url: newSettings.seoBannerUrl,
+          enable_table_order: newSettings.enableTableOrder
        };
        if (settingsId) await supabase.from('settings').update(payload).eq('id', settingsId);
        else {
@@ -495,23 +473,13 @@ function App() {
 
   const handleResetMenu = () => { fetchData(); };
   const handleAddCategory = (name: string) => { /* ... */ };
-  
   const handleUpdateCategory = async (id: string, updates: { name?: string; image?: string }) => {
-     setMenuData(prev => prev.map(cat => 
-        cat.id === id ? { ...cat, ...updates } : cat
-     ));
-     if(supabase) {
-        await supabase.from('categories').update(updates).eq('id', id);
-     }
+     setMenuData(prev => prev.map(cat => cat.id === id ? { ...cat, ...updates } : cat));
+     if(supabase) await supabase.from('categories').update(updates).eq('id', id);
   };
-  
   const handleDeleteCategory = (id: string) => { /* ... */ };
 
-  // --- CART ACTIONS ---
   const addToCart = (product: Product, quantity: number = 1, observation: string = '', selectedOptions?: CartItem['selectedOptions']) => {
-    // Allowed even if store is closed (per request)
-    // No checking for storeStatus here.
-    
     const normalizedObservation = (observation || '').trim();
     const optionsKey = selectedOptions ? JSON.stringify(selectedOptions.sort((a,b) => a.choiceName.localeCompare(b.choiceName))) : '';
 
@@ -539,9 +507,7 @@ function App() {
       if (window.confirm('Remover item?')) removeFromCart(index);
       return;
     }
-    setCartItems(prev => {
-      const n = [...prev]; n[index].quantity = newQuantity; return n;
-    });
+    setCartItems(prev => { const n = [...prev]; n[index].quantity = newQuantity; return n; });
   };
 
   const updateObservation = (index: number, newObs: string) => {
@@ -571,29 +537,23 @@ function App() {
   const promoCategory = menuData.find(c => c.id === 'promocoes');
   const activePromotions = promoCategory ? promoCategory.items : [];
 
-  // --- FILTER LOGIC ---
   const displayCategories = useMemo(() => {
     return menuData
       .map(cat => {
         const filteredItems = cat.items.filter(item => {
-           // 1. Tag Filter
            if (activeTags.length > 0) {
               const itemTags = item.tags || [];
               const hasAllTags = activeTags.every(tag => itemTags.includes(tag));
               if (!hasAllTags) return false;
            }
-
-           // 2. Search Filter
            if (searchTerm) {
               const normalize = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
               const searchTerms = normalize(searchTerm).split(/\s+/).filter(t => t.length > 0);
               if (searchTerms.length === 0) return true;
-
               const itemSearchableText = normalize([
                  item.name, item.description || '', item.code || '', item.subcategory || '',
                  (item.ingredients || []).join(' '), cat.name
               ].join(' '));
-
               return searchTerms.every(term => itemSearchableText.includes(term));
            }
            return true;
@@ -607,30 +567,12 @@ function App() {
       });
   }, [menuData, searchTerm, searchScope, activeTags]);
 
-  // Auto-scroll effect
-  useEffect(() => {
-    if (searchTerm && displayCategories.length > 0) {
-       const timer = setTimeout(() => {
-          const firstCat = displayCategories.find(c => c.items.length > 0);
-          if (firstCat) {
-             const el = document.getElementById(`category-${firstCat.id}`);
-             if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }
-       }, 500);
-       return () => clearTimeout(timer);
-    }
-  }, [searchTerm, displayCategories]);
-
   const toggleTag = (tagId: string) => {
     setActiveTags(prev => prev.includes(tagId) ? prev.filter(t => t !== tagId) : [...prev, tagId]);
   };
 
   const navCategories = menuData.filter(cat => cat.id !== 'promocoes').filter(cat => searchScope === 'all' || cat.id === searchScope);
-
-  // Helper to get pizzas for builder
-  const pizzasForBuilder = menuData
-    .find(c => c.id === pizzaBuilderCategory)
-    ?.items || [];
+  const pizzasForBuilder = menuData.find(c => c.id === pizzaBuilderCategory)?.items || [];
 
   if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin" /></div>;
 
@@ -641,7 +583,18 @@ function App() {
   return (
     <div className="min-h-screen bg-stone-100 dark:bg-stone-900 pb-24 md:pb-0 font-sans transition-colors duration-300">
       {showGuide && <OnboardingGuide onClose={closeGuide} />}
-      {!storeStatus.isOpen && <div className="bg-red-600 text-white px-4 py-2 text-center text-sm font-bold sticky top-0 z-50"><Clock className="w-4 h-4 inline mr-2" /> {storeStatus.message}</div>}
+      
+      {/* Table Mode Banner */}
+      {tableNumber && (
+        <div className="bg-italian-green text-white px-4 py-2 text-center text-sm font-bold sticky top-0 z-50 shadow-md flex items-center justify-center gap-2 animate-in slide-in-from-top">
+           <div className="bg-white text-italian-green rounded-full w-6 h-6 flex items-center justify-center text-xs">{tableNumber}</div>
+           Você está pedindo na Mesa {tableNumber}
+        </div>
+      )}
+      
+      {!storeStatus.isOpen && !tableNumber && (
+        <div className="bg-red-600 text-white px-4 py-2 text-center text-sm font-bold sticky top-0 z-50"><Clock className="w-4 h-4 inline mr-2" /> {storeStatus.message}</div>
+      )}
 
       <Header 
         cartCount={totalItems} 
@@ -663,7 +616,6 @@ function App() {
 
       <main className="max-w-5xl mx-auto px-4 pt-6">
         <div id="tour-search" className="relative w-full max-w-3xl mx-auto mb-6">
-           {/* Search Logic... */}
            <div className="flex flex-col md:flex-row gap-3 mb-3">
              <div className="relative flex-1">
                 <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Buscar por nome, ingrediente ou código..." className="w-full pl-10 pr-10 py-3 bg-white border rounded-xl shadow-sm text-sm dark:bg-stone-800 dark:border-stone-700 dark:text-white outline-none focus:ring-2 focus:ring-italian-green" />
@@ -679,7 +631,6 @@ function App() {
              </div>
            </div>
            
-           {/* Quick Filters */}
            <div className="flex gap-2 overflow-x-auto pb-2 hide-scrollbar">
               <button onClick={() => toggleTag('popular')} className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border transition-all whitespace-nowrap ${activeTags.includes('popular') ? 'bg-yellow-400 text-yellow-900 border-yellow-500' : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50 dark:bg-stone-800 dark:text-stone-300 dark:border-stone-700'}`}><Star className="w-3 h-3" /> Mais Pedidos</button>
               <button onClick={() => toggleTag('new')} className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border transition-all whitespace-nowrap ${activeTags.includes('new') ? 'bg-blue-500 text-white border-blue-600' : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50 dark:bg-stone-800 dark:text-stone-300 dark:border-stone-700'}`}><Zap className="w-3 h-3" /> Novidades</button>
@@ -688,7 +639,7 @@ function App() {
            </div>
         </div>
 
-        {!searchTerm && searchScope === 'all' && activeTags.length === 0 && activePromotions.length > 0 && <PromoBanner promotions={activePromotions} onAddToCart={(p) => addToCart(p, 1, '')} />}
+        {!searchTerm && searchScope === 'all' && activeTags.length === 0 && activePromotions.length > 0 && <PromoBanner promotions={activePromotions} onAddToCart={(p) => addToCart(p, 1, '')} currencySymbol={storeSettings.currencySymbol} />}
 
         <div className="space-y-10">
           {displayCategories.map((category) => {
@@ -705,8 +656,6 @@ function App() {
             }
 
             if (category.items.length === 0) return null;
-
-            // Logic to determine if we should show Half-Half options
             const isPizzaCategory = category.id.includes('pizza') || category.name.toLowerCase().includes('pizza');
 
             return (
@@ -716,25 +665,14 @@ function App() {
                   {(searchTerm || activeTags.length > 0) && <span className="text-xs bg-italian-green text-white px-2 py-0.5 rounded-full font-normal">{category.items.length}</span>}
                 </h2>
                 
-                {/* Meia a Meia Trigger Button - Show only for Pizza categories and when no search/filter active */}
                 {!searchTerm && activeTags.length === 0 && isPizzaCategory && (
                   <div className="mb-6">
-                    <button 
-                      onClick={() => openPizzaBuilder(category.id)}
-                      className="w-full bg-gradient-to-r from-italian-red to-red-700 text-white p-4 rounded-xl shadow-md flex items-center justify-between group hover:shadow-lg transition-all"
-                    >
+                    <button onClick={() => openPizzaBuilder(category.id)} className="w-full bg-gradient-to-r from-italian-red to-red-700 text-white p-4 rounded-xl shadow-md flex items-center justify-between group hover:shadow-lg transition-all">
                       <div className="flex items-center gap-4">
-                        <div className="bg-white/20 p-3 rounded-full">
-                          <PieChart className="w-8 h-8 text-white" />
-                        </div>
-                        <div className="text-left">
-                          <h3 className="font-bold text-lg leading-tight">Crie sua Pizza Meia a Meia</h3>
-                          <p className="text-white/80 text-xs">Escolha 2 sabores diferentes</p>
-                        </div>
+                        <div className="bg-white/20 p-3 rounded-full"><PieChart className="w-8 h-8 text-white" /></div>
+                        <div className="text-left"><h3 className="font-bold text-lg leading-tight">Crie sua Pizza Meia a Meia</h3><p className="text-white/80 text-xs">Escolha 2 sabores diferentes</p></div>
                       </div>
-                      <div className="bg-white text-italian-red px-4 py-2 rounded-full text-sm font-bold group-hover:scale-105 transition-transform">
-                        Montar Agora
-                      </div>
+                      <div className="bg-white text-italian-red px-4 py-2 rounded-full text-sm font-bold group-hover:scale-105 transition-transform">Montar Agora</div>
                     </button>
                   </div>
                 )}
@@ -747,14 +685,7 @@ function App() {
                              const isFirst = !firstProductFound;
                              if (isFirst) firstProductFound = true;
                              return (
-                               <ProductCard 
-                                 key={product.id} 
-                                 product={product} 
-                                 onAddToCart={addToCart} 
-                                 id={isFirst ? "tour-product-card" : undefined}
-                                 allowHalfHalf={isPizzaCategory}
-                                 onOpenPizzaBuilder={(p) => openPizzaBuilder(category.id, p)}
-                               />
+                               <ProductCard key={product.id} product={product} onAddToCart={addToCart} id={isFirst ? "tour-product-card" : undefined} allowHalfHalf={isPizzaCategory} onOpenPizzaBuilder={(p) => openPizzaBuilder(category.id, p)} currencySymbol={storeSettings.currencySymbol} />
                              );
                            })}
                          </div>
@@ -764,13 +695,7 @@ function App() {
                             <h3 className="text-lg font-bold text-stone-600 dark:text-stone-400 mb-3 ml-1 flex items-center gap-2"><span className="w-1.5 h-1.5 bg-stone-400 rounded-full"></span>{sub}</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                {products.map((product) => (
-                                 <ProductCard 
-                                   key={product.id} 
-                                   product={product} 
-                                   onAddToCart={addToCart}
-                                   allowHalfHalf={isPizzaCategory}
-                                   onOpenPizzaBuilder={(p) => openPizzaBuilder(category.id, p)}
-                                 />
+                                 <ProductCard key={product.id} product={product} onAddToCart={addToCart} allowHalfHalf={isPizzaCategory} onOpenPizzaBuilder={(p) => openPizzaBuilder(category.id, p)} currencySymbol={storeSettings.currencySymbol} />
                                ))}
                             </div>
                          </div>
@@ -782,14 +707,7 @@ function App() {
                        const isFirst = !firstProductFound;
                        if (isFirst) firstProductFound = true;
                        return (
-                         <ProductCard 
-                           key={product.id} 
-                           product={product} 
-                           onAddToCart={addToCart} 
-                           id={isFirst ? "tour-product-card" : undefined}
-                           allowHalfHalf={isPizzaCategory}
-                           onOpenPizzaBuilder={(p) => openPizzaBuilder(category.id, p)}
-                         />
+                         <ProductCard key={product.id} product={product} onAddToCart={addToCart} id={isFirst ? "tour-product-card" : undefined} allowHalfHalf={isPizzaCategory} onOpenPizzaBuilder={(p) => openPizzaBuilder(category.id, p)} currencySymbol={storeSettings.currencySymbol} />
                        );
                      })}
                    </div>
@@ -829,9 +747,11 @@ function App() {
         paymentMethods={storeSettings.paymentMethods} 
         freeShipping={storeSettings.freeShipping} 
         menuData={menuData}
+        currencySymbol={storeSettings.currencySymbol}
+        tableNumber={tableNumber}
       />
       <InfoModal isOpen={isInfoModalOpen} onClose={() => setIsInfoModalOpen(false)} settings={storeSettings} isOpenNow={storeStatus.isOpen} />
-      <PizzaBuilderModal isOpen={isPizzaBuilderOpen} onClose={() => setIsPizzaBuilderOpen(false)} availablePizzas={pizzasForBuilder} onAddToCart={addToCart} initialFirstHalf={pizzaBuilderFirstHalf} />
+      <PizzaBuilderModal isOpen={isPizzaBuilderOpen} onClose={() => setIsPizzaBuilderOpen(false)} availablePizzas={pizzasForBuilder} onAddToCart={addToCart} initialFirstHalf={pizzaBuilderFirstHalf} currencySymbol={storeSettings.currencySymbol} />
       <OrderTrackerModal isOpen={isTrackerOpen} onClose={() => setIsTrackerOpen(false)} />
 
       {showToast && (
@@ -843,12 +763,12 @@ function App() {
         </div>
       )}
 
-      {/* ... Floating Cart ... */}
+      {/* Floating Cart */}
       {totalItems > 0 && !isCartOpen && (
         <>
           <div className="fixed bottom-4 left-4 right-4 md:hidden z-40">
             <button onClick={() => setIsCartOpen(true)} className={`w-full bg-italian-green text-white py-3 px-6 rounded-xl shadow-xl flex items-center justify-between animate-in slide-in-from-bottom-4 ${isCartAnimating ? 'scale-105 bg-green-600' : ''}`}>
-              <div className="flex flex-col items-start text-left"><span className="text-xs font-light text-green-100">Total</span><span className="font-bold text-lg">R$ {totalPrice.toFixed(2).replace('.', ',')}</span></div>
+              <div className="flex flex-col items-start text-left"><span className="text-xs font-light text-green-100">Total</span><span className="font-bold text-lg">{storeSettings.currencySymbol || 'R$'} {totalPrice.toFixed(2).replace('.', ',')}</span></div>
               <div className={`flex items-center gap-2 bg-green-700/50 px-3 py-1.5 rounded-lg ${isCartAnimating ? 'scale-110' : ''}`}><ShoppingBag className="w-5 h-5" /><span className="font-bold">{totalItems}</span></div>
             </button>
           </div>

@@ -59,7 +59,7 @@ export interface DeliveryRegion {
   neighborhoods?: string[]; // List of neighborhood names matching this region
 }
 
-// --- NEW TYPES FOR PHASE 1 & 2 ---
+// --- NEW TYPES FOR PHASE 1 & 2 & 3 ---
 
 export interface TimeInterval {
   start: string; // "18:00"
@@ -116,14 +116,31 @@ export interface StoreSettings {
   seoTitle?: string;
   seoDescription?: string;
   seoBannerUrl?: string;
+
+  // Module 3: Tables
+  enableTableOrder?: boolean;
 }
 
 export interface Coupon {
   id: number;
   code: string;
-  discount_percent: number;
+  description?: string;
+  type: 'percent' | 'fixed' | 'free_shipping';
+  discount_value: number; // Represents % or Fixed Amount
+  min_order_value?: number;
   active: boolean;
+  start_date?: string;
+  end_date?: string;
+  usage_limit?: number; // Total global uses
+  usage_count?: number; // Current uses
   created_at?: string;
+}
+
+export interface Table {
+  id: number;
+  number: string; // "1", "10", "A1"
+  label?: string; // "Varanda", "Salão"
+  active: boolean;
 }
 
 export type OrderStatus = 'pending' | 'preparing' | 'delivery' | 'completed' | 'cancelled';
@@ -133,7 +150,8 @@ export interface Order {
   created_at: string;
   customer_name: string;
   customer_phone?: string; 
-  delivery_type: 'delivery' | 'pickup';
+  delivery_type: 'delivery' | 'pickup' | 'table';
+  table_number?: string; // If order is from a table
   address_street?: string;
   address_number?: string;
   address_district?: string;

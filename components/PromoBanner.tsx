@@ -7,29 +7,22 @@ import { OptimizedImage } from './OptimizedImage';
 interface PromoBannerProps {
   promotions: Product[];
   onAddToCart: (product: Product) => void;
+  currencySymbol?: string;
 }
 
-export const PromoBanner: React.FC<PromoBannerProps> = ({ promotions, onAddToCart }) => {
+export const PromoBanner: React.FC<PromoBannerProps> = ({ promotions, onAddToCart, currencySymbol = 'R$' }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Auto-play
   useEffect(() => {
     if (promotions.length <= 1) return;
-    
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % promotions.length);
-    }, 5000); // 5 segundos por slide
-
+    }, 5000);
     return () => clearInterval(interval);
   }, [promotions.length]);
 
-  const nextSlide = () => {
-    setCurrentIndex((prev) => (prev + 1) % promotions.length);
-  };
-
-  const prevSlide = () => {
-    setCurrentIndex((prev) => (prev === 0 ? promotions.length - 1 : prev - 1));
-  };
+  const nextSlide = () => setCurrentIndex((prev) => (prev + 1) % promotions.length);
+  const prevSlide = () => setCurrentIndex((prev) => (prev === 0 ? promotions.length - 1 : prev - 1));
 
   if (!promotions || promotions.length === 0) return null;
 
@@ -37,20 +30,18 @@ export const PromoBanner: React.FC<PromoBannerProps> = ({ promotions, onAddToCar
 
   return (
     <div className="relative w-full h-64 md:h-72 rounded-2xl overflow-hidden shadow-lg mb-8 group bg-stone-900">
-      {/* Background Image with Overlay */}
       <div className="absolute inset-0">
         <OptimizedImage 
-          key={currentPromo.id} // Force re-render on change
+          key={currentPromo.id} 
           src={currentPromo.image || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=1000&auto=format&fit=crop'}
           alt={currentPromo.name}
-          width={1000} // Banner precisa de mais qualidade
+          width={1000} 
           fill
           className="opacity-60 transition-transform duration-700 hover:scale-105"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/50 to-transparent pointer-events-none" />
       </div>
 
-      {/* Content */}
       <div className="absolute inset-0 flex flex-col justify-center p-6 md:p-10 max-w-2xl animate-in fade-in slide-in-from-bottom-4 duration-500 key={currentIndex}">
         <span className="bg-italian-red w-fit text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide mb-3 shadow-md">
           Destaque do Dia
@@ -64,7 +55,7 @@ export const PromoBanner: React.FC<PromoBannerProps> = ({ promotions, onAddToCar
         
         <div className="flex items-center gap-4">
           <div className="text-2xl md:text-3xl font-bold text-italian-green">
-            R$ {currentPromo.price.toFixed(2).replace('.', ',')}
+            {currencySymbol} {currentPromo.price.toFixed(2).replace('.', ',')}
           </div>
           <button 
             onClick={() => onAddToCart(currentPromo)}
@@ -75,7 +66,6 @@ export const PromoBanner: React.FC<PromoBannerProps> = ({ promotions, onAddToCar
         </div>
       </div>
 
-      {/* Navigation Arrows (Only if more than 1) */}
       {promotions.length > 1 && (
         <>
           <button 
@@ -90,17 +80,9 @@ export const PromoBanner: React.FC<PromoBannerProps> = ({ promotions, onAddToCar
           >
             <ChevronRight className="w-6 h-6" />
           </button>
-
-          {/* Dots */}
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
             {promotions.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => setCurrentIndex(idx)}
-                className={`w-2 h-2 rounded-full transition-all ${
-                  idx === currentIndex ? 'bg-white w-6' : 'bg-white/40 hover:bg-white/80'
-                }`}
-              />
+              <button key={idx} onClick={() => setCurrentIndex(idx)} className={`w-2 h-2 rounded-full transition-all ${idx === currentIndex ? 'bg-white w-6' : 'bg-white/40 hover:bg-white/80'}`} />
             ))}
           </div>
         </>

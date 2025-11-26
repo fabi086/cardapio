@@ -10,9 +10,10 @@ interface ProductCardProps {
   id?: string;
   allowHalfHalf?: boolean;
   onOpenPizzaBuilder?: (product: Product) => void;
+  currencySymbol?: string;
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, id, allowHalfHalf, onOpenPizzaBuilder }) => {
+export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, id, allowHalfHalf, onOpenPizzaBuilder, currencySymbol = 'R$' }) => {
   const [quantity, setQuantity] = useState(1);
   const [isExpanded, setIsExpanded] = useState(false);
   const [observation, setObservation] = useState('');
@@ -136,7 +137,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
         <OptimizedImage 
           src={product.image} 
           alt={product.name} 
-          width={400} // Tamanho ideal para cards
+          width={400} 
           fill
           className="transition-transform duration-500 group-hover:scale-105"
         />
@@ -164,7 +165,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
         </button>
 
         <div className="absolute bottom-2 right-2 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm border border-stone-200 dark:bg-stone-900/90 dark:border-stone-700">
-          <span className="font-bold text-italian-green text-sm">R$ {product.price.toFixed(2).replace('.', ',')}</span>
+          <span className="font-bold text-italian-green text-sm">{currencySymbol} {product.price.toFixed(2).replace('.', ',')}</span>
         </div>
       </div>
 
@@ -199,12 +200,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
             onClick={() => setIsExpanded(true)}
             className="w-full py-2.5 bg-white border border-italian-red text-italian-red rounded-lg font-medium text-sm hover:bg-red-50 transition-colors flex items-center justify-center gap-2 dark:bg-transparent dark:hover:bg-red-900/20"
           >
-            <Plus className="w-4 h-4" /> {hasOptions || allowHalfHalf ? 'Adicionar' : 'Adicionar'}
+            <Plus className="w-4 h-4" /> Add no carrinho
           </button>
         ) : (
           <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
             
-            {/* HALF-HALF TOGGLE */}
             {allowHalfHalf && (
                <div className="bg-stone-100 p-1 rounded-lg flex mb-4 dark:bg-stone-800">
                   <button 
@@ -237,7 +237,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
                </div>
             ) : (
                <>
-                  {/* Standard Options */}
                   {hasOptions && product.options && (
                     <div className="space-y-4 border-b border-stone-100 pb-4 dark:border-stone-800">
                       {product.options.map(option => (
@@ -259,7 +258,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
                                      <input type={option.type === 'single' ? 'radio' : 'checkbox'} name={`opt-${product.id}-${option.id}`} className="hidden" onChange={() => handleOptionChange(option.id, choice.name, option.type)} checked={isSelected} />
                                      <span className="text-sm text-stone-700 dark:text-stone-300">{choice.name}</span>
                                    </div>
-                                   {choice.price > 0 && <span className="text-xs font-semibold text-stone-500 dark:text-stone-400">+ R$ {choice.price.toFixed(2).replace('.',',')}</span>}
+                                   {choice.price > 0 && <span className="text-xs font-semibold text-stone-500 dark:text-stone-400">+ {currencySymbol} {choice.price.toFixed(2).replace('.',',')}</span>}
                                  </label>
                                );
                             })}
@@ -281,7 +280,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
                     </div>
                     
                     <button onClick={handleAdd} disabled={isAdded} className={`flex-1 h-10 rounded-lg font-medium text-xs md:text-sm transition-all shadow-sm flex items-center justify-center gap-1 ${isAdded ? 'bg-green-600 text-white scale-105' : 'bg-italian-green text-white hover:bg-green-800'}`}>
-                      {isAdded ? <><Check className="w-4 h-4" /> Add!</> : `Add no carrinho R$ ${totalPrice.toFixed(2).replace('.',',')}`}
+                      {isAdded ? <><Check className="w-4 h-4" /> Add!</> : `Add no carrinho ${currencySymbol} ${totalPrice.toFixed(2).replace('.',',')}`}
                     </button>
                   </div>
                </>
