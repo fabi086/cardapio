@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { CartItem, DeliveryRegion, Coupon, Category, Product } from '../types';
-import { X, Trash2, ShoppingBag, Plus, Minus, Edit2, MapPin, CreditCard, User, Search, Loader2, Ticket, CheckCircle, MessageCircle, Sparkles, Utensils, Info } from 'lucide-react';
+import { X, Trash2, ShoppingBag, Plus, Minus, Edit2, MapPin, CreditCard, User, Search, Loader2, Ticket, CheckCircle, MessageCircle, Sparkles, Utensils, Info, ArrowLeft } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 interface CartDrawerProps {
@@ -573,9 +573,15 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 <h3 className="font-bold text-stone-700 dark:text-stone-300 text-sm uppercase tracking-wider border-b border-stone-200 dark:border-stone-700 pb-2">Itens do Carrinho</h3>
                 
                 {items.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center text-stone-400 gap-3 py-8">
-                      <ShoppingBag className="w-12 h-12 opacity-20" />
-                      <p className="text-sm font-medium">Seu carrinho está vazio</p>
+                    <div className="flex flex-col items-center justify-center text-stone-400 gap-3 py-12 h-64">
+                      <ShoppingBag className="w-16 h-16 opacity-10" />
+                      <p className="text-sm font-medium text-stone-500">Seu carrinho está vazio</p>
+                      <button 
+                        onClick={onClose}
+                        className="mt-2 bg-italian-green/10 text-italian-green px-4 py-2 rounded-lg text-sm font-bold hover:bg-italian-green hover:text-white transition-colors flex items-center gap-2"
+                      >
+                         <ArrowLeft className="w-4 h-4" /> Ver Cardápio
+                      </button>
                     </div>
                   ) : (
                     items.map((item, index) => {

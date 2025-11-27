@@ -1,5 +1,5 @@
 
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Category } from '../types';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { OptimizedImage } from './OptimizedImage';
@@ -21,6 +21,25 @@ export const CategoryNav: React.FC<CategoryNavProps> = ({ categories, activeCate
     }
   };
 
+  // Auto-scroll to center the active category
+  useEffect(() => {
+    const activeBtn = document.getElementById(`nav-btn-${activeCategory}`);
+    if (activeBtn && scrollRef.current) {
+      const container = scrollRef.current;
+      const btnLeft = activeBtn.offsetLeft;
+      const btnWidth = activeBtn.offsetWidth;
+      const containerWidth = container.offsetWidth;
+      
+      // Calculate position to center the button
+      const scrollPos = btnLeft - (containerWidth / 2) + (btnWidth / 2);
+      
+      container.scrollTo({
+          left: scrollPos,
+          behavior: 'smooth'
+      });
+    }
+  }, [activeCategory]);
+
   return (
     <nav id="tour-categories" className="relative border-b border-stone-200 dark:border-stone-800 transition-colors duration-300 py-4" style={{ backgroundColor: 'var(--bg-body, #f5f5f4)' }}>
       <div className="max-w-5xl mx-auto px-4 relative flex items-center group justify-center">
@@ -36,10 +55,10 @@ export const CategoryNav: React.FC<CategoryNavProps> = ({ categories, activeCate
 
         <ul 
           ref={scrollRef}
-          className="flex overflow-x-auto gap-4 px-1 pb-2 hide-scrollbar scroll-smooth w-full justify-center"
+          className="flex overflow-x-auto gap-4 px-1 pb-2 hide-scrollbar scroll-smooth w-full justify-start md:justify-center"
         >
           {categories.map((cat) => (
-            <li key={cat.id} className="shrink-0">
+            <li key={cat.id} className="shrink-0" id={`nav-btn-${cat.id}`}>
               <button
                 onClick={() => onSelectCategory(cat.id)}
                 className="flex flex-col items-center gap-2 group/item min-w-[80px] md:min-w-[100px]"

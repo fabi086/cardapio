@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { MENU_DATA, DEFAULT_SETTINGS, CATEGORY_IMAGES } from './data';
 import { Product, CartItem, Category, StoreSettings, WeeklySchedule } from './types';
 import { Header } from './components/Header';
@@ -13,7 +13,7 @@ import { InfoModal } from './components/InfoModal';
 import { OnboardingGuide } from './components/OnboardingGuide';
 import { PizzaBuilderModal } from './components/PizzaBuilderModal';
 import { OrderTrackerModal } from './components/OrderTrackerModal';
-import { ShoppingBag, Check, Loader2, Search, X, Filter, Clock, AlertCircle, HelpCircle, Leaf, Flame, Star, Zap, PieChart } from 'lucide-react';
+import { ShoppingBag, Check, Loader2, Search, X, Filter, Clock, AlertCircle, HelpCircle, Leaf, Flame, Star, Zap, PieChart, ArrowUp } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 const isValidCartItem = (item: any): item is CartItem => {
@@ -125,6 +125,10 @@ function App() {
 
   // Table Mode State
   const [tableNumber, setTableNumber] = useState<string | null>(null);
+
+  // Scroll Spy State
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const isManualScrolling = useRef(false);
 
   // Theme State
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -458,6 +462,49 @@ function App() {
     }
   }, [menuData]);
 
+  // SCROLL SPY LOGIC
+  useEffect(() => {
+    const handleScroll = () => {
+       if (window.scrollY > 300) {
+          setShowScrollTop(true);
+       } else {
+          setShowScrollTop(false);
+       }
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+       if (isManualScrolling.current) return;
+       
+       // Sort intersections by ratio to find the "most visible" one
+       const visibleEntries = entries.filter(e => e.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+       
+       if (visibleEntries.length > 0) {
+          const targetId = visibleEntries[0].target.id.replace('category-', '');
+          setActiveCategory(targetId);
+       }
+    }, {
+       rootMargin: '-120px 0px -50% 0px',
+       threshold: [0, 0.1, 0.5]
+    });
+
+    // Observe all category sections
+    menuData.forEach(cat => {
+       const el = document.getElementById(`category-${cat.id}`);
+       if (el) observer.observe(el);
+    });
+
+    window.addEventListener('scroll', handleScroll);
+
+    return () => {
+       observer.disconnect();
+       window.removeEventListener('scroll', handleScroll);
+    };
+  }, [menuData]);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   useEffect(() => {
     try {
       localStorage.setItem('spagnolli_cart', JSON.stringify(cartItems));
@@ -606,13 +653,17 @@ function App() {
   const clearCart = () => { if (window.confirm('Esvaziar carrinho?')) { setCartItems([]); setIsCartOpen(false); }};
 
   const handleCategorySelect = (id: string) => {
+    isManualScrolling.current = true;
     setActiveCategory(id);
     const element = document.getElementById(`category-${id}`);
     if (element) {
-      const headerOffset = 200;
+      const headerOffset = 180;
       const elementPosition = element.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.scrollY - headerOffset;
       window.scrollTo({ top: offsetPosition, behavior: "smooth" });
+      
+      // Re-enable observer after scroll animation finishes
+      setTimeout(() => { isManualScrolling.current = false; }, 800);
     }
   };
 
@@ -819,6 +870,19 @@ function App() {
       {storeSettings.enableGuide && (
          <div className="fixed bottom-24 left-4 md:bottom-8 md:left-8 z-[60]">
              <button onClick={restartGuide} className="bg-white text-italian-green p-2 rounded-full shadow-lg border border-stone-300 hover:scale-105 transition-transform" title="Ajuda"><HelpCircle className="w-6 h-6" /></button>
+         </div>
+      )}
+
+      {/* Back To Top Button */}
+      {showScrollTop && (
+         <div className="fixed bottom-24 right-4 md:bottom-8 md:right-32 z-40">
+             <button 
+                onClick={scrollToTop} 
+                className="bg-white/80 backdrop-blur text-stone-600 p-2.5 rounded-full shadow-lg border border-stone-200 hover:bg-white hover:text-stone-900 transition-all active:scale-95 animate-in fade-in zoom-in"
+                title="Voltar ao topo"
+             >
+                <ArrowUp className="w-5 h-5" />
+             </button>
          </div>
       )}
 
