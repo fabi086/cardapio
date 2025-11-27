@@ -85,9 +85,16 @@ export interface WeeklySchedule {
 export interface StoreColors {
   primary: string;   // Main Action Color (Buttons, Accents)
   secondary: string; // Secondary Accent
+  
+  // Advanced Customization
+  background?: string;       // Page Background
+  textColor?: string;        // General Text Color
+  
   headerBackground?: string; // Specific for Top Bar
   headerText?: string;       // Specific for Top Bar Text
-  background?: string;       // App Background
+  
+  cardBackground?: string;   // Product Card Background
+  cardText?: string;         // Product Card Text
 }
 
 export interface StoreSettings {

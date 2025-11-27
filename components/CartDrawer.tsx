@@ -546,7 +546,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                  <CheckCircle className="w-12 h-12 text-green-600" />
               </div>
               <div className="space-y-2">
-                 <h2 className="text-2xl font-bold text-stone-800 dark:text-white">Pronto!</h2>
+                 <h2 className="text-2xl font-bold text-stone-900 dark:text-white">Pronto!</h2>
                  <p className="text-stone-500 dark:text-stone-400">
                     Seu pedido foi gerado. Se o WhatsApp não abriu automaticamente, clique abaixo:
                  </p>
@@ -556,7 +556,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     <MessageCircle className="w-6 h-6" /> Enviar no WhatsApp
                  </a>
               </div>
-              <button onClick={handleCloseSuccess} className="text-stone-400 hover:text-stone-600 font-medium text-sm">Fechar</button>
+              <button onClick={handleCloseSuccess} className="text-stone-500 hover:text-stone-700 font-medium text-sm">Fechar</button>
            </div>
         ) : (
           <>
@@ -570,7 +570,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
             <div className="flex-1 overflow-y-auto p-4 space-y-6">
               <div className="space-y-3">
-                <h3 className="font-bold text-stone-700 dark:text-stone-300 text-sm uppercase tracking-wider border-b border-stone-200 dark:border-stone-700 pb-2">Itens do Carrinho</h3>
+                <h3 className="font-bold text-stone-800 dark:text-stone-200 text-sm uppercase tracking-wider border-b border-stone-300 dark:border-stone-700 pb-2">Itens do Carrinho</h3>
                 
                 {items.length === 0 ? (
                     <div className="flex flex-col items-center justify-center text-stone-400 gap-3 py-8">
@@ -582,20 +582,20 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                       const optionsPrice = item.selectedOptions ? item.selectedOptions.reduce((sum, opt) => sum + opt.price, 0) : 0;
                       const unitPrice = item.price + optionsPrice;
                       return (
-                        <div key={`${item.id}-${index}`} className="bg-white dark:bg-stone-800 p-3 rounded-lg shadow-sm border border-stone-200 dark:border-stone-700 flex gap-3">
+                        <div key={`${item.id}-${index}`} className="bg-white dark:bg-stone-800 p-3 rounded-lg shadow-sm border border-stone-300 dark:border-stone-700 flex gap-3">
                           <div className="flex-1">
                             <div className="flex justify-between items-start">
-                              <h4 className="font-bold text-stone-800 dark:text-white flex-1 mr-2 leading-tight text-sm">
+                              <h4 className="font-bold text-stone-900 dark:text-white flex-1 mr-2 leading-tight text-sm">
                                 {item.quantity}x {item.name}
                               </h4>
-                              <span className="text-sm font-semibold text-stone-600 dark:text-stone-300 whitespace-nowrap">
+                              <span className="text-sm font-semibold text-stone-700 dark:text-stone-300 whitespace-nowrap">
                                 {currencySymbol} {(unitPrice * item.quantity).toFixed(2).replace('.', ',')}
                               </span>
                             </div>
                             {item.selectedOptions && item.selectedOptions.length > 0 && (
                               <div className="mt-1 space-y-0.5">
                                 {item.selectedOptions.map((opt, i) => (
-                                    <p key={i} className="text-[10px] text-stone-500 dark:text-stone-400 flex justify-between">
+                                    <p key={i} className="text-[10px] text-stone-600 dark:text-stone-400 flex justify-between">
                                       <span>+ {opt.choiceName}</span>
                                       {opt.price > 0 && <span>(+{currencySymbol} {opt.price.toFixed(2)})</span>}
                                     </p>
@@ -604,25 +604,25 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                             )}
                             <div className="mt-1 group cursor-pointer" onClick={() => handleEditObservation(index, item.observation || '')}>
                               {item.observation ? (
-                                <p className="text-[11px] text-stone-600 dark:text-stone-300 bg-stone-100 dark:bg-stone-700 p-1.5 rounded border border-stone-200 dark:border-stone-600 flex items-center justify-between hover:bg-stone-200 dark:hover:bg-stone-600 transition-colors">
+                                <p className="text-[11px] text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-700 p-1.5 rounded border border-stone-300 dark:border-stone-600 flex items-center justify-between hover:bg-stone-200 dark:hover:bg-stone-600 transition-colors">
                                   <span><span className="font-semibold">Obs:</span> {item.observation}</span>
-                                  <Edit2 className="w-3 h-3 text-stone-400 group-hover:text-stone-600 dark:text-stone-500 dark:group-hover:text-stone-300" />
+                                  <Edit2 className="w-3 h-3 text-stone-500 group-hover:text-stone-700 dark:text-stone-500 dark:group-hover:text-stone-300" />
                                 </p>
                               ) : (
-                                <p className="text-[11px] text-stone-400 dark:text-stone-500 flex items-center gap-1 hover:text-stone-600 dark:hover:text-stone-300 transition-colors py-1">
+                                <p className="text-[11px] text-stone-500 dark:text-stone-500 flex items-center gap-1 hover:text-stone-700 dark:hover:text-stone-300 transition-colors py-1">
                                   <Edit2 className="w-3 h-3" /> Adicionar observação
                                 </p>
                               )}
                             </div>
                             <div className="flex items-end justify-between mt-2">
-                              <div className="flex items-center border border-stone-200 dark:border-stone-700 rounded bg-stone-50 dark:bg-stone-900 h-7">
-                                <button onClick={() => { if (!onUpdateQuantity) return; if (item.quantity <= 1) { if (window.confirm('Remover este item do carrinho?')) { onRemoveItem(index); } } else { onUpdateQuantity(index, item.quantity - 1); } }} className="w-8 h-full flex items-center justify-center text-stone-500 hover:text-red-600 dark:text-stone-400 dark:hover:text-red-400" disabled={!onUpdateQuantity}><Minus className="w-3 h-3" /></button>
-                                <div className="w-8 text-center text-xs font-bold text-stone-800 dark:text-white border-x border-stone-200 dark:border-stone-700 h-full flex items-center justify-center bg-white dark:bg-stone-800">{item.quantity}</div>
-                                <button onClick={() => onUpdateQuantity ? onUpdateQuantity(index, item.quantity + 1) : null} className="w-8 h-full flex items-center justify-center text-stone-500 hover:text-green-600 dark:text-stone-400 dark:hover:text-green-400" disabled={!onUpdateQuantity}><Plus className="w-3 h-3" /></button>
+                              <div className="flex items-center border border-stone-300 dark:border-stone-700 rounded bg-stone-50 dark:bg-stone-900 h-7">
+                                <button onClick={() => { if (!onUpdateQuantity) return; if (item.quantity <= 1) { if (window.confirm('Remover este item do carrinho?')) { onRemoveItem(index); } } else { onUpdateQuantity(index, item.quantity - 1); } }} className="w-8 h-full flex items-center justify-center text-stone-600 hover:text-red-600 dark:text-stone-400 dark:hover:text-red-400" disabled={!onUpdateQuantity}><Minus className="w-3 h-3" /></button>
+                                <div className="w-8 text-center text-xs font-bold text-stone-900 dark:text-white border-x border-stone-300 dark:border-stone-700 h-full flex items-center justify-center bg-white dark:bg-stone-800">{item.quantity}</div>
+                                <button onClick={() => onUpdateQuantity ? onUpdateQuantity(index, item.quantity + 1) : null} className="w-8 h-full flex items-center justify-center text-stone-600 hover:text-green-600 dark:text-stone-400 dark:hover:text-green-400" disabled={!onUpdateQuantity}><Plus className="w-3 h-3" /></button>
                               </div>
                             </div>
                           </div>
-                          <button onClick={() => onRemoveItem(index)} className="text-stone-300 hover:text-red-500 self-start p-1 transition-colors dark:text-stone-600 dark:hover:text-red-400"><Trash2 className="w-4 h-4" /></button>
+                          <button onClick={() => onRemoveItem(index)} className="text-stone-400 hover:text-red-600 self-start p-1 transition-colors dark:text-stone-600 dark:hover:text-red-400"><Trash2 className="w-4 h-4" /></button>
                         </div>
                       );
                     })
@@ -631,15 +631,15 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               
               {upsellItems.length > 0 && (
                  <div className="bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-900/30 rounded-lg p-3 space-y-2 animate-in fade-in slide-in-from-right">
-                    <h4 className="font-bold text-sm text-orange-800 dark:text-orange-300 flex items-center gap-1.5"><Sparkles className="w-4 h-4" /> Que tal aproveitar?</h4>
+                    <h4 className="font-bold text-sm text-orange-900 dark:text-orange-300 flex items-center gap-1.5"><Sparkles className="w-4 h-4" /> Que tal aproveitar?</h4>
                     <div className="grid grid-cols-2 gap-2">
                        {upsellItems.map(prod => (
-                          <div key={prod.id} className="bg-white dark:bg-stone-800 p-2 rounded border border-orange-100 dark:border-stone-700 flex flex-col justify-between h-full">
+                          <div key={prod.id} className="bg-white dark:bg-stone-800 p-2 rounded border border-orange-200 dark:border-stone-700 flex flex-col justify-between h-full">
                              <div className="mb-2">
-                                <p className="text-xs font-bold text-stone-800 dark:text-white line-clamp-1">{prod.name}</p>
-                                <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">{currencySymbol} {prod.price.toFixed(2)}</p>
+                                <p className="text-xs font-bold text-stone-900 dark:text-white line-clamp-1">{prod.name}</p>
+                                <p className="text-xs text-stone-600 dark:text-stone-400 mt-0.5">{currencySymbol} {prod.price.toFixed(2)}</p>
                              </div>
-                             <button className="w-full bg-orange-100 hover:bg-orange-200 text-orange-800 text-xs font-bold py-1.5 rounded transition-colors" onClick={() => onAddToCart(prod, 1, '')}>+ Adicionar</button>
+                             <button className="w-full bg-orange-100 hover:bg-orange-200 text-orange-900 text-xs font-bold py-1.5 rounded transition-colors" onClick={() => onAddToCart(prod, 1, '')}>+ Adicionar</button>
                           </div>
                        ))}
                     </div>
@@ -650,35 +650,35 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               {items.length > 0 && (
                 <div className="space-y-6">
                     <div className="space-y-3">
-                      <h3 className="font-bold text-stone-700 dark:text-stone-300 text-sm uppercase tracking-wider border-b border-stone-200 dark:border-stone-700 pb-2 flex items-center gap-2"><User className="w-4 h-4" /> Seus Dados</h3>
+                      <h3 className="font-bold text-stone-800 dark:text-stone-200 text-sm uppercase tracking-wider border-b border-stone-300 dark:border-stone-700 pb-2 flex items-center gap-2"><User className="w-4 h-4" /> Seus Dados</h3>
                       <div>
-                          <label className="block text-xs font-bold text-stone-600 dark:text-stone-400 mb-1">Nome Completo</label>
-                          <input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Digite seu nome" className="w-full p-2.5 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-sm text-stone-900 dark:text-white focus:ring-1 focus:ring-italian-green outline-none" />
+                          <label className="block text-xs font-bold text-stone-700 dark:text-stone-400 mb-1">Nome Completo</label>
+                          <input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Digite seu nome" className="w-full p-2.5 bg-white dark:bg-stone-800 border border-stone-400 dark:border-stone-700 rounded-lg text-sm text-stone-900 dark:text-white focus:ring-1 focus:ring-italian-green outline-none placeholder-stone-500" />
                       </div>
                     </div>
 
                     {!tableNumber && (
                         <div className="space-y-3">
-                            <h3 className="font-bold text-stone-700 dark:text-stone-300 text-sm uppercase tracking-wider border-b border-stone-200 dark:border-stone-700 pb-2 flex items-center gap-2"><MapPin className="w-4 h-4" /> Entrega</h3>
-                            <div className="flex bg-white dark:bg-stone-800 p-1 rounded-lg border border-stone-200 dark:border-stone-700">
-                                <button onClick={() => setDeliveryType('delivery')} className={`flex-1 py-2 text-sm font-bold rounded-md transition-colors ${deliveryType === 'delivery' ? 'bg-italian-green text-white shadow-sm' : 'text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-700'}`}>Entrega</button>
-                                <button onClick={() => setDeliveryType('pickup')} className={`flex-1 py-2 text-sm font-bold rounded-md transition-colors ${deliveryType === 'pickup' ? 'bg-italian-green text-white shadow-sm' : 'text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-700'}`}>Retirar</button>
+                            <h3 className="font-bold text-stone-800 dark:text-stone-200 text-sm uppercase tracking-wider border-b border-stone-300 dark:border-stone-700 pb-2 flex items-center gap-2"><MapPin className="w-4 h-4" /> Entrega</h3>
+                            <div className="flex bg-white dark:bg-stone-800 p-1 rounded-lg border border-stone-300 dark:border-stone-700">
+                                <button onClick={() => setDeliveryType('delivery')} className={`flex-1 py-2 text-sm font-bold rounded-md transition-colors ${deliveryType === 'delivery' ? 'bg-italian-green text-white shadow-sm' : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-700'}`}>Entrega</button>
+                                <button onClick={() => setDeliveryType('pickup')} className={`flex-1 py-2 text-sm font-bold rounded-md transition-colors ${deliveryType === 'pickup' ? 'bg-italian-green text-white shadow-sm' : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-700'}`}>Retirar</button>
                             </div>
 
                             {deliveryType === 'delivery' && (
-                                <div className="bg-white dark:bg-stone-800 p-3 rounded-lg border border-stone-200 dark:border-stone-700 space-y-3 animate-in fade-in slide-in-from-top-2">
+                                <div className="bg-white dark:bg-stone-800 p-3 rounded-lg border border-stone-300 dark:border-stone-700 space-y-3 animate-in fade-in slide-in-from-top-2">
                                     {!unknownCepMode ? (
                                         <div>
-                                            <label className="block text-xs font-bold text-stone-600 dark:text-stone-400 mb-1">CEP</label>
+                                            <label className="block text-xs font-bold text-stone-700 dark:text-stone-400 mb-1">CEP</label>
                                             <div className="flex gap-2">
-                                                <input type="text" value={cep} onChange={(e) => { const val = e.target.value.replace(/[^0-9-]/g, ''); if (val.length <= 9) setCep(val); }} onBlur={() => { if(cep.length >= 8) handleCepSearch(); }} placeholder="00000-000" className={`flex-1 p-2.5 bg-stone-50 dark:bg-stone-900 border rounded-lg text-sm text-stone-900 dark:text-white outline-none focus:border-italian-green ${cepError ? 'border-red-300 bg-red-50 dark:bg-red-900/20 dark:border-red-800' : 'border-stone-300 dark:border-stone-700'}`} />
+                                                <input type="text" value={cep} onChange={(e) => { const val = e.target.value.replace(/[^0-9-]/g, ''); if (val.length <= 9) setCep(val); }} onBlur={() => { if(cep.length >= 8) handleCepSearch(); }} placeholder="00000-000" className={`flex-1 p-2.5 bg-white dark:bg-stone-900 border rounded-lg text-sm text-stone-900 dark:text-white outline-none focus:border-italian-green placeholder-stone-500 ${cepError ? 'border-red-400 bg-red-50 dark:bg-red-900/20 dark:border-red-800' : 'border-stone-400 dark:border-stone-700'}`} />
                                                 <button onClick={handleCepSearch} disabled={isFetchingCep} className="bg-italian-green text-white px-3 rounded-lg flex items-center justify-center hover:bg-green-700 disabled:opacity-50">{isFetchingCep ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}</button>
                                             </div>
-                                            {cepError && <p className="text-xs text-red-500 mt-1 font-medium">{cepError}</p>}
-                                            <button onClick={() => { setUnknownCepMode(true); setCalculatedFee(null); setMatchedRegionName(''); }} className="text-xs text-blue-600 underline mt-2 hover:text-blue-800">Não sei meu CEP</button>
+                                            {cepError && <p className="text-xs text-red-600 mt-1 font-bold">{cepError}</p>}
+                                            <button onClick={() => { setUnknownCepMode(true); setCalculatedFee(null); setMatchedRegionName(''); }} className="text-xs text-blue-700 underline mt-2 hover:text-blue-900 font-medium">Não sei meu CEP</button>
                                             
                                             {calculatedFee !== null && !cepError && (
-                                                <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded text-xs text-green-800 dark:text-green-300 flex items-center gap-1">
+                                                <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/30 border border-green-300 dark:border-green-800 rounded text-xs text-green-900 dark:text-green-300 flex items-center gap-1">
                                                     {(appliedCoupon?.type === 'free_shipping' || freeShipping) ? <><span className="font-bold">Região Atendida:</span> {matchedRegionName} (Taxa: GRÁTIS)</> : <><span className="font-bold">Região Atendida:</span> {matchedRegionName} (Taxa: {currencySymbol} {calculatedFee.toFixed(2)})</>}
                                                 </div>
                                             )}
@@ -686,16 +686,16 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                                     ) : (
                                         <div>
                                             <div className="flex justify-between items-center mb-1">
-                                                <label className="block text-xs font-bold text-stone-600 dark:text-stone-400">Bairro (Digite para buscar)</label>
-                                                <button onClick={() => { setUnknownCepMode(false); setManualNeighborhood(''); setCalculatedFee(null); }} className="text-xs text-blue-600 underline">Voltar para CEP</button>
+                                                <label className="block text-xs font-bold text-stone-700 dark:text-stone-400">Bairro (Digite para buscar)</label>
+                                                <button onClick={() => { setUnknownCepMode(false); setManualNeighborhood(''); setCalculatedFee(null); }} className="text-xs text-blue-700 underline font-medium">Voltar para CEP</button>
                                             </div>
-                                            <input type="text" value={manualNeighborhood} onChange={(e) => setManualNeighborhood(e.target.value)} placeholder="Digite o nome do bairro" className="w-full p-2.5 bg-stone-50 dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-lg text-sm text-stone-900 dark:text-white outline-none focus:border-italian-green" />
+                                            <input type="text" value={manualNeighborhood} onChange={(e) => setManualNeighborhood(e.target.value)} placeholder="Digite o nome do bairro" className="w-full p-2.5 bg-white dark:bg-stone-900 border border-stone-400 dark:border-stone-700 rounded-lg text-sm text-stone-900 dark:text-white outline-none focus:border-italian-green placeholder-stone-500" />
                                             {calculatedFee !== null ? (
-                                                <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded text-xs text-green-800 dark:text-green-300 flex items-center gap-1">
+                                                <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/30 border border-green-300 dark:border-green-800 rounded text-xs text-green-900 dark:text-green-300 flex items-center gap-1">
                                                    {(appliedCoupon?.type === 'free_shipping' || freeShipping) ? <><span className="font-bold">Região:</span> {matchedRegionName} (Taxa: GRÁTIS)</> : <><span className="font-bold">Região:</span> {matchedRegionName} (Taxa: {currencySymbol} {calculatedFee.toFixed(2)})</>}
                                                 </div>
                                             ) : manualNeighborhood.length > 2 ? (
-                                                <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded text-xs text-orange-800 flex items-start gap-2">
+                                                <div className="mt-2 p-2 bg-orange-50 border border-orange-300 rounded text-xs text-orange-900 flex items-start gap-2">
                                                     <Info className="w-4 h-4 shrink-0 mt-0.5" />
                                                     <span>Não encontramos uma taxa exata. Consulte o valor com o atendente ao finalizar.</span>
                                                 </div>
@@ -704,68 +704,68 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                                     )}
 
                                     <div className="grid grid-cols-3 gap-3">
-                                        <div className="col-span-2"><label className="block text-xs font-bold text-stone-600 dark:text-stone-400 mb-1">Rua</label><input type="text" value={addressStreet} onChange={(e) => setAddressStreet(e.target.value)} className="w-full p-2 bg-stone-50 dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-lg text-sm text-stone-900 dark:text-white outline-none" /></div>
-                                        <div><label className="block text-xs font-bold text-stone-600 dark:text-stone-400 mb-1">Número</label><input type="text" value={addressNumber} onChange={(e) => setAddressNumber(e.target.value)} className="w-full p-2 bg-stone-50 dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-lg text-sm text-stone-900 dark:text-white outline-none focus:bg-white dark:focus:bg-stone-800 focus:border-italian-green" placeholder="Nº" /></div>
+                                        <div className="col-span-2"><label className="block text-xs font-bold text-stone-700 dark:text-stone-400 mb-1">Rua</label><input type="text" value={addressStreet} onChange={(e) => setAddressStreet(e.target.value)} className="w-full p-2 bg-white dark:bg-stone-900 border border-stone-400 dark:border-stone-700 rounded-lg text-sm text-stone-900 dark:text-white outline-none" /></div>
+                                        <div><label className="block text-xs font-bold text-stone-700 dark:text-stone-400 mb-1">Número</label><input type="text" value={addressNumber} onChange={(e) => setAddressNumber(e.target.value)} className="w-full p-2 bg-white dark:bg-stone-900 border border-stone-400 dark:border-stone-700 rounded-lg text-sm text-stone-900 dark:text-white outline-none focus:bg-white dark:focus:bg-stone-800 focus:border-italian-green" placeholder="Nº" /></div>
                                     </div>
-                                    {!unknownCepMode && (<div><label className="block text-xs font-bold text-stone-600 dark:text-stone-400 mb-1">Bairro</label><input type="text" value={addressDistrict} onChange={(e) => setAddressDistrict(e.target.value)} className="w-full p-2 bg-stone-50 dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-lg text-sm text-stone-900 dark:text-white outline-none" /></div>)}
-                                    {!unknownCepMode && (<div><label className="block text-xs font-bold text-stone-600 dark:text-stone-400 mb-1">Cidade</label><input type="text" value={addressCity} readOnly className="w-full p-2 bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg text-sm outline-none text-stone-500 dark:text-stone-400 cursor-not-allowed" /></div>)}
-                                    <div><label className="block text-xs font-bold text-stone-600 dark:text-stone-400 mb-1">Complemento (Opcional)</label><input type="text" value={addressComplement} onChange={(e) => setAddressComplement(e.target.value)} placeholder="Ex: Apto 101, Fundos..." className="w-full p-2 bg-stone-50 dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-lg text-sm text-stone-900 dark:text-white outline-none" /></div>
+                                    {!unknownCepMode && (<div><label className="block text-xs font-bold text-stone-700 dark:text-stone-400 mb-1">Bairro</label><input type="text" value={addressDistrict} onChange={(e) => setAddressDistrict(e.target.value)} className="w-full p-2 bg-white dark:bg-stone-900 border border-stone-400 dark:border-stone-700 rounded-lg text-sm text-stone-900 dark:text-white outline-none" /></div>)}
+                                    {!unknownCepMode && (<div><label className="block text-xs font-bold text-stone-700 dark:text-stone-400 mb-1">Cidade</label><input type="text" value={addressCity} readOnly className="w-full p-2 bg-stone-100 dark:bg-stone-900 border border-stone-300 dark:border-stone-800 rounded-lg text-sm outline-none text-stone-600 dark:text-stone-400 cursor-not-allowed" /></div>)}
+                                    <div><label className="block text-xs font-bold text-stone-700 dark:text-stone-400 mb-1">Complemento (Opcional)</label><input type="text" value={addressComplement} onChange={(e) => setAddressComplement(e.target.value)} placeholder="Ex: Apto 101, Fundos..." className="w-full p-2 bg-white dark:bg-stone-900 border border-stone-400 dark:border-stone-700 rounded-lg text-sm text-stone-900 dark:text-white outline-none" /></div>
                                 </div>
                             )}
-                            {deliveryType === 'pickup' && (<div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-900 rounded-lg text-xs text-yellow-800 dark:text-yellow-200 text-center">O endereço para retirada será enviado após a confirmação do pedido.</div>)}
+                            {deliveryType === 'pickup' && (<div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-900 rounded-lg text-xs text-yellow-900 dark:text-yellow-200 text-center font-medium">O endereço para retirada será enviado após a confirmação do pedido.</div>)}
                         </div>
                     )}
                     
                     {tableNumber && (
-                       <div className="bg-stone-100 dark:bg-stone-800 p-4 rounded-lg border border-stone-200 dark:border-stone-700 text-center">
+                       <div className="bg-stone-100 dark:bg-stone-800 p-4 rounded-lg border border-stone-300 dark:border-stone-700 text-center">
                           <Utensils className="w-6 h-6 mx-auto mb-2 text-italian-green" />
-                          <p className="font-bold">Consumo no Local</p>
-                          <p className="text-sm">Você está pedindo para a <strong>Mesa {tableNumber}</strong>.</p>
+                          <p className="font-bold text-stone-900 dark:text-white">Consumo no Local</p>
+                          <p className="text-sm text-stone-700 dark:text-stone-400">Você está pedindo para a <strong>Mesa {tableNumber}</strong>.</p>
                        </div>
                     )}
 
                     <div className="space-y-3">
-                      <h3 className="font-bold text-stone-700 dark:text-stone-300 text-sm uppercase tracking-wider border-b border-stone-200 dark:border-stone-700 pb-2 flex items-center gap-2"><Ticket className="w-4 h-4" /> Cupom de Desconto</h3>
+                      <h3 className="font-bold text-stone-800 dark:text-stone-200 text-sm uppercase tracking-wider border-b border-stone-300 dark:border-stone-700 pb-2 flex items-center gap-2"><Ticket className="w-4 h-4" /> Cupom de Desconto</h3>
                       {!appliedCoupon ? (
                         <div>
                           <div className="flex gap-2">
-                            <input type="text" placeholder="Código do Cupom" className="flex-1 p-2 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-sm text-stone-900 dark:text-white uppercase" value={couponCode} onChange={(e) => setCouponCode(e.target.value)} />
+                            <input type="text" placeholder="Código do Cupom" className="flex-1 p-2 bg-white dark:bg-stone-800 border border-stone-400 dark:border-stone-700 rounded-lg text-sm text-stone-900 dark:text-white uppercase placeholder-stone-500" value={couponCode} onChange={(e) => setCouponCode(e.target.value)} />
                             <button onClick={handleApplyCoupon} disabled={isValidatingCoupon || !couponCode} className="bg-stone-800 text-white px-3 py-2 rounded-lg text-sm font-bold hover:bg-stone-700 disabled:opacity-50">{isValidatingCoupon ? <Loader2 className="w-4 h-4 animate-spin"/> : 'Aplicar'}</button>
                           </div>
-                          {couponError && <p className="text-xs text-red-500 mt-1">{couponError}</p>}
+                          {couponError && <p className="text-xs text-red-600 mt-1 font-bold">{couponError}</p>}
                         </div>
                       ) : (
-                        <div className="flex items-center justify-between bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-2 rounded-lg">
+                        <div className="flex items-center justify-between bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-800 p-2 rounded-lg">
                           <div>
-                            <span className="block font-bold text-green-800 dark:text-green-300 text-sm">{appliedCoupon.code}</span>
-                            <span className="text-xs text-green-600 dark:text-green-400">
+                            <span className="block font-bold text-green-900 dark:text-green-300 text-sm">{appliedCoupon.code}</span>
+                            <span className="text-xs text-green-700 dark:text-green-400">
                                {appliedCoupon.type === 'free_shipping' ? 'Frete Grátis' : 
                                 appliedCoupon.type === 'fixed' ? `Desconto de ${currencySymbol} ${appliedCoupon.discount_value}` : 
                                 `${appliedCoupon.discount_value}% de desconto`}
                             </span>
                           </div>
-                          <button onClick={removeCoupon} className="text-stone-400 hover:text-red-500"><X className="w-4 h-4" /></button>
+                          <button onClick={removeCoupon} className="text-stone-500 hover:text-red-600"><X className="w-4 h-4" /></button>
                         </div>
                       )}
                     </div>
 
                     <div className="space-y-3">
-                      <h3 className="font-bold text-stone-700 dark:text-stone-300 text-sm uppercase tracking-wider border-b border-stone-200 dark:border-stone-700 pb-2 flex items-center gap-2"><CreditCard className="w-4 h-4" /> Pagamento</h3>
+                      <h3 className="font-bold text-stone-800 dark:text-stone-200 text-sm uppercase tracking-wider border-b border-stone-300 dark:border-stone-700 pb-2 flex items-center gap-2"><CreditCard className="w-4 h-4" /> Pagamento</h3>
                       <div className="grid grid-cols-1 gap-2">
                           {availablePaymentMethods.map(method => (
-                            <label key={method} className={`flex flex-col p-2.5 rounded-lg border cursor-pointer transition-colors ${paymentMethod === method ? 'bg-green-50 dark:bg-green-900/30 border-italian-green' : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-700'}`}>
+                            <label key={method} className={`flex flex-col p-2.5 rounded-lg border cursor-pointer transition-colors ${paymentMethod === method ? 'bg-green-50 dark:bg-green-900/30 border-italian-green' : 'bg-white dark:bg-stone-800 border-stone-300 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-700'}`}>
                                 <div className="flex items-center gap-3">
                                    <input type="radio" name="payment" value={method} checked={paymentMethod === method} onChange={() => { setPaymentMethod(method); if (method !== 'Dinheiro') setNeedChange(false); }} className="text-italian-green focus:ring-italian-green" />
-                                   <span className="text-sm font-medium text-stone-700 dark:text-stone-300">{method}</span>
+                                   <span className="text-sm font-bold text-stone-800 dark:text-stone-300">{method}</span>
                                 </div>
                                 {paymentMethod === 'Dinheiro' && method === 'Dinheiro' && (
                                    <div className="mt-2 pl-7 animate-in fade-in slide-in-from-top-1">
-                                      <label className="flex items-center gap-2 text-xs text-stone-600 dark:text-stone-400 cursor-pointer mb-2">
+                                      <label className="flex items-center gap-2 text-xs text-stone-700 dark:text-stone-400 cursor-pointer mb-2 font-medium">
                                          <input type="checkbox" checked={needChange} onChange={(e) => setNeedChange(e.target.checked)} />
                                          Precisa de troco?
                                       </label>
                                       {needChange && (
-                                         <input type="text" value={changeFor} onChange={(e) => setChangeFor(e.target.value)} placeholder="Troco para quanto? (Ex: 50,00)" className="w-full p-2 text-xs border rounded dark:bg-stone-900 dark:border-stone-600 dark:text-white" />
+                                         <input type="text" value={changeFor} onChange={(e) => setChangeFor(e.target.value)} placeholder="Troco para quanto? (Ex: 50,00)" className="w-full p-2 text-xs border border-stone-400 rounded dark:bg-stone-900 dark:border-stone-600 dark:text-white" />
                                       )}
                                    </div>
                                 )}
@@ -777,38 +777,38 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               )}
             </div>
 
-            <div className="p-4 bg-white dark:bg-stone-800 border-t border-stone-200 dark:border-stone-700 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+            <div className="p-4 bg-white dark:bg-stone-800 border-t border-stone-300 dark:border-stone-700 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
               {items.length > 0 && onClearCart && (
                 <div className="flex justify-end mb-4">
-                  <button onClick={onClearCart} className="text-xs text-red-500 hover:text-red-700 font-medium flex items-center gap-1 px-2 py-1 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"><Trash2 className="w-3 h-3" /> Limpar carrinho</button>
+                  <button onClick={onClearCart} className="text-xs text-red-600 hover:text-red-800 font-bold flex items-center gap-1 px-2 py-1 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"><Trash2 className="w-3 h-3" /> Limpar carrinho</button>
                 </div>
               )}
               
               <div className="space-y-1 mb-4">
-                <div className="flex justify-between items-center text-sm text-stone-500 dark:text-stone-400">
+                <div className="flex justify-between items-center text-sm text-stone-600 dark:text-stone-400 font-medium">
                   <span>Subtotal</span>
                   <span>{currencySymbol} {subtotal.toFixed(2).replace('.', ',')}</span>
                 </div>
                 {appliedCoupon && (
-                  <div className="flex justify-between items-center text-sm text-green-600 font-medium">
+                  <div className="flex justify-between items-center text-sm text-green-700 font-bold">
                       <span>Desconto ({appliedCoupon.code})</span>
                       <span>- {currencySymbol} {discountAmount.toFixed(2).replace('.', ',')}</span>
                   </div>
                 )}
                 {deliveryType === 'delivery' && (
-                  <div className="flex justify-between items-center text-sm text-stone-500 dark:text-stone-400">
+                  <div className="flex justify-between items-center text-sm text-stone-600 dark:text-stone-400 font-medium">
                       <span>Taxa de Entrega</span>
                       <span>
                         {(appliedCoupon?.type === 'free_shipping' || (freeShipping && calculatedFee !== null))
-                             ? <span className="text-green-600 font-bold">GRÁTIS</span> 
-                             : (calculatedFee !== null ? `${currencySymbol} ${calculatedFee.toFixed(2).replace('.', ',')}` : <span className="text-orange-500 font-bold">A Consultar</span>)
+                             ? <span className="text-green-700 font-bold">GRÁTIS</span> 
+                             : (calculatedFee !== null ? `${currencySymbol} ${calculatedFee.toFixed(2).replace('.', ',')}` : <span className="text-orange-600 font-bold">A Consultar</span>)
                         }
                       </span>
                   </div>
                 )}
-                <div className="flex justify-between items-center pt-2 border-t border-stone-100 dark:border-stone-700">
-                  <span className="text-stone-800 dark:text-white font-bold text-lg">Total</span>
-                  <span className="text-xl font-bold text-italian-green">
+                <div className="flex justify-between items-center pt-2 border-t border-stone-300 dark:border-stone-700">
+                  <span className="text-stone-900 dark:text-white font-extrabold text-lg">Total</span>
+                  <span className="text-xl font-extrabold text-italian-green">
                     {currencySymbol} {total.toFixed(2).replace('.', ',')}
                   </span>
                 </div>
@@ -831,5 +831,4 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       </div>
     </div>
   );
-};
-    
+}

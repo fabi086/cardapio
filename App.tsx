@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { MENU_DATA, DEFAULT_SETTINGS, CATEGORY_IMAGES } from './data';
 import { Product, CartItem, Category, StoreSettings, WeeklySchedule } from './types';
@@ -152,11 +153,17 @@ function App() {
       root.style.setProperty('--color-primary', storeSettings.colors.primary);
       root.style.setProperty('--color-secondary', storeSettings.colors.secondary);
       
-      // Apply granular colors if available, otherwise fallback to primary/secondary or defaults
-      const headerBg = storeSettings.colors.headerBackground || storeSettings.colors.primary;
-      const headerText = storeSettings.colors.headerText || '#FFFFFF';
-      root.style.setProperty('--header-bg', headerBg);
-      root.style.setProperty('--header-text', headerText);
+      // Detailed Customization
+      root.style.setProperty('--header-bg', storeSettings.colors.headerBackground || storeSettings.colors.primary);
+      root.style.setProperty('--header-text', storeSettings.colors.headerText || '#FFFFFF');
+      
+      // Card Customization (Default to white/dark logic if not set)
+      root.style.setProperty('--bg-card', storeSettings.colors.cardBackground || (isDarkMode ? '#1c1917' : '#ffffff'));
+      root.style.setProperty('--text-card', storeSettings.colors.cardText || (isDarkMode ? '#ffffff' : '#1c1917'));
+      
+      // Body Customization
+      root.style.setProperty('--bg-body', storeSettings.colors.background || (isDarkMode ? '#0c0a09' : '#f5f5f4'));
+      root.style.setProperty('--text-body', storeSettings.colors.textColor || (isDarkMode ? '#e7e5e4' : '#292524'));
     }
 
     if (storeSettings.fontFamily) {
@@ -174,7 +181,7 @@ function App() {
       const fontName = storeSettings.fontFamily.replace(/ /g, '+');
       link.href = `https://fonts.googleapis.com/css2?family=${fontName}:wght@300;400;600;700&display=swap`;
     }
-  }, [storeSettings.colors, storeSettings.fontFamily]);
+  }, [storeSettings.colors, storeSettings.fontFamily, isDarkMode]);
 
   // Force Title Update Logic
   useEffect(() => {
@@ -638,7 +645,7 @@ function App() {
   let firstProductFound = false;
 
   return (
-    <div className="min-h-screen bg-stone-100 dark:bg-stone-900 pb-24 md:pb-0 font-sans transition-colors duration-300">
+    <div className="min-h-screen pb-24 md:pb-0 font-sans transition-colors duration-300" style={{ backgroundColor: 'var(--bg-body, #f5f5f4)', color: 'var(--text-body, #292524)' }}>
       {showGuide && <OnboardingGuide onClose={closeGuide} />}
       
       {/* Table Mode Banner */}
@@ -677,13 +684,13 @@ function App() {
            {/* ... Search bar ... */}
            <div className="flex flex-col md:flex-row gap-3 mb-3">
              <div className="relative flex-1">
-                <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Buscar por nome, ingrediente ou código..." className="w-full pl-10 pr-10 py-3 bg-white border rounded-xl shadow-sm text-sm dark:bg-stone-800 dark:border-stone-700 dark:text-white outline-none focus:ring-2 focus:ring-italian-green" />
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Buscar por nome, ingrediente ou código..." className="w-full pl-10 pr-10 py-3 border border-stone-400 rounded-xl shadow-sm text-sm outline-none focus:ring-2 focus:ring-italian-green placeholder-stone-500" style={{ backgroundColor: 'var(--bg-card, #ffffff)', color: 'var(--text-card, #333)' }} />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-500" />
                 {searchTerm && <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"><X className="w-4 h-4" /></button>}
              </div>
              <div className="relative min-w-[160px]">
-                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none"><Filter className="w-4 h-4 text-stone-500" /></div>
-                <select value={searchScope} onChange={(e) => setSearchScope(e.target.value)} className="w-full h-full pl-9 pr-8 py-3 bg-white border rounded-xl shadow-sm text-sm appearance-none outline-none focus:ring-2 focus:ring-italian-green dark:bg-stone-800 dark:border-stone-700 dark:text-white cursor-pointer">
+                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none"><Filter className="w-4 h-4 text-stone-600" /></div>
+                <select value={searchScope} onChange={(e) => setSearchScope(e.target.value)} className="w-full h-full pl-9 pr-8 py-3 border border-stone-400 rounded-xl shadow-sm text-sm appearance-none outline-none focus:ring-2 focus:ring-italian-green cursor-pointer font-medium" style={{ backgroundColor: 'var(--bg-card, #ffffff)', color: 'var(--text-card, #333)' }}>
                    <option value="all">Todas Categorias</option>
                    {menuData.filter(c => c.id !== 'promocoes').map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
                 </select>
@@ -691,10 +698,10 @@ function App() {
            </div>
            
            <div className="flex gap-2 overflow-x-auto pb-2 hide-scrollbar">
-              <button onClick={() => toggleTag('popular')} className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border transition-all whitespace-nowrap ${activeTags.includes('popular') ? 'bg-yellow-400 text-yellow-900 border-yellow-500' : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50 dark:bg-stone-800 dark:text-stone-300 dark:border-stone-700'}`}><Star className="w-3 h-3" /> Mais Pedidos</button>
-              <button onClick={() => toggleTag('new')} className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border transition-all whitespace-nowrap ${activeTags.includes('new') ? 'bg-blue-500 text-white border-blue-600' : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50 dark:bg-stone-800 dark:text-stone-300 dark:border-stone-700'}`}><Zap className="w-3 h-3" /> Novidades</button>
-              <button onClick={() => toggleTag('vegetarian')} className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border transition-all whitespace-nowrap ${activeTags.includes('vegetarian') ? 'bg-green-500 text-white border-green-600' : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50 dark:bg-stone-800 dark:text-stone-300 dark:border-stone-700'}`}><Leaf className="w-3 h-3" /> Vegetarianos</button>
-              <button onClick={() => toggleTag('spicy')} className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border transition-all whitespace-nowrap ${activeTags.includes('spicy') ? 'bg-red-500 text-white border-red-600' : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50 dark:bg-stone-800 dark:text-stone-300 dark:border-stone-700'}`}><Flame className="w-3 h-3" /> Picantes</button>
+              <button onClick={() => toggleTag('popular')} className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border transition-all whitespace-nowrap ${activeTags.includes('popular') ? 'bg-yellow-400 text-yellow-900 border-yellow-600' : 'bg-white text-stone-700 border-stone-400 hover:bg-stone-50'}`}><Star className="w-3 h-3" /> Mais Pedidos</button>
+              <button onClick={() => toggleTag('new')} className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border transition-all whitespace-nowrap ${activeTags.includes('new') ? 'bg-blue-600 text-white border-blue-800' : 'bg-white text-stone-700 border-stone-400 hover:bg-stone-50'}`}><Zap className="w-3 h-3" /> Novidades</button>
+              <button onClick={() => toggleTag('vegetarian')} className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border transition-all whitespace-nowrap ${activeTags.includes('vegetarian') ? 'bg-green-600 text-white border-green-800' : 'bg-white text-stone-700 border-stone-400 hover:bg-stone-50'}`}><Leaf className="w-3 h-3" /> Vegetarianos</button>
+              <button onClick={() => toggleTag('spicy')} className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border transition-all whitespace-nowrap ${activeTags.includes('spicy') ? 'bg-red-600 text-white border-red-800' : 'bg-white text-stone-700 border-stone-400 hover:bg-stone-50'}`}><Flame className="w-3 h-3" /> Picantes</button>
            </div>
         </div>
 
@@ -719,7 +726,7 @@ function App() {
 
             return (
               <section key={category.id} id={`category-${category.id}`} className="scroll-mt-64">
-                <h2 className="text-2xl font-bold text-stone-800 dark:text-stone-100 mb-4 pl-2 border-l-4 border-italian-red flex items-center gap-2">
+                <h2 className="text-2xl font-bold mb-4 pl-2 border-l-4 border-italian-red flex items-center gap-2" style={{ color: 'var(--text-body)' }}>
                   {category.name}
                   {(searchTerm || activeTags.length > 0) && <span className="text-xs bg-italian-green text-white px-2 py-0.5 rounded-full font-normal">{category.items.length}</span>}
                 </h2>
@@ -751,7 +758,7 @@ function App() {
                       )}
                       {Object.entries(groupedItems).map(([sub, products]) => (
                          <div key={sub}>
-                            <h3 className="text-lg font-bold text-stone-600 dark:text-stone-400 mb-3 ml-1 flex items-center gap-2"><span className="w-1.5 h-1.5 bg-stone-400 rounded-full"></span>{sub}</h3>
+                            <h3 className="text-lg font-bold text-stone-800 dark:text-stone-300 mb-3 ml-1 flex items-center gap-2"><span className="w-1.5 h-1.5 bg-stone-500 rounded-full"></span>{sub}</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                {products.map((product) => (
                                  <ProductCard key={product.id} product={product} onAddToCart={addToCart} allowHalfHalf={isPizzaCategory} onOpenPizzaBuilder={(p) => openPizzaBuilder(category.id, p)} currencySymbol={storeSettings.currencySymbol} />
@@ -775,9 +782,9 @@ function App() {
             );
           })}
           {displayCategories.length === 0 && (
-             <div className="bg-stone-50 border border-stone-200 rounded-lg p-8 text-center dark:bg-stone-800 dark:border-stone-700">
-                <p className="text-stone-500 font-medium dark:text-stone-400 text-lg">Nenhum produto encontrado.</p>
-                <p className="text-sm text-stone-400 mt-2">Tente buscar por outro termo ou remova os filtros.</p>
+             <div className="bg-stone-100 border border-stone-300 rounded-lg p-8 text-center dark:bg-stone-800 dark:border-stone-700">
+                <p className="text-stone-600 font-medium dark:text-stone-400 text-lg">Nenhum produto encontrado.</p>
+                <p className="text-sm text-stone-500 mt-2">Tente buscar por outro termo ou remova os filtros.</p>
              </div>
           )}
         </div>
@@ -786,8 +793,8 @@ function App() {
       <Footer onOpenAdmin={() => setView('admin')} settings={storeSettings} />
       
       {storeSettings.enableGuide && (
-         <div className="fixed bottom-24 left-4 md:bottom-8 md:left-8 z-30">
-             <button onClick={restartGuide} className="bg-white text-italian-green p-2 rounded-full shadow-lg border border-stone-200 hover:scale-105 transition-transform" title="Ajuda"><HelpCircle className="w-6 h-6" /></button>
+         <div className="fixed bottom-24 left-4 md:bottom-8 md:left-8 z-[60]">
+             <button onClick={restartGuide} className="bg-white text-italian-green p-2 rounded-full shadow-lg border border-stone-300 hover:scale-105 transition-transform" title="Ajuda"><HelpCircle className="w-6 h-6" /></button>
          </div>
       )}
 

@@ -1,6 +1,4 @@
 
-
-
 import React, { useState } from 'react';
 import { ShoppingBag, Moon, Sun, Phone, Info, Clock } from 'lucide-react';
 
@@ -56,7 +54,7 @@ export const Header: React.FC<HeaderProps> = ({
                <img 
                  src={logoUrl} 
                  alt={storeName} 
-                 className="h-[56px] w-auto object-contain py-1"
+                 className="h-[52px] w-auto object-contain py-1"
                  onError={() => setLogoError(true)}
                />
                {/* Status Indicator for Logo Mode */}
@@ -71,13 +69,13 @@ export const Header: React.FC<HeaderProps> = ({
              </div>
           ) : (
             <div className="flex items-center gap-2 animate-in fade-in">
-               <div className="bg-white/10 p-1 rounded-full border-2 border-white/20 shrink-0">
-                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8">
+               <div className="bg-white/10 p-1.5 rounded-full border-2 border-white/20 shrink-0">
+                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
                     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
                   </svg>
                </div>
                <div className="flex flex-col justify-center">
-                  <h1 className="font-display text-lg sm:text-2xl leading-none break-words max-w-[200px] sm:max-w-xs">{storeName}</h1>
+                  <h1 className="font-display text-lg sm:text-xl leading-none break-words max-w-[180px] sm:max-w-xs">{storeName}</h1>
                   {/* Status Indicator for Text Mode */}
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <span className={`w-2 h-2 rounded-full ${isOpenNow ? 'bg-green-400 shadow-[0_0_5px_rgba(74,222,128,0.8)]' : 'bg-red-400'}`} />
@@ -91,7 +89,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Actions Section */}
-        <div className="flex items-center gap-1 md:gap-3">
+        <div className="flex items-center gap-2">
           
           {/* Contact Buttons (Desktop: Text+Icon, Mobile: Icon only) */}
           <div id="tour-contacts" className="hidden md:flex items-center gap-2 mr-2 border-r border-white/20 pr-4">

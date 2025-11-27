@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Category, Product, StoreSettings, ProductOption, ProductChoice, Order, Coupon, DeliveryRegion, WeeklySchedule, Table } from '../types';
-import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Ticket, QrCode, Clock, CreditCard, LayoutDashboard, ShoppingBag, Palette, Phone, Share2, Calendar, Printer, Filter, ChevronDown, ChevronUp, AlertTriangle, User, Truck, Utensils, Minus, Type, Ban, Wifi, WifiOff, Loader2, Database } from 'lucide-react';
+import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Ticket, QrCode, Clock, CreditCard, LayoutDashboard, ShoppingBag, Palette, Phone, Share2, Calendar, Printer, Filter, ChevronDown, ChevronUp, AlertTriangle, User, Truck, Utensils, Minus, Type, Ban, Wifi, WifiOff, Loader2, Database, Globe, DollarSign } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 interface AdminPanelProps {
@@ -56,7 +55,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   
   // Dashboard State
   const [orders, setOrders] = useState<Order[]>([]);
-  const [dashboardPeriod, setDashboardPeriod] = useState<'today' | 'week' | 'month' | 'all'>('today');
+  const [dashboardPeriod, setDashboardPeriod] = useState<'today' | 'week' | 'month' | 'all' | 'custom'>('today');
   
   // Order Management State
   const [orderFilter, setOrderFilter] = useState<string>('all');
@@ -78,6 +77,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     category: menuData[0]?.id || '',
     image: '', price: 0, subcategory: '', ingredients: [], tags: [], additional_categories: []
   });
+
+  const currentOptions = isAddingNew ? (newProductForm.options || []) : (editForm.options || []);
 
   // Category State
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -202,7 +203,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setIsUpdatingOrder(null);
   };
 
-  // ... PRINT LOGIC (Same as before) ...
   const handlePrintOrder = (order: Order) => {
     const win = window.open('', '_blank');
     if (!win) return;
@@ -414,7 +414,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           await onUpdateSettings(settingsForm); 
           alert('Configurações salvas com sucesso!'); 
       } catch (e: any) {
-          alert('Erro ao salvar configurações: ' + e.message);
+          console.error('Settings save error:', e);
+          let msg = 'Erro desconhecido';
+          if (e?.message) msg = e.message;
+          else if (e?.error_description) msg = e.error_description;
+          else if (typeof e === 'string') msg = e;
+          else if (typeof e === 'object') {
+            try {
+              msg = JSON.stringify(e);
+              if (msg === '{}') msg = String(e);
+            } catch (err) {
+              msg = String(e);
+            }
+          }
+          alert('Erro ao salvar configurações: ' + msg);
       } finally {
           setIsSavingSettings(false);
       }
@@ -482,21 +495,51 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-stone-100 flex items-center justify-center p-4">
-        <form onSubmit={handleLogin} className="bg-white p-8 rounded-xl shadow-lg w-full max-w-sm border border-stone-200">
-          <h2 className="text-2xl font-bold mb-6 text-center text-stone-800">Acesso Administrativo</h2>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className={INPUT_STYLE} placeholder="Senha do Administrador" />
-          <button className="bg-italian-red text-white w-full py-3 rounded-lg font-bold hover:bg-red-700 transition-colors mt-4">Entrar no Sistema</button>
-        </form>
+        <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+          <div className="flex justify-center mb-6">
+            <div className="bg-stone-100 p-4 rounded-full">
+              <Settings className="w-10 h-10 text-stone-600" />
+            </div>
+          </div>
+          <h2 className="text-2xl font-bold text-center mb-2">Área Administrativa</h2>
+          <p className="text-stone-500 text-center mb-6 text-sm">Digite a senha para gerenciar o sistema</p>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-sm font-bold text-stone-700 mb-1">Senha de Acesso</label>
+              <input 
+                type="password" 
+                value={password} 
+                onChange={(e) => setPassword(e.target.value)} 
+                className="w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-italian-red focus:border-italian-red outline-none"
+                placeholder="••••••••"
+                autoFocus
+              />
+            </div>
+            <button 
+              type="submit" 
+              className="w-full bg-stone-900 text-white py-3 rounded-lg font-bold hover:bg-stone-800 transition-colors"
+            >
+              Entrar
+            </button>
+            <button 
+              type="button" 
+              onClick={onBack}
+              className="w-full bg-transparent text-stone-500 py-3 rounded-lg font-bold hover:text-stone-700 transition-colors"
+            >
+              Voltar ao Cardápio
+            </button>
+          </form>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-stone-50 pb-20 text-stone-800 font-sans">
+      {/* Header */}
       <header className="bg-white border-b border-stone-200 sticky top-0 z-30 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 pt-4">
           
-          {/* Database Error Warning */}
           {dbError && (
              <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded shadow-sm animate-in fade-in slide-in-from-top">
                 <div className="flex items-center gap-2 font-bold"><Database className="w-5 h-5"/> ATENÇÃO: Banco de Dados Não Configurado</div>
@@ -533,7 +576,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
-        {/* ... Dashboard, Orders, Menu, Coupons, Tables sections remain same ... */}
+        
         {activeTab === 'dashboard' && (
            <div className="space-y-6 animate-in fade-in">
               <div className="flex flex-col md:flex-row justify-end gap-2 mb-4">
@@ -594,7 +637,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
         {activeTab === 'orders' && (
            <div className="animate-in fade-in space-y-4">
-              {/* ... Order content ... */}
               <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-stone-200">
                  <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-4">
@@ -612,7 +654,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         {(orderFilterStart || orderFilterEnd) && <button onClick={() => { setOrderFilterStart(''); setOrderFilterEnd(''); }} className="text-red-500 text-xs hover:underline">Limpar</button>}
                     </div>
                  </div>
-                 {/* ... rest of order header ... */}
                  {orderViewMode === 'list' && (
                     <div className="flex gap-2 mt-3 md:mt-0 overflow-x-auto w-full md:w-auto pb-1 hide-scrollbar">
                         {['all', 'pending', 'preparing', 'delivery', 'completed'].map(status => (
@@ -624,7 +665,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                  )}
               </div>
               
-              {/* ... Order Lists ... (Rendering remains same) */}
               {orderViewMode === 'list' ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {orders.filter(o => {
@@ -639,7 +679,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         return matchesStatus && matchesDate;
                     }).map(order => (
                         <div key={order.id} className="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden flex flex-col hover:shadow-md transition-shadow">
-                        {/* ... Order Card Content ... */}
                         <div className="p-4 flex justify-between items-start border-b border-stone-100 bg-white">
                             <div>
                                 <div className="flex items-center gap-2">
@@ -708,8 +747,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     ))}
                   </div>
               ) : (
+                  // Dining View (Tables)
                   <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                      {/* ... Table View ... */}
                       {tables.map(table => {
                           const activeOrders = orders.filter(o => o.delivery_type === 'table' && o.table_number === table.number && o.status !== 'completed' && o.status !== 'cancelled');
                           return (
@@ -749,7 +788,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       })}
                   </div>
               )}
-              {/* ... Edit Order Modal ... */}
               {editingOrder && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                   <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 flex flex-col">
@@ -758,7 +796,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         <button onClick={() => setEditingOrder(null)} className="p-2 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-full transition-colors"><X className="w-5 h-5"/></button>
                      </div>
                      <div className="p-6 space-y-6 bg-stone-50 flex-1 overflow-y-auto">
-                        {/* ... Items List in Edit Modal ... */}
                         <div className="space-y-3">
                            <h3 className="font-bold text-stone-800 text-sm uppercase tracking-wider">Itens do Pedido</h3>
                            {orderEditForm.items.map((item, idx) => (
@@ -791,40 +828,391 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
            </div>
         )}
 
-        {/* ... Rest of Tabs (Menu, Coupons, Tables, Settings) ... */}
-        {/* Included only Settings tab change below for brevity, assume other tabs render same */}
-        {activeTab === 'menu' && (/* ... same ... */ <div className="space-y-6 animate-in fade-in">{/* ... content ... */}</div>)}
-        {activeTab === 'coupons' && (/* ... same ... */ <div className={CARD_STYLE}>{/* ... content ... */}</div>)}
-        {activeTab === 'tables' && (/* ... same ... */ <div className={CARD_STYLE}>{/* ... content ... */}</div>)}
+        {activeTab === 'menu' && (
+           <div className="space-y-6 animate-in fade-in">
+              {!isAddingNew && !editingProduct ? (
+                 <>
+                    <div className="flex justify-between items-center mb-4">
+                       <h2 className="text-xl font-bold text-stone-800">Categorias e Produtos</h2>
+                       <button onClick={() => setIsAddingNew(true)} className="bg-italian-green text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700 flex items-center gap-2"><Plus className="w-5 h-5" /> Novo Produto</button>
+                    </div>
+                    <div className="space-y-4">
+                       {menuData.map(category => (
+                          <div key={category.id} className="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden">
+                             <div className="p-4 bg-stone-50 flex justify-between items-center cursor-pointer" onClick={() => setExpandedCategory(expandedCategory === category.id ? null : category.id)}>
+                                <div className="flex items-center gap-3">
+                                   {category.image && <img src={category.image} className="w-10 h-10 rounded object-cover" />}
+                                   <h3 className="font-bold text-lg text-stone-800">{category.name} ({category.items.length})</h3>
+                                </div>
+                                {expandedCategory === category.id ? <ChevronUp className="w-5 h-5 text-stone-400" /> : <ChevronDown className="w-5 h-5 text-stone-400" />}
+                             </div>
+                             {expandedCategory === category.id && (
+                                <div className="p-4 border-t border-stone-100">
+                                   <div className="grid grid-cols-1 gap-2">
+                                      {category.items.map(product => (
+                                         <div key={product.id} className="flex justify-between items-center p-3 border-2 border-stone-300 rounded-lg hover:bg-stone-50">
+                                            <div className="flex items-center gap-3">
+                                               {product.image && <img src={product.image} className="w-10 h-10 rounded object-cover" />}
+                                               <div>
+                                                  <p className="font-bold text-stone-800">{product.name}</p>
+                                                  <p className="text-xs text-stone-500">{settings.currencySymbol} {product.price.toFixed(2)}</p>
+                                               </div>
+                                            </div>
+                                            <div className="flex gap-2">
+                                               <button onClick={() => startEditing(product)} className="p-2 bg-stone-100 text-stone-600 rounded-lg hover:bg-stone-200"><Edit3 className="w-4 h-4" /></button>
+                                               <button onClick={() => { if(window.confirm('Excluir produto?')) onDeleteProduct(category.id, product.id); }} className="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100"><Trash2 className="w-4 h-4" /></button>
+                                            </div>
+                                         </div>
+                                      ))}
+                                   </div>
+                                </div>
+                             )}
+                          </div>
+                       ))}
+                    </div>
+                 </>
+              ) : (
+                 <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                    <div className="flex justify-between items-center mb-6">
+                       <h2 className="text-xl font-bold">{isAddingNew ? 'Novo Produto' : 'Editar Produto'}</h2>
+                       <button onClick={() => { setIsAddingNew(false); setEditingProduct(null); }} className="text-stone-500 hover:text-stone-800"><X className="w-6 h-6" /></button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                       <div><label className={LABEL_STYLE}>Nome</label><input value={isAddingNew ? newProductForm.name : editForm.name} onChange={e => isAddingNew ? setNewProductForm({...newProductForm, name: e.target.value}) : setEditForm({...editForm, name: e.target.value})} className={INPUT_STYLE} /></div>
+                       <div><label className={LABEL_STYLE}>Preço</label><input type="number" value={isAddingNew ? newProductForm.price : editForm.price} onChange={e => isAddingNew ? setNewProductForm({...newProductForm, price: parseFloat(e.target.value)}) : setEditForm({...editForm, price: parseFloat(e.target.value)})} className={INPUT_STYLE} /></div>
+                       <div className="col-span-1 md:col-span-2"><label className={LABEL_STYLE}>Descrição</label><textarea value={isAddingNew ? newProductForm.description : editForm.description} onChange={e => isAddingNew ? setNewProductForm({...newProductForm, description: e.target.value}) : setEditForm({...editForm, description: e.target.value})} className={INPUT_STYLE} rows={3} /></div>
+                       
+                       {/* Image Upload */}
+                       <div className="col-span-1 md:col-span-2">
+                          <div className="flex items-center gap-4 bg-stone-50 p-3 rounded-lg border border-stone-200">
+                             <div className="shrink-0">
+                                <input type="file" accept="image/*" onChange={e => handleImageUpload(e, isAddingNew)} className="hidden" id="product-image-upload" />
+                                <label htmlFor="product-image-upload" className="w-24 h-24 bg-stone-200 rounded-lg flex items-center justify-center cursor-pointer hover:bg-stone-300 transition-colors overflow-hidden relative">
+                                   {(isAddingNew ? newProductForm.image : editForm.image) ? (
+                                      <img src={isAddingNew ? newProductForm.image : editForm.image} className="w-full h-full object-cover" />
+                                   ) : (
+                                      <ImageIcon className="w-8 h-8 text-stone-400" />
+                                   )}
+                                   {isProcessingImage && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-white"/></div>}
+                                </label>
+                             </div>
+                             <div>
+                                <p className="font-bold text-sm">Imagem do Produto</p>
+                                <p className="text-xs text-stone-500">Clique no quadrado para alterar.</p>
+                                <p className="text-xs text-stone-400 mt-1">Recomendado: 800x800px (Quadrado)</p>
+                             </div>
+                          </div>
+                       </div>
 
-        {activeTab === 'settings' && (
-           <div className="space-y-8 animate-in fade-in">
-              {/* ... General Info, Visual, Delivery, Hours, SEO cards ... */}
-              {/* All other cards logic remains same, just ensure handleSaveSettings is hooked up correctly */}
-              
-              {/* ... General Card ... */}
-              <div className={CARD_STYLE}><div className="flex items-center gap-3 mb-6 pb-4 border-b border-stone-100"><div className="bg-blue-100 p-2 rounded-lg text-blue-600"><Settings className="w-6 h-6"/></div><div><h2 className="text-xl font-bold text-stone-900">Informações Gerais</h2><p className="text-sm text-stone-500">Endereço, Contato e Moeda</p></div></div><div className="space-y-6"><div className="grid grid-cols-1 md:grid-cols-2 gap-6"><div><label className={LABEL_STYLE}>Nome da Loja</label><input type="text" value={settingsForm.name || ''} onChange={e => setSettingsForm({...settingsForm, name: e.target.value})} className={INPUT_STYLE} /></div><div><label className={LABEL_STYLE}>WhatsApp Principal (Somente números)</label><input type="text" value={settingsForm.whatsapp || ''} onChange={e => setSettingsForm({...settingsForm, whatsapp: e.target.value})} className={INPUT_STYLE} /></div></div><div className="flex items-center gap-4 bg-stone-50 p-3 rounded-lg border border-stone-200"><div className="shrink-0"><input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" id="logo-upload" /><label htmlFor="logo-upload" className="cursor-pointer block relative w-20 h-20 bg-white rounded-full overflow-hidden border border-stone-300 hover:border-italian-red transition-colors group">{isProcessingLogo ? <div className="absolute inset-0 flex items-center justify-center"><RefreshCw className="w-5 h-5 animate-spin text-stone-400"/></div> : (settingsForm.logoUrl ? (<img src={settingsForm.logoUrl} className="w-full h-full object-cover" />) : (<div className="absolute inset-0 flex flex-col items-center justify-center text-stone-400 group-hover:text-italian-red"><ImageIcon className="w-6 h-6" /></div>))}</label></div><div><label className={LABEL_STYLE}>Logotipo da Loja</label><p className="text-sm text-stone-500">Recomendado: <strong>500x500px</strong> (Quadrado/Redondo)</p></div></div><div><label className={LABEL_STYLE}>Endereço Completo</label><input type="text" value={settingsForm.address || ''} onChange={e => setSettingsForm({...settingsForm, address: e.target.value})} className={INPUT_STYLE} placeholder="Rua, Número, Bairro, Cidade" /></div><div><label className={LABEL_STYLE}>Telefones Adicionais</label><div className="flex flex-wrap gap-2 mb-2">{settingsForm.phones.map((p, idx) => (<span key={idx} className="bg-stone-100 text-stone-700 px-3 py-1 rounded-full text-sm flex items-center gap-2 border border-stone-200"><Phone className="w-3 h-3"/> {p}<button onClick={() => handleRemovePhone(idx)} className="text-red-500 hover:text-red-700"><X className="w-3 h-3"/></button></span>))}</div><div className="flex gap-2"><input value={newPhone} onChange={e => setNewPhone(e.target.value)} placeholder="Adicionar telefone..." className={`${INPUT_STYLE} max-w-xs`} /><button onClick={handleAddPhone} className="bg-stone-800 text-white px-4 rounded-lg font-bold">Add</button></div></div><div className="grid grid-cols-1 md:grid-cols-2 gap-6"><div><label className={LABEL_STYLE}>Símbolo da Moeda</label><input type="text" value={settingsForm.currencySymbol || 'R$'} onChange={e => setSettingsForm({...settingsForm, currencySymbol: e.target.value})} className={INPUT_STYLE} /></div></div></div></div>
-              {/* ... Visual Card ... */}
-              <div className={CARD_STYLE}><div className="flex items-center gap-3 mb-6 pb-4 border-b border-stone-100"><div className="bg-purple-100 p-2 rounded-lg text-purple-600"><Palette className="w-6 h-6"/></div><div><h2 className="text-xl font-bold text-stone-900">Visual e Cores</h2><p className="text-sm text-stone-500">Personalize a aparência do seu cardápio</p></div></div><div className="grid grid-cols-1 md:grid-cols-2 gap-6"><div><label className={LABEL_STYLE}>Fonte do Sistema</label><select value={settingsForm.fontFamily || 'Outfit'} onChange={e => setSettingsForm({...settingsForm, fontFamily: e.target.value})} className={INPUT_STYLE}>{FONTS_LIST.map(f => <option key={f} value={f} style={{fontFamily: f}}>{f}</option>)}</select></div><div className="col-span-1 md:col-span-2 grid grid-cols-2 md:grid-cols-4 gap-4"><div><label className={LABEL_STYLE}>Cor Principal</label><div className="flex items-center gap-2"><input type="color" value={settingsForm.colors?.primary || '#C8102E'} onChange={e => setSettingsForm({...settingsForm, colors:{...settingsForm.colors!, primary: e.target.value}})} className="h-10 w-10 rounded cursor-pointer border border-stone-300"/><span className="text-xs font-mono bg-stone-100 px-2 py-1 rounded">{settingsForm.colors?.primary}</span></div></div><div><label className={LABEL_STYLE}>Cor Secundária</label><div className="flex items-center gap-2"><input type="color" value={settingsForm.colors?.secondary || '#008C45'} onChange={e => setSettingsForm({...settingsForm, colors:{...settingsForm.colors!, secondary: e.target.value}})} className="h-10 w-10 rounded cursor-pointer border border-stone-300"/><span className="text-xs font-mono bg-stone-100 px-2 py-1 rounded">{settingsForm.colors?.secondary}</span></div></div><div><label className={LABEL_STYLE}>Fundo do Cabeçalho</label><div className="flex items-center gap-2"><input type="color" value={settingsForm.colors?.headerBackground || settingsForm.colors?.primary || '#C8102E'} onChange={e => setSettingsForm({...settingsForm, colors:{...settingsForm.colors!, headerBackground: e.target.value}})} className="h-10 w-10 rounded cursor-pointer border border-stone-300"/><span className="text-xs font-mono bg-stone-100 px-2 py-1 rounded">{settingsForm.colors?.headerBackground}</span></div></div><div><label className={LABEL_STYLE}>Texto do Cabeçalho</label><div className="flex items-center gap-2"><input type="color" value={settingsForm.colors?.headerText || '#FFFFFF'} onChange={e => setSettingsForm({...settingsForm, colors:{...settingsForm.colors!, headerText: e.target.value}})} className="h-10 w-10 rounded cursor-pointer border border-stone-300"/><span className="text-xs font-mono bg-stone-100 px-2 py-1 rounded">{settingsForm.colors?.headerText}</span></div></div></div></div></div>
-              {/* ... Delivery Card ... */}
-              <div className={CARD_STYLE}><div className="flex items-center gap-3 mb-6 pb-4 border-b border-stone-100"><div className="bg-green-100 p-2 rounded-lg text-green-600"><Truck className="w-6 h-6"/></div><div><h2 className="text-xl font-bold text-stone-900">Entrega e Taxas</h2><p className="text-sm text-stone-500">Gerencie regiões e custos de envio</p></div></div><div className="mb-6 p-4 bg-stone-50 rounded-lg border border-stone-200"><h4 className="font-bold text-stone-800 mb-3">Adicionar Nova Região</h4><div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4"><input placeholder="Nome (Ex: Centro)" value={newRegionName} onChange={e => setNewRegionName(e.target.value)} className={INPUT_STYLE} /><input placeholder="Preço da Taxa (Ex: 5.00)" type="number" value={newRegionPrice} onChange={e => setNewRegionPrice(e.target.value)} className={INPUT_STYLE} /><input placeholder="Faixas de CEP (Ex: 13295-000, 13295...)" value={newRegionZips} onChange={e => setNewRegionZips(e.target.value)} className={INPUT_STYLE} /><input placeholder="Bairros (Ex: Centro, Jardim Alvorada)" value={newRegionNeighborhoods} onChange={e => setNewRegionNeighborhoods(e.target.value)} className={INPUT_STYLE} /></div><button onClick={handleAddRegion} className="bg-stone-800 text-white px-4 py-2 rounded-lg font-bold text-sm">Adicionar Região</button></div><div className="space-y-3">{settingsForm.deliveryRegions?.map(region => (<div key={region.id} className="flex justify-between items-center p-3 border border-stone-200 rounded-lg hover:bg-stone-50"><div><p className="font-bold text-stone-800">{region.name}</p><p className="text-xs text-stone-500">{region.neighborhoods?.join(', ')} {region.zipRules && region.zipRules.length > 0 && ` | CEPs: ${region.zipRules.join(', ')}`}</p></div><div className="flex items-center gap-4"><span className="font-bold text-green-600">{settings.currencySymbol} {region.price.toFixed(2)}</span><button onClick={() => handleRemoveRegion(region.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-full"><Trash2 className="w-4 h-4"/></button></div></div>))}</div></div>
-              {/* ... Hours Card ... */}
-              <div className={CARD_STYLE}><div className="flex items-center gap-3 mb-6 pb-4 border-b border-stone-100"><div className="bg-orange-100 p-2 rounded-lg text-orange-600"><Clock className="w-6 h-6"/></div><div><h2 className="text-xl font-bold text-stone-900">Horários de Funcionamento</h2><p className="text-sm text-stone-500">Configure quando sua loja está aberta</p></div></div><div className="space-y-4">{Object.keys(WEEKDAYS_PT).map((dayKey) => { const schedule = settingsForm.schedule || {} as WeeklySchedule; const dayData = schedule[dayKey as keyof WeeklySchedule] || { isOpen: false, intervals: [] }; return (<div key={dayKey} className="border border-stone-200 p-4 rounded-xl flex flex-col gap-3 bg-white hover:bg-stone-50 transition-colors"><div className="flex justify-between items-center"><span className="font-bold text-stone-700">{WEEKDAYS_PT[dayKey as keyof typeof WEEKDAYS_PT]}</span><label className="flex items-center gap-2 cursor-pointer"><span className="text-sm text-stone-500">{dayData.isOpen ? 'Aberto' : 'Fechado'}</span><input type="checkbox" className="w-5 h-5 accent-italian-green" checked={dayData.isOpen} onChange={(e) => { const newSchedule = { ...schedule }; newSchedule[dayKey as keyof WeeklySchedule] = { ...dayData, isOpen: e.target.checked }; setSettingsForm({ ...settingsForm, schedule: newSchedule }); }} /></label></div>{dayData.isOpen && (<div className="space-y-2 pl-4 border-l-2 border-stone-200">{dayData.intervals.map((int, i) => (<div key={i} className="flex gap-2 text-sm items-center"><input type="time" value={int.start} onChange={e => { const newInts = [...dayData.intervals]; newInts[i].start = e.target.value; const newSchedule = {...schedule}; newSchedule[dayKey as keyof WeeklySchedule] = {...dayData, intervals: newInts}; setSettingsForm({...settingsForm, schedule: newSchedule}); }} className="border p-2 rounded bg-white border-stone-300" /><span className="text-stone-400">até</span><input type="time" value={int.end} onChange={e => { const newInts = [...dayData.intervals]; newInts[i].end = e.target.value; const newSchedule = {...schedule}; newSchedule[dayKey as keyof WeeklySchedule] = {...dayData, intervals: newInts}; setSettingsForm({...settingsForm, schedule: newSchedule}); }} className="border p-2 rounded bg-white border-stone-300" /></div>))}<button onClick={() => { const newInts = [...dayData.intervals, {start:'18:00', end:'23:00'}]; const newSchedule = {...schedule}; newSchedule[dayKey as keyof WeeklySchedule] = {...dayData, intervals: newInts}; setSettingsForm({...settingsForm, schedule: newSchedule}); }} className="text-xs text-blue-600 font-bold mt-1">+ Adicionar Turno</button></div>)}</div>)})}</div></div>
-              {/* ... SEO Card ... */}
-              <div className={CARD_STYLE}><div className="flex items-center gap-3 mb-6 pb-4 border-b border-stone-100"><div className="bg-indigo-100 p-2 rounded-lg text-indigo-600"><Share2 className="w-6 h-6"/></div><div><h2 className="text-xl font-bold text-stone-900">SEO & Compartilhamento</h2><p className="text-sm text-stone-500">Como seu link aparece no WhatsApp e Google</p></div></div><div className="space-y-6"><div><label className={LABEL_STYLE}>Título da Página</label><input value={settingsForm.seoTitle || ''} onChange={e => setSettingsForm({...settingsForm, seoTitle: e.target.value})} className={INPUT_STYLE} placeholder="Ex: Pizzaria do João - A Melhor da Cidade" /></div><div><label className={LABEL_STYLE}>Descrição Curta</label><textarea value={settingsForm.seoDescription || ''} onChange={e => setSettingsForm({...settingsForm, seoDescription: e.target.value})} className={`${INPUT_STYLE} h-24 resize-none`} placeholder="Descrição que aparece ao compartilhar o link..." /></div><div className="flex items-center gap-4 bg-stone-50 p-3 rounded-lg border border-stone-200"><div className="shrink-0"><input type="file" accept="image/*" onChange={handleBannerUpload} className="hidden" id="banner-upload" /><label htmlFor="banner-upload" className="cursor-pointer block relative w-40 h-24 bg-white rounded-lg overflow-hidden border border-stone-300 hover:border-italian-red transition-colors group">{isProcessingBanner ? <div className="absolute inset-0 flex items-center justify-center"><RefreshCw className="w-6 h-6 animate-spin text-stone-400"/></div> : (settingsForm.seoBannerUrl ? (<img src={settingsForm.seoBannerUrl} className="w-full h-full object-cover" />) : (<div className="absolute inset-0 flex flex-col items-center justify-center text-stone-400 group-hover:text-italian-red"><ImageIcon className="w-8 h-8" /></div>))}</label></div><div><label className={LABEL_STYLE}>Imagem de Compartilhamento</label><p className="text-sm text-stone-500">Recomendado: <strong>1200x630px</strong> (Horizontal)</p></div></div></div></div>
-              
-              <div className="sticky bottom-4 z-20 pb-8">
-                  <button 
-                      onClick={handleSaveSettings} 
-                      disabled={isSavingSettings}
-                      className="bg-green-600 text-white w-full py-4 rounded-xl font-bold hover:bg-green-700 shadow-xl text-lg flex items-center justify-center gap-2 transform active:scale-95 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
-                  >
-                      {isSavingSettings ? <Loader2 className="w-6 h-6 animate-spin" /> : <Save className="w-6 h-6" />}
-                      {isSavingSettings ? 'Salvando...' : 'Salvar Todas Configurações'}
-                  </button>
+                       <div><label className={LABEL_STYLE}>Código (Opcional)</label><input value={isAddingNew ? newProductForm.code : editForm.code} onChange={e => isAddingNew ? setNewProductForm({...newProductForm, code: e.target.value}) : setEditForm({...editForm, code: e.target.value})} className={INPUT_STYLE} placeholder="Ex: 901" /></div>
+                       <div><label className={LABEL_STYLE}>Categoria Principal</label><select value={isAddingNew ? newProductForm.category : editForm.category_id} onChange={e => isAddingNew ? setNewProductForm({...newProductForm, category: e.target.value}) : setEditForm({...editForm, category_id: e.target.value})} className={INPUT_STYLE}>{menuData.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
+                       
+                       <div className="col-span-1 md:col-span-2">
+                          <label className={LABEL_STYLE}>Categorias Adicionais</label>
+                          <div className="flex flex-wrap gap-2">
+                             {menuData.map(c => (
+                                <button key={c.id} onClick={() => toggleAdditionalCategory(c.id, isAddingNew)} className={`px-3 py-1 rounded-full text-xs border ${((isAddingNew ? newProductForm.additional_categories : editForm.additional_categories) || []).includes(c.id) ? 'bg-italian-red text-white border-italian-red' : 'bg-white text-stone-600 border-stone-200'}`}>{c.name}</button>
+                             ))}
+                          </div>
+                       </div>
+
+                       {/* Options Builder */}
+                       <div className="col-span-1 md:col-span-2 border-t border-stone-200 pt-6 mt-2">
+                          <h3 className="font-bold text-lg mb-4">Opções e Adicionais</h3>
+                          <div className="space-y-4">
+                             {currentOptions.map(option => (
+                                <div key={option.id} className="bg-stone-50 p-4 rounded-lg border border-stone-200">
+                                   <div className="flex justify-between items-center mb-3">
+                                      <h4 className="font-bold text-stone-800">{option.name} ({option.type === 'single' ? 'Escolha Única' : 'Múltipla Escolha'})</h4>
+                                      <button onClick={() => removeOptionFromForm(option.id, isAddingNew)} className="text-red-500 hover:text-red-700"><Trash2 className="w-4 h-4"/></button>
+                                   </div>
+                                   <div className="space-y-2 pl-4 border-l-2 border-stone-200">
+                                      {option.choices.map((choice, idx) => (
+                                         <div key={idx} className="flex justify-between text-sm bg-white p-2 rounded border border-stone-100">
+                                            <span>{choice.name}</span>
+                                            <div className="flex items-center gap-2">
+                                               <span className="font-mono text-stone-500">+ {settings.currencySymbol} {choice.price.toFixed(2)}</span>
+                                               <button onClick={() => removeChoiceFromOption(option.id, idx, isAddingNew)} className="text-red-400 hover:text-red-600"><X className="w-3 h-3"/></button>
+                                            </div>
+                                         </div>
+                                      ))}
+                                      <div className="flex gap-2 pt-2">
+                                         <input id={`new-choice-name-${option.id}`} placeholder="Nome da opção" className="flex-1 p-1.5 text-xs border rounded" />
+                                         <input id={`new-choice-price-${option.id}`} type="number" placeholder="Preço" className="w-20 p-1.5 text-xs border rounded" />
+                                         <button onClick={() => {
+                                            const nameInput = document.getElementById(`new-choice-name-${option.id}`) as HTMLInputElement;
+                                            const priceInput = document.getElementById(`new-choice-price-${option.id}`) as HTMLInputElement;
+                                            addChoiceToOption(option.id, nameInput.value, priceInput.value, isAddingNew);
+                                            nameInput.value = ''; priceInput.value = '';
+                                         }} className="bg-blue-50 text-blue-600 px-3 rounded text-xs font-bold hover:bg-blue-100">Add</button>
+                                      </div>
+                                   </div>
+                                </div>
+                             ))}
+                             <div className="flex gap-3 items-center bg-stone-100 p-3 rounded-lg border border-stone-200">
+                                <input value={newOptionName} onChange={e => setNewOptionName(e.target.value)} placeholder="Nova Categoria de Opção (ex: Borda)" className="flex-1 p-2 text-sm border rounded" />
+                                <select value={newOptionType} onChange={e => setNewOptionType(e.target.value as any)} className="p-2 text-sm border rounded">
+                                   <option value="single">Escolha Única (Radio)</option>
+                                   <option value="multiple">Múltipla Escolha (Checkbox)</option>
+                                </select>
+                                <button onClick={() => addOptionToForm(isAddingNew)} className="bg-stone-800 text-white px-4 py-2 rounded text-sm font-bold hover:bg-stone-700">Criar</button>
+                             </div>
+                          </div>
+                       </div>
+                    </div>
+                    <div className="mt-8 flex justify-end gap-3 pt-6 border-t border-stone-100">
+                       <button onClick={() => { setIsAddingNew(false); setEditingProduct(null); }} className="px-6 py-2 rounded-lg border border-stone-300 text-stone-600 hover:bg-stone-50 font-bold">Cancelar</button>
+                       <button onClick={isAddingNew ? handleAddNewProduct : saveEdit} className="px-6 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 font-bold shadow-sm flex items-center gap-2"><Save className="w-4 h-4" /> Salvar Produto</button>
+                    </div>
+                 </div>
+              )}
+           </div>
+        )}
+
+        {activeTab === 'coupons' && (
+           <div className="space-y-6 animate-in fade-in">
+              <div className={CARD_STYLE}>
+                 <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><Plus className="w-5 h-5"/> {editingCouponId ? 'Editar Cupom' : 'Criar Novo Cupom'}</h3>
+                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div><label className={LABEL_STYLE}>Código</label><input value={couponForm.code || ''} onChange={e => setCouponForm({...couponForm, code: e.target.value.toUpperCase()})} className={INPUT_STYLE} placeholder="Ex: BEMVINDO10" /></div>
+                    <div><label className={LABEL_STYLE}>Tipo</label><select value={couponForm.type} onChange={e => setCouponForm({...couponForm, type: e.target.value as any})} className={INPUT_STYLE}><option value="percent">Porcentagem (%)</option><option value="fixed">Valor Fixo ({settings.currencySymbol})</option><option value="free_shipping">Frete Grátis</option></select></div>
+                    <div><label className={LABEL_STYLE}>Valor</label><input type="number" value={couponForm.discount_value || ''} onChange={e => setCouponForm({...couponForm, discount_value: parseFloat(e.target.value)})} className={INPUT_STYLE} placeholder="0.00" disabled={couponForm.type === 'free_shipping'} /></div>
+                    <div className="flex gap-2">
+                       <button onClick={handleSaveCoupon} className="flex-1 bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700">{editingCouponId ? 'Atualizar' : 'Criar'}</button>
+                       {editingCouponId && <button onClick={cancelEditCoupon} className="px-3 bg-stone-200 rounded-lg hover:bg-stone-300">Cancelar</button>}
+                    </div>
+                 </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                 {coupons.map(coupon => (
+                    <div key={coupon.id} className="bg-white p-4 rounded-xl shadow-sm border border-stone-200 flex justify-between items-start">
+                       <div>
+                          <div className="flex items-center gap-2 mb-1">
+                             <span className="font-bold text-lg text-stone-800">{coupon.code}</span>
+                             <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase font-bold ${coupon.active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{coupon.active ? 'Ativo' : 'Inativo'}</span>
+                          </div>
+                          <p className="text-sm text-stone-600">{coupon.type === 'free_shipping' ? 'Frete Grátis' : coupon.type === 'fixed' ? `Desconto de ${settings.currencySymbol} ${coupon.discount_value}` : `${coupon.discount_value}% OFF`}</p>
+                          {coupon.min_order_value && <p className="text-xs text-stone-400 mt-1">Mínimo: {settings.currencySymbol} {coupon.min_order_value}</p>}
+                       </div>
+                       <div className="flex gap-1">
+                          <button onClick={() => handleEditCoupon(coupon)} className="p-2 text-blue-500 hover:bg-blue-50 rounded"><Edit3 className="w-4 h-4"/></button>
+                          <button onClick={() => handleDeleteCoupon(coupon.id)} className="p-2 text-red-500 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4"/></button>
+                       </div>
+                    </div>
+                 ))}
               </div>
            </div>
         )}
+
+        {activeTab === 'tables' && (
+           <div className="space-y-6 animate-in fade-in">
+              <div className={CARD_STYLE}>
+                 <h3 className="font-bold text-lg mb-4">Adicionar Mesa</h3>
+                 <div className="flex gap-4">
+                    <input value={newTableNumber} onChange={e => setNewTableNumber(e.target.value)} className={INPUT_STYLE} placeholder="Número da Mesa (Ex: 10)" />
+                    <button onClick={handleAddTable} className="bg-green-600 text-white px-6 rounded-lg font-bold hover:bg-green-700">Adicionar</button>
+                 </div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                 {tables.map(table => (
+                    <div key={table.id} className="bg-white p-4 rounded-xl shadow-sm border border-stone-200 flex flex-col items-center text-center gap-3 relative group">
+                       <div className="w-12 h-12 bg-stone-100 rounded-full flex items-center justify-center font-bold text-xl text-stone-600">{table.number}</div>
+                       <button onClick={() => printQrCode(table.number)} className="text-xs flex items-center gap-1 text-blue-600 hover:underline"><QrCode className="w-3 h-3"/> Imprimir QR</button>
+                       <button onClick={() => handleDeleteTable(table.id)} className="absolute top-2 right-2 text-stone-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><X className="w-4 h-4"/></button>
+                    </div>
+                 ))}
+              </div>
+           </div>
+        )}
+
+        {activeTab === 'settings' && (
+           <div className="space-y-6 animate-in fade-in">
+              
+              {/* General Settings */}
+              <div className={CARD_STYLE}>
+                 <h3 className="font-bold text-lg mb-6 flex items-center gap-2 border-b border-stone-100 pb-2"><Settings className="w-5 h-5"/> Informações Gerais</h3>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div><label className={LABEL_STYLE}>Nome da Loja</label><input value={settingsForm.name} onChange={e => setSettingsForm({...settingsForm, name: e.target.value})} className={INPUT_STYLE} /></div>
+                    <div><label className={LABEL_STYLE}>WhatsApp (Somente Números)</label><input value={settingsForm.whatsapp} onChange={e => setSettingsForm({...settingsForm, whatsapp: e.target.value})} className={INPUT_STYLE} /></div>
+                    <div className="col-span-1 md:col-span-2"><label className={LABEL_STYLE}>Endereço Completo</label><input value={settingsForm.address} onChange={e => setSettingsForm({...settingsForm, address: e.target.value})} className={INPUT_STYLE} /></div>
+                    
+                    {/* Logo Upload */}
+                    <div className="col-span-1">
+                       <label className={LABEL_STYLE}>Logo da Loja</label>
+                       <div className="flex items-center gap-4">
+                          <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" id="logo-upload" />
+                          <label htmlFor="logo-upload" className="w-20 h-20 bg-stone-100 border border-stone-300 rounded-lg flex items-center justify-center cursor-pointer hover:bg-stone-200 overflow-hidden relative">
+                             {settingsForm.logoUrl ? <img src={settingsForm.logoUrl} className="w-full h-full object-contain" /> : <ImageIcon className="w-6 h-6 text-stone-400" />}
+                             {isProcessingLogo && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><Loader2 className="w-5 h-5 animate-spin text-white"/></div>}
+                          </label>
+                          <div className="text-xs text-stone-500">Recomendado: 500x500px<br/>(Fundo Transparente)</div>
+                       </div>
+                    </div>
+
+                    <div className="col-span-1 md:col-span-2">
+                       <label className={LABEL_STYLE}>Telefones Adicionais</label>
+                       <div className="flex flex-wrap gap-2 mb-2">
+                          {settingsForm.phones.map((phone, idx) => (
+                             <span key={idx} className="bg-stone-100 border border-stone-200 px-3 py-1 rounded-full text-sm flex items-center gap-2">{phone} <button onClick={() => handleRemovePhone(idx)}><X className="w-3 h-3 text-stone-500 hover:text-red-500"/></button></span>
+                          ))}
+                       </div>
+                       <div className="flex gap-2"><input value={newPhone} onChange={e => setNewPhone(e.target.value)} className={INPUT_STYLE} placeholder="Novo telefone" /><button onClick={handleAddPhone} className="bg-stone-800 text-white px-4 rounded-lg font-bold">Add</button></div>
+                    </div>
+                 </div>
+              </div>
+
+              {/* Delivery Settings */}
+              <div className={CARD_STYLE}>
+                 <h3 className="font-bold text-lg mb-6 flex items-center gap-2 border-b border-stone-100 pb-2"><MapPin className="w-5 h-5"/> Taxas de Entrega</h3>
+                 <div className="mb-6">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                       <input type="checkbox" checked={settingsForm.freeShipping} onChange={e => setSettingsForm({...settingsForm, freeShipping: e.target.checked})} className="w-5 h-5 text-italian-red rounded focus:ring-italian-red" />
+                       <span className="font-bold text-stone-700">Ativar Frete Grátis Global</span>
+                    </label>
+                 </div>
+                 <div className="bg-stone-50 p-4 rounded-xl border border-stone-200 mb-4">
+                    <h4 className="font-bold text-sm mb-3">Adicionar Nova Região</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                       <input value={newRegionName} onChange={e => setNewRegionName(e.target.value)} className={INPUT_STYLE} placeholder="Nome (Ex: Centro)" />
+                       <input value={newRegionPrice} onChange={e => setNewRegionPrice(e.target.value)} type="number" className={INPUT_STYLE} placeholder="Valor (0.00)" />
+                       <input value={newRegionZips} onChange={e => setNewRegionZips(e.target.value)} className={INPUT_STYLE} placeholder="CEPs/Faixas (Ex: 13295-000, 13295...)" />
+                       <input value={newRegionExclusions} onChange={e => setNewRegionExclusions(e.target.value)} className={INPUT_STYLE} placeholder="Excluir CEPs (Ex: 13295-999)" />
+                       <input value={newRegionNeighborhoods} onChange={e => setNewRegionNeighborhoods(e.target.value)} className={`${INPUT_STYLE} md:col-span-2`} placeholder="Bairros (Separados por vírgula). Se vazio, usa o Nome da Região." />
+                    </div>
+                    <button onClick={handleAddRegion} className="bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-green-700">Adicionar Região</button>
+                 </div>
+                 <div className="space-y-2">
+                    {settingsForm.deliveryRegions?.map(region => (
+                       <div key={region.id} className="flex justify-between items-center bg-white p-3 border border-stone-200 rounded-lg">
+                          <div>
+                             <p className="font-bold text-stone-800">{region.name}</p>
+                             <p className="text-xs text-stone-500">CEP: {region.zipRules?.join(', ') || 'Todos'} {region.zipExclusions?.length ? `(Exceto: ${region.zipExclusions.join(', ')})` : ''}</p>
+                          </div>
+                          <div className="flex items-center gap-4">
+                             <span className="font-bold text-green-600">{settings.currencySymbol} {region.price.toFixed(2)}</span>
+                             <button onClick={() => handleRemoveRegion(region.id)} className="text-red-400 hover:text-red-600"><Trash2 className="w-4 h-4"/></button>
+                          </div>
+                       </div>
+                    ))}
+                 </div>
+              </div>
+
+              {/* Visual Settings - EXPANDED */}
+              <div className={CARD_STYLE}>
+                 <h3 className="font-bold text-lg mb-6 flex items-center gap-2 border-b border-stone-100 pb-2"><Palette className="w-5 h-5"/> Identidade Visual</h3>
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                       <label className={LABEL_STYLE}>Cor Principal (Botões)</label>
+                       <div className="flex gap-2">
+                          <input type="color" value={settingsForm.colors?.primary || '#C8102E'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, primary: e.target.value} as any})} className="h-10 w-10 rounded cursor-pointer border-0" />
+                          <input value={settingsForm.colors?.primary || '#C8102E'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, primary: e.target.value} as any})} className={INPUT_STYLE} />
+                       </div>
+                    </div>
+                    <div>
+                       <label className={LABEL_STYLE}>Cor Secundária (Detalhes)</label>
+                       <div className="flex gap-2">
+                          <input type="color" value={settingsForm.colors?.secondary || '#008C45'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, secondary: e.target.value} as any})} className="h-10 w-10 rounded cursor-pointer border-0" />
+                          <input value={settingsForm.colors?.secondary || '#008C45'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, secondary: e.target.value} as any})} className={INPUT_STYLE} />
+                       </div>
+                    </div>
+                    <div>
+                        <label className={LABEL_STYLE}>Fonte Principal</label>
+                        <select value={settingsForm.fontFamily || 'Outfit'} onChange={e => setSettingsForm({...settingsForm, fontFamily: e.target.value})} className={INPUT_STYLE}>
+                            {FONTS_LIST.map(font => <option key={font} value={font}>{font}</option>)}
+                        </select>
+                    </div>
+                    
+                    {/* HEADER COLORS */}
+                    <div className="col-span-1 md:col-span-3 border-t pt-4 mt-2"><h4 className="text-sm font-bold uppercase text-stone-500 mb-2">Cabeçalho</h4></div>
+                    <div>
+                       <label className={LABEL_STYLE}>Fundo do Cabeçalho</label>
+                       <div className="flex gap-2">
+                          <input type="color" value={settingsForm.colors?.headerBackground || settingsForm.colors?.primary || '#C8102E'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, headerBackground: e.target.value} as any})} className="h-10 w-10 rounded cursor-pointer border-0" />
+                          <input value={settingsForm.colors?.headerBackground || '#C8102E'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, headerBackground: e.target.value} as any})} className={INPUT_STYLE} />
+                       </div>
+                    </div>
+                    <div>
+                       <label className={LABEL_STYLE}>Texto do Cabeçalho</label>
+                       <div className="flex gap-2">
+                          <input type="color" value={settingsForm.colors?.headerText || '#FFFFFF'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, headerText: e.target.value} as any})} className="h-10 w-10 rounded cursor-pointer border-0" />
+                          <input value={settingsForm.colors?.headerText || '#FFFFFF'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, headerText: e.target.value} as any})} className={INPUT_STYLE} />
+                       </div>
+                    </div>
+
+                    {/* PAGE & CARDS COLORS */}
+                    <div className="col-span-1 md:col-span-3 border-t pt-4 mt-2"><h4 className="text-sm font-bold uppercase text-stone-500 mb-2">Fundo & Cartões</h4></div>
+                    <div>
+                       <label className={LABEL_STYLE}>Fundo da Página</label>
+                       <div className="flex gap-2">
+                          <input type="color" value={settingsForm.colors?.background || '#F5F5F4'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, background: e.target.value} as any})} className="h-10 w-10 rounded cursor-pointer border-0" />
+                          <input value={settingsForm.colors?.background || '#F5F5F4'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, background: e.target.value} as any})} className={INPUT_STYLE} />
+                       </div>
+                    </div>
+                    <div>
+                       <label className={LABEL_STYLE}>Texto Geral</label>
+                       <div className="flex gap-2">
+                          <input type="color" value={settingsForm.colors?.textColor || '#292524'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, textColor: e.target.value} as any})} className="h-10 w-10 rounded cursor-pointer border-0" />
+                          <input value={settingsForm.colors?.textColor || '#292524'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, textColor: e.target.value} as any})} className={INPUT_STYLE} />
+                       </div>
+                    </div>
+                    <div>
+                       <label className={LABEL_STYLE}>Fundo do Cartão (Produto)</label>
+                       <div className="flex gap-2">
+                          <input type="color" value={settingsForm.colors?.cardBackground || '#FFFFFF'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, cardBackground: e.target.value} as any})} className="h-10 w-10 rounded cursor-pointer border-0" />
+                          <input value={settingsForm.colors?.cardBackground || '#FFFFFF'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, cardBackground: e.target.value} as any})} className={INPUT_STYLE} />
+                       </div>
+                    </div>
+                    <div>
+                       <label className={LABEL_STYLE}>Texto do Cartão</label>
+                       <div className="flex gap-2">
+                          <input type="color" value={settingsForm.colors?.cardText || '#1C1917'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, cardText: e.target.value} as any})} className="h-10 w-10 rounded cursor-pointer border-0" />
+                          <input value={settingsForm.colors?.cardText || '#1C1917'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, cardText: e.target.value} as any})} className={INPUT_STYLE} />
+                       </div>
+                    </div>
+                 </div>
+              </div>
+
+              {/* SEO & Sharing */}
+              <div className={CARD_STYLE}>
+                 <h3 className="font-bold text-lg mb-6 flex items-center gap-2 border-b border-stone-100 pb-2"><Share2 className="w-5 h-5"/> SEO & Compartilhamento (WhatsApp)</h3>
+                 
+                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-4 text-sm text-blue-800">
+                    Configure como o link do seu cardápio aparecerá quando enviado no WhatsApp, Facebook, etc.
+                 </div>
+
+                 <div className="space-y-4">
+                    <div><label className={LABEL_STYLE}>Título da Página (Nome da Loja)</label><input value={settingsForm.seoTitle || settingsForm.name} onChange={e => setSettingsForm({...settingsForm, seoTitle: e.target.value})} className={INPUT_STYLE} placeholder="Ex: Pizzaria Spagnolli - A Melhor da Cidade" /></div>
+                    <div><label className={LABEL_STYLE}>Descrição Curta</label><textarea value={settingsForm.seoDescription || ''} onChange={e => setSettingsForm({...settingsForm, seoDescription: e.target.value})} className={INPUT_STYLE} rows={2} placeholder="Peça as melhores pizzas..." /></div>
+                    
+                    <div>
+                       <label className={LABEL_STYLE}>Imagem de Compartilhamento (Banner)</label>
+                       <div className="flex items-center gap-4 bg-stone-50 p-3 rounded-lg border border-stone-200">
+                          <div className="shrink-0">
+                             <input type="file" accept="image/*" onChange={handleBannerUpload} className="hidden" id="banner-upload" />
+                             <label htmlFor="banner-upload" className="w-40 h-24 bg-stone-200 rounded-lg flex items-center justify-center cursor-pointer hover:bg-stone-300 transition-colors overflow-hidden relative">
+                                {settingsForm.seoBannerUrl ? <img src={settingsForm.seoBannerUrl} className="w-full h-full object-cover" /> : <span className="text-xs text-stone-500">Sem Imagem</span>}
+                                {isProcessingBanner && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><Loader2 className="w-5 h-5 animate-spin text-white"/></div>}
+                             </label>
+                          </div>
+                          <div>
+                             <p className="text-xs text-stone-500">Recomendado: Imagem horizontal (1200x630px).<br/>Essa imagem aparecerá como miniatura ao enviar o link.</p>
+                          </div>
+                       </div>
+                    </div>
+                 </div>
+              </div>
+
+              {/* Save Button */}
+              <div className="sticky bottom-6 flex justify-end">
+                 <button onClick={handleSaveSettings} disabled={isSavingSettings} className="bg-green-600 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-green-700 transition-transform hover:scale-105 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                    {isSavingSettings ? <Loader2 className="w-6 h-6 animate-spin"/> : <Save className="w-6 h-6" />}
+                    {isSavingSettings ? 'Salvando...' : 'Salvar Configurações'}
+                 </button>
+              </div>
+
+           </div>
+        )}
+
       </main>
     </div>
   );

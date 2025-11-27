@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { X, MapPin, Phone, MessageCircle, Clock, CreditCard, Truck, Store, ExternalLink } from 'lucide-react';
 import { StoreSettings, WeeklySchedule } from '../types';
@@ -133,7 +134,8 @@ export const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose, settings,
                   {settings.schedule ? (
                      <div className="space-y-2">
                         {Object.keys(WEEKDAYS_PT).map((dayKey) => {
-                           const daySchedule = settings.schedule![dayKey as keyof WeeklySchedule];
+                           const schedule = settings.schedule || {} as WeeklySchedule;
+                           const daySchedule = schedule[dayKey as keyof WeeklySchedule] || { isOpen: false, intervals: [] };
                            const today = new Date().getDay();
                            const dayIndex = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'].indexOf(dayKey);
                            const isToday = today === dayIndex;
