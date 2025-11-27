@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Category, Product, StoreSettings, ProductOption, ProductChoice, Order, Coupon, DeliveryRegion, WeeklySchedule, Table } from '../types';
 import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Ticket, QrCode, Clock, CreditCard, LayoutDashboard, ShoppingBag, Palette, Phone, Share2, Calendar, Printer, Filter, ChevronDown, ChevronUp, AlertTriangle, User, Truck, Utensils, Minus, Type, Ban, Wifi, WifiOff, Loader2, Database, Globe, DollarSign, Sun, Moon } from 'lucide-react';
@@ -32,14 +31,14 @@ const FONTS_LIST = ['Outfit', 'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Popp
 
 const INPUT_STYLE = "w-full p-3 bg-white border border-stone-300 rounded-lg text-stone-900 focus:ring-2 focus:ring-italian-red focus:border-italian-red outline-none transition-all placeholder-stone-400";
 const LABEL_STYLE = "block text-sm font-bold text-stone-700 mb-1";
-const CARD_STYLE = "bg-white p-6 rounded-xl shadow-sm border border-stone-200";
+const CARD_STYLE = "bg-white p-4 md:p-6 rounded-xl shadow-sm border border-stone-200";
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ 
   menuData, 
   settings, 
   onUpdateProduct, 
   onAddProduct, 
-  onDeleteProduct,
+  onDeleteProduct, 
   onUpdateSettings,
   onResetMenu, 
   onBack,
@@ -430,16 +429,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       } catch (e: any) {
           console.error('Settings save error:', e);
           let msg = 'Erro desconhecido';
-          if (e?.message) msg = e.message;
-          else if (e?.error_description) msg = e.error_description;
-          else if (typeof e === 'string') msg = e;
-          else if (typeof e === 'object') {
-            try {
-              msg = JSON.stringify(e);
-              if (msg === '{}') msg = String(e);
-            } catch (err) {
-              msg = String(e);
-            }
+          
+          if (e instanceof Error) {
+             msg = e.message;
+          } else if (typeof e === 'object' && e !== null) {
+             msg = e.message || e.error_description || JSON.stringify(e);
+             if (msg === '{}') msg = String(e);
+          } else {
+             msg = String(e);
           }
           
           if (msg.includes('Could not find the') && msg.includes('column')) {
@@ -514,7 +511,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-stone-100 flex items-center justify-center p-4">
-        <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+        <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md border border-stone-200">
           <div className="flex justify-center mb-6">
             <div className="bg-stone-100 p-4 rounded-full">
               <Settings className="w-10 h-10 text-stone-600" />
@@ -570,7 +567,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
              </div>
           )}
 
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex justify-between items-center mb-4 gap-2">
             <div className="flex items-center gap-3">
               <button onClick={onBack} className="p-2 hover:bg-stone-100 rounded-full transition-colors text-stone-600"><ArrowLeft className="w-5 h-5" /></button>
               <h1 className="font-bold text-xl text-stone-800 hidden md:block">Gerenciar Sistema</h1>
@@ -578,17 +575,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               {/* Connection Status Indicator */}
               <div className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold ${isConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                  {isConnected ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
-                 {isConnected ? 'Online' : 'Offline'}
+                 <span className="hidden sm:inline">{isConnected ? 'Online' : 'Offline'}</span>
               </div>
             </div>
             <div className="flex gap-2">
                <button onClick={fetchOrders} className="p-2 bg-stone-100 border border-stone-200 hover:bg-stone-200 rounded-full text-stone-600" title="Atualizar Pedidos"><RefreshCw className="w-4 h-4"/></button>
-               <button onClick={() => { if(window.confirm('Resetar cardápio para o padrão?')) onResetMenu(); }} className="text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded border border-red-100 hover:bg-red-100 font-bold">Resetar Tudo</button>
+               <button onClick={() => { if(window.confirm('Resetar cardápio para o padrão?')) onResetMenu(); }} className="text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded border border-red-100 hover:bg-red-100 font-bold whitespace-nowrap">Resetar Tudo</button>
             </div>
           </div>
           <div className="flex space-x-1 md:space-x-6 overflow-x-auto hide-scrollbar pb-0">
              {[{ id: 'dashboard', icon: LayoutDashboard, label: 'Dash' }, { id: 'orders', icon: ShoppingBag, label: 'Pedidos' }, { id: 'menu', icon: Grid, label: 'Cardápio' }, { id: 'coupons', icon: Ticket, label: 'Cupons' }, { id: 'tables', icon: QrCode, label: 'Mesas' }, { id: 'settings', icon: Settings, label: 'Config' }].map(tab => (
-               <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex items-center gap-2 px-2 py-3 text-sm font-bold transition-colors whitespace-nowrap border-b-2 ${activeTab === tab.id ? 'border-italian-red text-italian-red' : 'border-transparent text-stone-500 hover:text-stone-800'}`}><tab.icon className="w-4 h-4" /> {tab.label}</button>
+               <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex items-center gap-2 px-3 py-3 text-sm font-bold transition-colors whitespace-nowrap border-b-2 ${activeTab === tab.id ? 'border-italian-red text-italian-red' : 'border-transparent text-stone-500 hover:text-stone-800'}`}><tab.icon className="w-4 h-4" /> {tab.label}</button>
              ))}
           </div>
         </div>
@@ -599,38 +596,43 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         {activeTab === 'dashboard' && (
            // ... Dashboard Code ...
            <div className="space-y-6 animate-in fade-in">
-              <div className="flex flex-col md:flex-row justify-end gap-2 mb-4">
-                 <div className="flex gap-2">
-                    {['today', 'week', 'month', 'all'].map(period => (
-                        <button key={period} onClick={() => setDashboardPeriod(period as any)} className={`px-4 py-1.5 rounded-full text-sm font-bold transition-colors border ${dashboardPeriod === period ? 'bg-italian-red text-white border-italian-red' : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50'}`}>{period === 'today' ? 'Hoje' : period === 'week' ? '7 Dias' : period === 'month' ? '30 Dias' : 'Geral'}</button>
-                    ))}
-                    <button onClick={() => setDashboardPeriod('custom')} className={`px-4 py-1.5 rounded-full text-sm font-bold transition-colors border ${dashboardPeriod === 'custom' ? 'bg-italian-red text-white border-italian-red' : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50'}`}>Personalizado</button>
+              <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-6">
+                 {/* Title spacer or just layout control */}
+                 <div className="hidden xl:block"></div>
+                 
+                 <div className="w-full flex flex-col sm:flex-row justify-end gap-3">
+                     <div className="flex gap-1 overflow-x-auto pb-1 max-w-full hide-scrollbar flex-wrap">
+                        {['today', 'week', 'month', 'all'].map(period => (
+                            <button key={period} onClick={() => setDashboardPeriod(period as any)} className={`px-3 py-1.5 rounded-full text-xs sm:text-sm font-bold transition-colors border whitespace-nowrap flex-shrink-0 ${dashboardPeriod === period ? 'bg-italian-red text-white border-italian-red' : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50'}`}>{period === 'today' ? 'Hoje' : period === 'week' ? '7 Dias' : period === 'month' ? '30 Dias' : 'Geral'}</button>
+                        ))}
+                        <button onClick={() => setDashboardPeriod('custom')} className={`px-3 py-1.5 rounded-full text-xs sm:text-sm font-bold transition-colors border whitespace-nowrap flex-shrink-0 ${dashboardPeriod === 'custom' ? 'bg-italian-red text-white border-italian-red' : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50'}`}>Personalizado</button>
+                     </div>
+                     {dashboardPeriod === 'custom' && (
+                        <div className="flex flex-col sm:flex-row gap-2 items-center bg-white p-2 rounded-lg border border-stone-200 w-full sm:w-auto">
+                            <input type="date" value={customDashStart} onChange={e => setCustomDashStart(e.target.value)} className="p-1.5 text-xs border rounded w-full sm:w-auto" />
+                            <span className="text-stone-400 hidden sm:inline">-</span>
+                            <input type="date" value={customDashEnd} onChange={e => setCustomDashEnd(e.target.value)} className="p-1.5 text-xs border rounded w-full sm:w-auto" />
+                        </div>
+                     )}
                  </div>
-                 {dashboardPeriod === 'custom' && (
-                    <div className="flex gap-2 items-center bg-white p-1 rounded-lg border border-stone-200">
-                        <input type="date" value={customDashStart} onChange={e => setCustomDashStart(e.target.value)} className="p-1 text-xs border rounded" />
-                        <span className="text-stone-400">-</span>
-                        <input type="date" value={customDashEnd} onChange={e => setCustomDashEnd(e.target.value)} className="p-1 text-xs border rounded" />
-                    </div>
-                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                   <div className={CARD_STYLE}>
-                     <h3 className="text-stone-500 text-sm font-bold uppercase flex items-center gap-2"><ShoppingBag className="w-4 h-4"/> Pedidos</h3>
-                     <p className="text-3xl font-bold text-stone-800 mt-2">{dashboardMetrics.totalOrders}</p>
+                     <h3 className="text-stone-500 text-xs md:text-sm font-bold uppercase flex items-center gap-2"><ShoppingBag className="w-4 h-4"/> Pedidos</h3>
+                     <p className="text-2xl md:text-3xl font-bold text-stone-800 mt-2">{dashboardMetrics.totalOrders}</p>
                   </div>
                   <div className={CARD_STYLE}>
-                     <h3 className="text-stone-500 text-sm font-bold uppercase flex items-center gap-2"><CreditCard className="w-4 h-4"/> Receita</h3>
-                     <p className="text-3xl font-bold text-green-600 mt-2">{settings.currencySymbol} {dashboardMetrics.totalRevenue.toFixed(2)}</p>
+                     <h3 className="text-stone-500 text-xs md:text-sm font-bold uppercase flex items-center gap-2"><CreditCard className="w-4 h-4"/> Receita</h3>
+                     <p className="text-2xl md:text-3xl font-bold text-green-600 mt-2">{settings.currencySymbol} {dashboardMetrics.totalRevenue.toFixed(2)}</p>
                   </div>
                   <div className={CARD_STYLE}>
-                     <h3 className="text-stone-500 text-sm font-bold uppercase flex items-center gap-2"><Grid className="w-4 h-4"/> Produtos</h3>
-                     <p className="text-3xl font-bold text-blue-600 mt-2">{menuData.reduce((acc, cat) => acc + cat.items.length, 0)}</p>
+                     <h3 className="text-stone-500 text-xs md:text-sm font-bold uppercase flex items-center gap-2"><Grid className="w-4 h-4"/> Produtos</h3>
+                     <p className="text-2xl md:text-3xl font-bold text-blue-600 mt-2">{menuData.reduce((acc, cat) => acc + cat.items.length, 0)}</p>
                   </div>
                   <div className={CARD_STYLE}>
-                     <h3 className="text-stone-500 text-sm font-bold uppercase flex items-center gap-2"><Ticket className="w-4 h-4"/> Cupons</h3>
-                     <p className="text-3xl font-bold text-purple-600 mt-2">{coupons.filter(c => c.active).length}</p>
+                     <h3 className="text-stone-500 text-xs md:text-sm font-bold uppercase flex items-center gap-2"><Ticket className="w-4 h-4"/> Cupons</h3>
+                     <p className="text-2xl md:text-3xl font-bold text-purple-600 mt-2">{coupons.filter(c => c.active).length}</p>
                   </div>
               </div>
 
@@ -642,9 +644,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           <div key={idx} className="flex items-center justify-between border-b border-stone-100 pb-2 last:border-0">
                              <div className="flex items-center gap-3">
                                 <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${idx === 0 ? 'bg-yellow-400 text-yellow-900' : idx === 1 ? 'bg-gray-300 text-gray-800' : idx === 2 ? 'bg-orange-300 text-orange-900' : 'bg-stone-100 text-stone-500'}`}>{idx + 1}</span>
-                                <span className="font-medium text-stone-700">{prod.name}</span>
+                                <span className="font-medium text-stone-700 text-sm md:text-base line-clamp-1">{prod.name}</span>
                              </div>
-                             <span className="text-sm font-bold text-stone-600">{prod.count} un.</span>
+                             <span className="text-sm font-bold text-stone-600 whitespace-nowrap">{prod.count} un.</span>
                           </div>
                        ))}
                     </div>
@@ -658,27 +660,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         {activeTab === 'orders' && (
            // ... Orders Code ...
            <div className="animate-in fade-in space-y-4">
-              <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-stone-200">
-                 <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-4">
-                        <h2 className="font-bold text-lg flex items-center gap-2 text-stone-800"><ShoppingBag className="w-5 h-5"/> Gestão de Pedidos</h2>
+              <div className="flex flex-col gap-4 bg-white p-4 rounded-xl shadow-sm border border-stone-200">
+                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                    <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-start">
+                        <h2 className="font-bold text-lg flex items-center gap-2 text-stone-800"><ShoppingBag className="w-5 h-5"/> Pedidos</h2>
                         <div className="bg-stone-100 p-1 rounded-lg flex">
                             <button onClick={() => setOrderViewMode('list')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${orderViewMode === 'list' ? 'bg-white shadow-sm text-stone-800' : 'text-stone-500'}`}>Lista</button>
-                            <button onClick={() => setOrderViewMode('dining')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${orderViewMode === 'dining' ? 'bg-white shadow-sm text-stone-800' : 'text-stone-500'}`}>Salão / Mesas</button>
+                            <button onClick={() => setOrderViewMode('dining')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${orderViewMode === 'dining' ? 'bg-white shadow-sm text-stone-800' : 'text-stone-500'}`}>Mesas</button>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2 text-sm">
-                        <span className="text-stone-500 font-bold text-xs uppercase">Filtrar Data:</span>
-                        <input type="date" value={orderFilterStart} onChange={e => setOrderFilterStart(e.target.value)} className="border rounded p-1 text-xs bg-white" />
-                        <span className="text-stone-400">-</span>
-                        <input type="date" value={orderFilterEnd} onChange={e => setOrderFilterEnd(e.target.value)} className="border rounded p-1 text-xs bg-white" />
-                        {(orderFilterStart || orderFilterEnd) && <button onClick={() => { setOrderFilterStart(''); setOrderFilterEnd(''); }} className="text-red-500 text-xs hover:underline">Limpar</button>}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 text-sm w-full md:w-auto">
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                            <span className="text-stone-500 font-bold text-xs uppercase whitespace-nowrap">Data:</span>
+                            <input type="date" value={orderFilterStart} onChange={e => setOrderFilterStart(e.target.value)} className="border rounded p-1 text-xs bg-white w-full sm:w-auto" />
+                            <span className="text-stone-400">-</span>
+                            <input type="date" value={orderFilterEnd} onChange={e => setOrderFilterEnd(e.target.value)} className="border rounded p-1 text-xs bg-white w-full sm:w-auto" />
+                        </div>
+                        {(orderFilterStart || orderFilterEnd) && <button onClick={() => { setOrderFilterStart(''); setOrderFilterEnd(''); }} className="text-red-500 text-xs hover:underline self-end sm:self-auto">Limpar</button>}
                     </div>
                  </div>
                  {orderViewMode === 'list' && (
-                    <div className="flex gap-2 mt-3 md:mt-0 overflow-x-auto w-full md:w-auto pb-1 hide-scrollbar">
+                    <div className="flex gap-2 overflow-x-auto w-full pb-1 hide-scrollbar">
                         {['all', 'pending', 'preparing', 'delivery', 'completed'].map(status => (
-                            <button key={status} onClick={() => setOrderFilter(status)} className={`px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors border ${orderFilter === status ? 'bg-stone-800 text-white border-stone-800' : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50'}`}>
+                            <button key={status} onClick={() => setOrderFilter(status)} className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap transition-colors border flex-shrink-0 ${orderFilter === status ? 'bg-stone-800 text-white border-stone-800' : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50'}`}>
                             {status === 'all' ? 'Todos' : status === 'pending' ? 'Pendentes' : status === 'preparing' ? 'Preparo' : status === 'delivery' ? 'Entrega' : 'Concluídos'}
                             </button>
                         ))}
@@ -702,14 +706,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         <div key={order.id} className="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden flex flex-col hover:shadow-md transition-shadow">
                         <div className="p-4 flex justify-between items-start border-b border-stone-100 bg-white">
                             <div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                     <span className="font-mono font-bold text-stone-800 text-lg">#{order.id}</span>
                                     {order.delivery_type === 'table' ? (
-                                        <span className="bg-purple-100 text-purple-700 text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1"><Utensils className="w-3 h-3"/> Mesa {order.table_number}</span>
+                                        <span className="bg-purple-100 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1"><Utensils className="w-3 h-3"/> Mesa {order.table_number}</span>
                                     ) : order.delivery_type === 'delivery' ? (
-                                        <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1"><Truck className="w-3 h-3"/> Entrega</span>
+                                        <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1"><Truck className="w-3 h-3"/> Entrega</span>
                                     ) : (
-                                        <span className="bg-stone-100 text-stone-700 text-xs font-bold px-2 py-0.5 rounded-full">Retirada</span>
+                                        <span className="bg-stone-100 text-stone-700 text-[10px] font-bold px-2 py-0.5 rounded-full">Retirada</span>
                                     )}
                                 </div>
                                 <div className="text-xs text-stone-500 mt-1 flex items-center gap-1">
@@ -717,7 +721,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                 </div>
                             </div>
                             <div className="text-right flex flex-col items-end">
-                                <p className="font-bold text-italian-green text-xl">{settings.currencySymbol} {order.total.toFixed(2)}</p>
+                                <p className="font-bold text-italian-green text-lg">{settings.currencySymbol} {order.total.toFixed(2)}</p>
                                 <div className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full mt-1 ${
                                     order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                                     order.status === 'preparing' ? 'bg-blue-100 text-blue-800' :
@@ -728,7 +732,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                 </div>
                             </div>
                         </div>
-                        <div className="p-4 bg-stone-50 border-b border-stone-100 text-sm">
+                        <div className="p-3 bg-stone-50 border-b border-stone-100 text-xs sm:text-sm">
                             <p className="font-bold flex items-center gap-2 text-stone-800 text-base"><User className="w-4 h-4 text-stone-400"/> {order.customer_name}</p>
                             {order.delivery_type === 'delivery' && (
                                 <p className="text-stone-600 text-sm mt-1 flex items-start gap-2"><MapPin className="w-4 h-4 text-stone-400 shrink-0 mt-0.5"/> {order.address_street}, {order.address_number} - {order.address_district}</p>
@@ -1167,6 +1171,34 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                               <input value={settingsForm.colors?.headerText || '#FFFFFF'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, headerText: e.target.value} as any})} className={INPUT_STYLE} />
                            </div>
                         </div>
+                        <div>
+                           <label className={LABEL_STYLE}>Fundo do Rodapé</label>
+                           <div className="flex gap-2">
+                              <input type="color" value={settingsForm.colors?.footer || '#1c1917'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, footer: e.target.value} as any})} className="h-10 w-10 rounded cursor-pointer border-0" />
+                              <input value={settingsForm.colors?.footer || '#1c1917'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, footer: e.target.value} as any})} className={INPUT_STYLE} />
+                           </div>
+                        </div>
+                        <div>
+                           <label className={LABEL_STYLE}>Texto do Rodapé</label>
+                           <div className="flex gap-2">
+                              <input type="color" value={settingsForm.colors?.footerText || '#a8a29e'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, footerText: e.target.value} as any})} className="h-10 w-10 rounded cursor-pointer border-0" />
+                              <input value={settingsForm.colors?.footerText || '#a8a29e'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, footerText: e.target.value} as any})} className={INPUT_STYLE} />
+                           </div>
+                        </div>
+                        <div>
+                           <label className={LABEL_STYLE}>Botões Principais</label>
+                           <div className="flex gap-2">
+                              <input type="color" value={settingsForm.colors?.buttons || settingsForm.colors?.primary || '#C8102E'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, buttons: e.target.value} as any})} className="h-10 w-10 rounded cursor-pointer border-0" />
+                              <input value={settingsForm.colors?.buttons || '#C8102E'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, buttons: e.target.value} as any})} className={INPUT_STYLE} />
+                           </div>
+                        </div>
+                        <div>
+                           <label className={LABEL_STYLE}>Fundo Carrinho (Topo)</label>
+                           <div className="flex gap-2">
+                              <input type="color" value={settingsForm.colors?.cart || settingsForm.colors?.primary || '#C8102E'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, cart: e.target.value} as any})} className="h-10 w-10 rounded cursor-pointer border-0" />
+                              <input value={settingsForm.colors?.cart || '#C8102E'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, cart: e.target.value} as any})} className={INPUT_STYLE} />
+                           </div>
+                        </div>
                     </div>
                  )}
 
@@ -1221,6 +1253,40 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                     }
                                 })} className="h-10 w-10 rounded cursor-pointer border-0" />
                               <input value={settingsForm.colors?.modes?.[colorTab]?.cardBackground} className={INPUT_STYLE} readOnly />
+                           </div>
+                        </div>
+                        <div>
+                           <label className={LABEL_STYLE}>Texto do Cartão</label>
+                           <div className="flex gap-2">
+                              <input type="color" value={settingsForm.colors?.modes?.[colorTab]?.cardText || '#000000'} 
+                                onChange={e => setSettingsForm({
+                                    ...settingsForm, 
+                                    colors: {
+                                        ...settingsForm.colors!,
+                                        modes: {
+                                            ...settingsForm.colors?.modes!,
+                                            [colorTab]: { ...settingsForm.colors?.modes?.[colorTab], cardText: e.target.value }
+                                        }
+                                    }
+                                })} className="h-10 w-10 rounded cursor-pointer border-0" />
+                              <input value={settingsForm.colors?.modes?.[colorTab]?.cardText} className={INPUT_STYLE} readOnly />
+                           </div>
+                        </div>
+                        <div>
+                           <label className={LABEL_STYLE}>Borda do Cartão</label>
+                           <div className="flex gap-2">
+                              <input type="color" value={settingsForm.colors?.modes?.[colorTab]?.border || '#cccccc'} 
+                                onChange={e => setSettingsForm({
+                                    ...settingsForm, 
+                                    colors: {
+                                        ...settingsForm.colors!,
+                                        modes: {
+                                            ...settingsForm.colors?.modes!,
+                                            [colorTab]: { ...settingsForm.colors?.modes?.[colorTab], border: e.target.value }
+                                        }
+                                    }
+                                })} className="h-10 w-10 rounded cursor-pointer border-0" />
+                              <input value={settingsForm.colors?.modes?.[colorTab]?.border} className={INPUT_STYLE} readOnly />
                            </div>
                         </div>
                     </div>
