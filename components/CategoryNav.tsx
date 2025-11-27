@@ -28,7 +28,7 @@ export const CategoryNav: React.FC<CategoryNavProps> = ({ categories, activeCate
         {/* Left Arrow */}
         <button 
           onClick={() => scroll('left')}
-          className="absolute left-0 md:-left-4 z-10 p-2 rounded-full bg-white shadow-md border border-stone-200 text-stone-600 hover:bg-stone-50 transition-all focus:outline-none disabled:opacity-0 opacity-80 md:opacity-0 group-hover:opacity-100 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700 dark:border-stone-600"
+          className="absolute left-0 md:-left-4 z-10 p-2 rounded-full bg-white shadow-md border border-stone-200 text-stone-600 hover:bg-stone-50 transition-all focus:outline-none disabled:opacity-0 opacity-80 md:opacity-0 group-hover:opacity-100 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700 dark:border-stone-700"
           aria-label="Rolar para esquerda"
         >
           <ChevronLeft className="w-5 h-5" />
@@ -65,9 +65,9 @@ export const CategoryNav: React.FC<CategoryNavProps> = ({ categories, activeCate
                 </div>
                 
                 <span 
-                  className={`text-xs md:text-sm font-medium text-center line-clamp-2 leading-tight transition-colors px-1 ${
+                  className={`text-xs md:text-sm font-bold text-center line-clamp-2 leading-tight transition-colors px-1 ${
                     activeCategory === cat.id
-                      ? 'font-bold scale-105'
+                      ? 'scale-105'
                       : 'group-hover/item:opacity-100 text-stone-600 dark:text-stone-400'
                   }`}
                   style={{ 
@@ -85,7 +85,7 @@ export const CategoryNav: React.FC<CategoryNavProps> = ({ categories, activeCate
         {/* Right Arrow */}
         <button 
           onClick={() => scroll('right')}
-          className="absolute right-0 md:-right-4 z-10 p-2 rounded-full bg-white shadow-md border border-stone-200 text-stone-600 hover:bg-stone-50 transition-all focus:outline-none opacity-80 md:opacity-0 group-hover:opacity-100 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700 dark:border-stone-600"
+          className="absolute right-0 md:-right-4 z-10 p-2 rounded-full bg-white shadow-md border border-stone-200 text-stone-600 hover:bg-stone-50 transition-all focus:outline-none opacity-80 md:opacity-0 group-hover:opacity-100 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700 dark:border-stone-700"
           aria-label="Rolar para direita"
         >
           <ChevronRight className="w-5 h-5" />

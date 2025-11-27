@@ -427,6 +427,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               msg = String(e);
             }
           }
+          
+          if (msg.includes('Could not find the') && msg.includes('column')) {
+             msg = `ERRO DE BANCO DE DADOS: Faltam colunas novas. Execute o script schema.sql no Supabase. Detalhe: ${msg}`;
+          }
+          
           alert('Erro ao salvar configurações: ' + msg);
       } finally {
           setIsSavingSettings(false);

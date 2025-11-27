@@ -146,11 +146,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
           className="transition-transform duration-700 ease-out group-hover/card:scale-105"
         />
         
-        {/* Readable High Contrast Tags */}
+        {/* Readable Tags - High Contrast & Elegant */}
         {product.tags && product.tags.length > 0 && (
            <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
               {product.tags.map(tag => (
-                 <span key={tag} className={`text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm uppercase tracking-wider ${
+                 <span key={tag} className={`text-[10px] font-bold px-2 py-0.5 rounded shadow-sm uppercase tracking-wider ${
                     tag === 'popular' ? 'bg-yellow-400 text-black' : 
                     tag === 'vegetarian' ? 'bg-green-600 text-white' : 
                     tag === 'spicy' ? 'bg-red-600 text-white' :
@@ -166,11 +166,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
            </div>
         )}
 
-        <button onClick={handleShare} className="absolute top-2 right-2 p-1.5 bg-white/90 rounded-full shadow-sm hover:bg-white text-stone-700 transition-all z-10 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700">
+        <button onClick={handleShare} className="absolute top-2 right-2 p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-sm hover:bg-white text-stone-700 transition-all z-10 dark:bg-stone-800 dark:text-stone-300">
           {isCopied ? <Check className="w-4 h-4 text-green-600" /> : <Share2 className="w-4 h-4" />}
         </button>
 
-        <div className="absolute bottom-2 right-2 bg-white/95 backdrop-blur-sm px-2.5 py-0.5 rounded-md shadow-sm dark:bg-stone-900/90">
+        <div className="absolute bottom-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded shadow-sm dark:bg-stone-900/90">
           <span className="font-bold text-italian-green text-sm">{currencySymbol} {product.price.toFixed(2).replace('.', ',')}</span>
         </div>
       </div>
@@ -186,16 +186,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
         {product.ingredients && product.ingredients.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-2">
             {product.ingredients.map((ing, idx) => (
-              <span key={idx} className="text-[10px] text-stone-500 border border-stone-200 px-1.5 rounded dark:text-stone-400 dark:border-stone-700">{ing}</span>
+              <span key={idx} className="text-[10px] text-stone-500 font-medium bg-stone-50 px-1.5 rounded dark:text-stone-400 dark:bg-stone-800 border border-stone-100 dark:border-stone-700">{ing}</span>
             ))}
           </div>
         )}
 
-        <p className="text-sm leading-relaxed mb-4 line-clamp-3 text-stone-600 dark:text-stone-400">{product.description}</p>
+        <p className="text-sm leading-relaxed mb-4 line-clamp-2 text-stone-600 dark:text-stone-400">{product.description}</p>
 
         {hasOptions && !isExpanded && (
            <div className="mt-auto mb-3">
-             <span className="text-[10px] text-stone-500 bg-stone-50 px-2 py-1 rounded border border-stone-200 dark:bg-stone-800 dark:border-stone-700 dark:text-stone-400">Opções disponíveis</span>
+             <span className="text-[10px] text-stone-500 bg-stone-50 px-2 py-1 rounded border border-stone-100 dark:bg-stone-800 dark:border-stone-700 dark:text-stone-400">Opções disponíveis</span>
            </div>
         )}
       </div>
@@ -204,25 +204,25 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
         {!isExpanded ? (
           <button 
             onClick={() => setIsExpanded(true)}
-            className="w-full py-2.5 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-sm hover:shadow active:scale-95"
+            className="w-full py-3 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-md active:scale-95"
             style={{ backgroundColor: 'var(--color-primary)', color: '#FFFFFF' }}
           >
-            <Plus className="w-4 h-4" /> Add no carrinho
+            <Plus className="w-4 h-4" /> Adicionar
           </button>
         ) : (
           <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200 border-t border-stone-100 pt-4 dark:border-stone-800">
             
             {allowHalfHalf && (
-               <div className="bg-stone-100 p-1 rounded-lg flex mb-4 dark:bg-stone-800">
+               <div className="bg-stone-50 p-1 rounded-lg flex mb-4 dark:bg-stone-800 border border-stone-200 dark:border-stone-700">
                   <button 
                     onClick={() => setMode('whole')}
-                    className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${mode === 'whole' ? 'bg-white text-italian-green shadow-sm dark:bg-stone-700 dark:text-white' : 'text-stone-600 hover:text-stone-900 dark:text-stone-400'}`}
+                    className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${mode === 'whole' ? 'bg-white text-italian-green shadow-sm border border-stone-100 dark:bg-stone-700 dark:text-white dark:border-stone-600' : 'text-stone-500 hover:text-stone-800 dark:text-stone-400'}`}
                   >
                     Inteira
                   </button>
                   <button 
                     onClick={() => setMode('half')}
-                    className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${mode === 'half' ? 'bg-white text-italian-green shadow-sm dark:bg-stone-700 dark:text-white' : 'text-stone-600 hover:text-stone-900 dark:text-stone-400'}`}
+                    className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${mode === 'half' ? 'bg-white text-italian-green shadow-sm border border-stone-100 dark:bg-stone-700 dark:text-white dark:border-stone-600' : 'text-stone-500 hover:text-stone-800 dark:text-stone-400'}`}
                   >
                     Meia a Meia
                   </button>
@@ -231,13 +231,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
 
             {mode === 'half' ? (
                <div className="bg-stone-50 border border-stone-200 rounded-lg p-4 text-center dark:bg-stone-800 dark:border-stone-700">
-                  <div className="mb-3 text-stone-800 dark:text-stone-200 text-sm">
+                  <div className="mb-3 text-stone-700 dark:text-stone-300 text-sm">
                      <p className="font-bold mb-1">1ª Metade Selecionada:</p>
                      <p className="text-italian-green font-bold">{product.name}</p>
                   </div>
                   <button 
                     onClick={() => onOpenPizzaBuilder && onOpenPizzaBuilder(product)}
-                    className="w-full bg-italian-green text-white py-2 rounded-lg font-bold text-sm hover:bg-green-700 flex items-center justify-center gap-2 shadow-sm"
+                    className="w-full bg-italian-green text-white py-2.5 rounded-lg font-bold text-sm hover:bg-green-700 flex items-center justify-center gap-2 shadow-sm"
                   >
                     <PieChart className="w-4 h-4" /> Escolher 2ª Metade
                   </button>
@@ -247,7 +247,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
                   {hasOptions && product.options && (
                     <div className="space-y-4 border-b border-stone-100 pb-4 dark:border-stone-800">
                       {product.options.map(option => (
-                        <div key={option.id} className="bg-stone-50 p-3 rounded-lg dark:bg-stone-800 border border-stone-100 dark:border-stone-700">
+                        <div key={option.id} className="bg-stone-50 p-3 rounded-lg dark:bg-stone-800 border border-stone-200 dark:border-stone-700">
                           <div className="flex justify-between items-center mb-2">
                              <h4 className="font-bold text-sm text-stone-700 dark:text-stone-200">{option.name}</h4>
                              {option.required && <span className="text-[10px] text-red-600 font-bold bg-red-50 px-1.5 py-0.5 rounded dark:bg-red-900/30 dark:text-red-400">*Obrigatório</span>}
@@ -259,13 +259,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
                                return (
                                  <label key={idx} className="flex items-center justify-between cursor-pointer group p-1.5 hover:bg-white rounded dark:hover:bg-stone-700/50 transition-colors">
                                    <div className="flex items-center gap-2">
-                                     <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${option.type === 'single' ? 'rounded-full' : 'rounded'} ${isSelected ? 'bg-italian-green border-italian-green' : 'bg-white border-stone-300 group-hover:border-italian-green dark:bg-stone-900 dark:border-stone-600'}`}>
+                                     <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${option.type === 'single' ? 'rounded-full' : 'rounded'} ${isSelected ? 'bg-italian-green border-italian-green' : 'bg-white border-stone-300 group-hover:border-italian-green dark:bg-stone-900 dark:border-stone-500'}`}>
                                         {isSelected && <div className={`bg-white ${option.type === 'single' ? 'w-2 h-2 rounded-full' : 'w-3 h-3 icon-check'}`} />}
                                      </div>
                                      <input type={option.type === 'single' ? 'radio' : 'checkbox'} name={`opt-${product.id}-${option.id}`} className="hidden" onChange={() => handleOptionChange(option.id, choice.name, option.type)} checked={isSelected} />
-                                     <span className="text-sm text-stone-700 dark:text-stone-300">{choice.name}</span>
+                                     <span className="text-sm font-medium text-stone-700 dark:text-stone-300">{choice.name}</span>
                                    </div>
-                                   {choice.price > 0 && <span className="text-xs text-stone-500 dark:text-stone-400">+ {currencySymbol} {choice.price.toFixed(2).replace('.',',')}</span>}
+                                   {choice.price > 0 && <span className="text-xs font-bold text-stone-500 dark:text-stone-400">+ {currencySymbol} {choice.price.toFixed(2).replace('.',',')}</span>}
                                  </label>
                                );
                             })}
@@ -276,14 +276,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
                   )}
 
                   <div>
-                    <input type="text" value={observation} onChange={(e) => setObservation(e.target.value)} placeholder="Obs: Sem cebola..." className="w-full text-sm p-2 bg-stone-50 border border-stone-300 rounded-md focus:outline-none focus:border-italian-green focus:ring-1 focus:ring-italian-green text-stone-800 placeholder-stone-400 dark:bg-stone-800 dark:border-stone-700 dark:text-white" />
+                    <input type="text" value={observation} onChange={(e) => setObservation(e.target.value)} placeholder="Obs: Sem cebola..." className="w-full text-sm p-2.5 bg-white border border-stone-300 rounded-lg focus:outline-none focus:border-italian-green focus:ring-1 focus:ring-italian-green text-stone-800 placeholder-stone-400 dark:bg-stone-800 dark:border-stone-700 dark:text-white" />
                   </div>
                   
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center border border-stone-200 rounded-lg bg-white shadow-sm h-10 dark:bg-stone-800 dark:border-stone-700">
-                      <button onClick={handleDecrement} className="w-8 h-full flex items-center justify-center text-stone-500 hover:text-italian-red active:bg-stone-100 rounded-l-lg dark:text-stone-400 dark:active:bg-stone-700"><Minus className="w-4 h-4" /></button>
-                      <span className="w-8 text-center font-bold text-stone-800 text-sm dark:text-white">{quantity}</span>
-                      <button onClick={handleIncrement} className="w-8 h-full flex items-center justify-center text-stone-500 hover:text-italian-green active:bg-stone-100 rounded-r-lg dark:text-stone-400 dark:active:bg-stone-700"><Plus className="w-4 h-4" /></button>
+                      <button onClick={handleDecrement} className="w-9 h-full flex items-center justify-center text-stone-500 hover:text-italian-red active:bg-stone-100 rounded-l-lg dark:text-stone-400 dark:active:bg-stone-700 border-r border-stone-100 dark:border-stone-700"><Minus className="w-4 h-4" /></button>
+                      <span className="w-9 text-center font-bold text-stone-800 text-sm dark:text-white">{quantity}</span>
+                      <button onClick={handleIncrement} className="w-9 h-full flex items-center justify-center text-stone-500 hover:text-italian-green active:bg-stone-100 rounded-r-lg dark:text-stone-400 dark:active:bg-stone-700 border-l border-stone-100 dark:border-stone-700"><Plus className="w-4 h-4" /></button>
                     </div>
                     
                     <button 
@@ -295,13 +295,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
                           color: '#FFFFFF'
                       }}
                     >
-                      {isAdded ? <><Check className="w-4 h-4" /> Add!</> : `Add no carrinho ${currencySymbol} ${totalPrice.toFixed(2).replace('.',',')}`}
+                      {isAdded ? <><Check className="w-4 h-4" /> Add!</> : `Add ${currencySymbol} ${totalPrice.toFixed(2).replace('.',',')}`}
                     </button>
                   </div>
                </>
             )}
             
-            <button onClick={() => setIsExpanded(false)} className="w-full text-center text-xs text-stone-400 hover:text-stone-600 pb-1 dark:text-stone-500 dark:hover:text-stone-300"><ChevronUp className="w-4 h-4 mx-auto" /></button>
+            <button onClick={() => setIsExpanded(false)} className="w-full text-center text-xs text-stone-400 hover:text-stone-600 pb-1 pt-2 dark:text-stone-500 dark:hover:text-stone-300"><ChevronUp className="w-4 h-4 mx-auto" /></button>
           </div>
         )}
       </div>

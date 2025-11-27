@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { MENU_DATA, DEFAULT_SETTINGS, CATEGORY_IMAGES } from './data';
 import { Product, CartItem, Category, StoreSettings, WeeklySchedule } from './types';
@@ -684,13 +683,13 @@ function App() {
            {/* ... Search bar ... */}
            <div className="flex flex-col md:flex-row gap-3 mb-3">
              <div className="relative flex-1">
-                <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Buscar por nome, ingrediente ou código..." className="w-full pl-10 pr-10 py-3 border border-stone-400 rounded-xl shadow-sm text-sm outline-none focus:ring-2 focus:ring-italian-green placeholder-stone-500" style={{ backgroundColor: 'var(--bg-card, #ffffff)', color: 'var(--text-card, #333)' }} />
+                <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Buscar por nome, ingrediente ou código..." className="w-full pl-10 pr-10 py-3 border border-stone-300 rounded-xl shadow-sm text-sm outline-none focus:ring-2 focus:ring-italian-green placeholder-stone-500 focus:border-italian-green" style={{ backgroundColor: 'var(--bg-card, #ffffff)', color: 'var(--text-card, #333)' }} />
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-500" />
                 {searchTerm && <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"><X className="w-4 h-4" /></button>}
              </div>
              <div className="relative min-w-[160px]">
                 <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none"><Filter className="w-4 h-4 text-stone-600" /></div>
-                <select value={searchScope} onChange={(e) => setSearchScope(e.target.value)} className="w-full h-full pl-9 pr-8 py-3 border border-stone-400 rounded-xl shadow-sm text-sm appearance-none outline-none focus:ring-2 focus:ring-italian-green cursor-pointer font-medium" style={{ backgroundColor: 'var(--bg-card, #ffffff)', color: 'var(--text-card, #333)' }}>
+                <select value={searchScope} onChange={(e) => setSearchScope(e.target.value)} className="w-full h-full pl-9 pr-8 py-3 border border-stone-300 rounded-xl shadow-sm text-sm appearance-none outline-none focus:ring-2 focus:ring-italian-green cursor-pointer font-medium focus:border-italian-green" style={{ backgroundColor: 'var(--bg-card, #ffffff)', color: 'var(--text-card, #333)' }}>
                    <option value="all">Todas Categorias</option>
                    {menuData.filter(c => c.id !== 'promocoes').map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
                 </select>
@@ -698,10 +697,10 @@ function App() {
            </div>
            
            <div className="flex gap-2 overflow-x-auto pb-2 hide-scrollbar">
-              <button onClick={() => toggleTag('popular')} className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border transition-all whitespace-nowrap ${activeTags.includes('popular') ? 'bg-yellow-400 text-yellow-900 border-yellow-600' : 'bg-white text-stone-700 border-stone-400 hover:bg-stone-50'}`}><Star className="w-3 h-3" /> Mais Pedidos</button>
-              <button onClick={() => toggleTag('new')} className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border transition-all whitespace-nowrap ${activeTags.includes('new') ? 'bg-blue-600 text-white border-blue-800' : 'bg-white text-stone-700 border-stone-400 hover:bg-stone-50'}`}><Zap className="w-3 h-3" /> Novidades</button>
-              <button onClick={() => toggleTag('vegetarian')} className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border transition-all whitespace-nowrap ${activeTags.includes('vegetarian') ? 'bg-green-600 text-white border-green-800' : 'bg-white text-stone-700 border-stone-400 hover:bg-stone-50'}`}><Leaf className="w-3 h-3" /> Vegetarianos</button>
-              <button onClick={() => toggleTag('spicy')} className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border transition-all whitespace-nowrap ${activeTags.includes('spicy') ? 'bg-red-600 text-white border-red-800' : 'bg-white text-stone-700 border-stone-400 hover:bg-stone-50'}`}><Flame className="w-3 h-3" /> Picantes</button>
+              <button onClick={() => toggleTag('popular')} className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border transition-all whitespace-nowrap ${activeTags.includes('popular') ? 'bg-yellow-400 text-yellow-900 border-yellow-600' : 'bg-white text-stone-700 border-stone-300 hover:bg-stone-50'}`}><Star className="w-3 h-3" /> Mais Pedidos</button>
+              <button onClick={() => toggleTag('new')} className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border transition-all whitespace-nowrap ${activeTags.includes('new') ? 'bg-blue-600 text-white border-blue-800' : 'bg-white text-stone-700 border-stone-300 hover:bg-stone-50'}`}><Zap className="w-3 h-3" /> Novidades</button>
+              <button onClick={() => toggleTag('vegetarian')} className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border transition-all whitespace-nowrap ${activeTags.includes('vegetarian') ? 'bg-green-600 text-white border-green-800' : 'bg-white text-stone-700 border-stone-300 hover:bg-stone-50'}`}><Leaf className="w-3 h-3" /> Vegetarianos</button>
+              <button onClick={() => toggleTag('spicy')} className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border transition-all whitespace-nowrap ${activeTags.includes('spicy') ? 'bg-red-600 text-white border-red-800' : 'bg-white text-stone-700 border-stone-300 hover:bg-stone-50'}`}><Flame className="w-3 h-3" /> Picantes</button>
            </div>
         </div>
 
