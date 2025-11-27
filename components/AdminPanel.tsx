@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Category, Product, StoreSettings, ProductOption, ProductChoice, Order, Coupon, DeliveryRegion, WeeklySchedule, Table } from '../types';
-import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Ticket, QrCode, Clock, CreditCard, LayoutDashboard, ShoppingBag, Palette, Phone, Share2, Calendar, Printer, Filter, ChevronDown, ChevronUp, AlertTriangle, User, Truck, Utensils, Minus, Type, Ban, Wifi, WifiOff, Loader2, Database, Globe, DollarSign } from 'lucide-react';
+import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Ticket, QrCode, Clock, CreditCard, LayoutDashboard, ShoppingBag, Palette, Phone, Share2, Calendar, Printer, Filter, ChevronDown, ChevronUp, AlertTriangle, User, Truck, Utensils, Minus, Type, Ban, Wifi, WifiOff, Loader2, Database, Globe, DollarSign, Sun, Moon } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 interface AdminPanelProps {
@@ -101,6 +102,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   // Settings State
   const [settingsForm, setSettingsForm] = useState<StoreSettings>(settings);
+  const [colorTab, setColorTab] = useState<'general' | 'light' | 'dark'>('general');
+
   const [newRegionName, setNewRegionName] = useState('');
   const [newRegionPrice, setNewRegionPrice] = useState('');
   const [newRegionZips, setNewRegionZips] = useState('');
@@ -121,7 +124,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // Initialize settings form when props change
   useEffect(() => { 
     if (settings) {
-      setSettingsForm(settings); 
+      // Ensure structure exists
+      let safeSettings = { ...settings };
+      if (!safeSettings.colors) safeSettings.colors = { primary: '#C8102E', secondary: '#008C45' };
+      
+      // Initialize modes if missing
+      if (!safeSettings.colors.modes) {
+         safeSettings.colors.modes = {
+            light: { background: '#f5f5f4', cardBackground: '#ffffff', text: '#292524', cardText: '#1c1917', border: '#e7e5e4' },
+            dark: { background: '#0c0a09', cardBackground: '#1c1917', text: '#f5f5f4', cardText: '#ffffff', border: '#292524' }
+         };
+      }
+      setSettingsForm(safeSettings); 
     }
   }, [settings]);
 
@@ -583,6 +597,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
         
         {activeTab === 'dashboard' && (
+           // ... Dashboard Code ...
            <div className="space-y-6 animate-in fade-in">
               <div className="flex flex-col md:flex-row justify-end gap-2 mb-4">
                  <div className="flex gap-2">
@@ -641,6 +656,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         )}
 
         {activeTab === 'orders' && (
+           // ... Orders Code ...
            <div className="animate-in fade-in space-y-4">
               <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-stone-200">
                  <div className="flex flex-col gap-2">
@@ -833,6 +849,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
            </div>
         )}
 
+        {/* ... Menu, Coupons, Tables tabs (No significant changes here) ... */}
         {activeTab === 'menu' && (
            <div className="space-y-6 animate-in fade-in">
               {!isAddingNew && !editingProduct ? (
@@ -878,6 +895,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                  </>
               ) : (
                  <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                    {/* Product Edit Form (Same as before) */}
                     <div className="flex justify-between items-center mb-6">
                        <h2 className="text-xl font-bold">{isAddingNew ? 'Novo Produto' : 'Editar Produto'}</h2>
                        <button onClick={() => { setIsAddingNew(false); setEditingProduct(null); }} className="text-stone-500 hover:text-stone-800"><X className="w-6 h-6" /></button>
@@ -1102,79 +1120,111 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                  </div>
               </div>
 
-              {/* Visual Settings - EXPANDED */}
+              {/* Visual Settings - SEPARATE MODES */}
               <div className={CARD_STYLE}>
-                 <h3 className="font-bold text-lg mb-6 flex items-center gap-2 border-b border-stone-100 pb-2"><Palette className="w-5 h-5"/> Identidade Visual</h3>
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div>
-                       <label className={LABEL_STYLE}>Cor Principal (Botões)</label>
-                       <div className="flex gap-2">
-                          <input type="color" value={settingsForm.colors?.primary || '#C8102E'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, primary: e.target.value} as any})} className="h-10 w-10 rounded cursor-pointer border-0" />
-                          <input value={settingsForm.colors?.primary || '#C8102E'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, primary: e.target.value} as any})} className={INPUT_STYLE} />
-                       </div>
-                    </div>
-                    <div>
-                       <label className={LABEL_STYLE}>Cor Secundária (Detalhes)</label>
-                       <div className="flex gap-2">
-                          <input type="color" value={settingsForm.colors?.secondary || '#008C45'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, secondary: e.target.value} as any})} className="h-10 w-10 rounded cursor-pointer border-0" />
-                          <input value={settingsForm.colors?.secondary || '#008C45'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, secondary: e.target.value} as any})} className={INPUT_STYLE} />
-                       </div>
-                    </div>
-                    <div>
-                        <label className={LABEL_STYLE}>Fonte Principal</label>
-                        <select value={settingsForm.fontFamily || 'Outfit'} onChange={e => setSettingsForm({...settingsForm, fontFamily: e.target.value})} className={INPUT_STYLE}>
-                            {FONTS_LIST.map(font => <option key={font} value={font}>{font}</option>)}
-                        </select>
-                    </div>
-                    
-                    {/* HEADER COLORS */}
-                    <div className="col-span-1 md:col-span-3 border-t pt-4 mt-2"><h4 className="text-sm font-bold uppercase text-stone-500 mb-2">Cabeçalho</h4></div>
-                    <div>
-                       <label className={LABEL_STYLE}>Fundo do Cabeçalho</label>
-                       <div className="flex gap-2">
-                          <input type="color" value={settingsForm.colors?.headerBackground || settingsForm.colors?.primary || '#C8102E'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, headerBackground: e.target.value} as any})} className="h-10 w-10 rounded cursor-pointer border-0" />
-                          <input value={settingsForm.colors?.headerBackground || '#C8102E'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, headerBackground: e.target.value} as any})} className={INPUT_STYLE} />
-                       </div>
-                    </div>
-                    <div>
-                       <label className={LABEL_STYLE}>Texto do Cabeçalho</label>
-                       <div className="flex gap-2">
-                          <input type="color" value={settingsForm.colors?.headerText || '#FFFFFF'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, headerText: e.target.value} as any})} className="h-10 w-10 rounded cursor-pointer border-0" />
-                          <input value={settingsForm.colors?.headerText || '#FFFFFF'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, headerText: e.target.value} as any})} className={INPUT_STYLE} />
-                       </div>
-                    </div>
-
-                    {/* PAGE & CARDS COLORS */}
-                    <div className="col-span-1 md:col-span-3 border-t pt-4 mt-2"><h4 className="text-sm font-bold uppercase text-stone-500 mb-2">Fundo & Cartões</h4></div>
-                    <div>
-                       <label className={LABEL_STYLE}>Fundo da Página</label>
-                       <div className="flex gap-2">
-                          <input type="color" value={settingsForm.colors?.background || '#F5F5F4'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, background: e.target.value} as any})} className="h-10 w-10 rounded cursor-pointer border-0" />
-                          <input value={settingsForm.colors?.background || '#F5F5F4'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, background: e.target.value} as any})} className={INPUT_STYLE} />
-                       </div>
-                    </div>
-                    <div>
-                       <label className={LABEL_STYLE}>Texto Geral</label>
-                       <div className="flex gap-2">
-                          <input type="color" value={settingsForm.colors?.textColor || '#292524'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, textColor: e.target.value} as any})} className="h-10 w-10 rounded cursor-pointer border-0" />
-                          <input value={settingsForm.colors?.textColor || '#292524'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, textColor: e.target.value} as any})} className={INPUT_STYLE} />
-                       </div>
-                    </div>
-                    <div>
-                       <label className={LABEL_STYLE}>Fundo do Cartão (Produto)</label>
-                       <div className="flex gap-2">
-                          <input type="color" value={settingsForm.colors?.cardBackground || '#FFFFFF'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, cardBackground: e.target.value} as any})} className="h-10 w-10 rounded cursor-pointer border-0" />
-                          <input value={settingsForm.colors?.cardBackground || '#FFFFFF'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, cardBackground: e.target.value} as any})} className={INPUT_STYLE} />
-                       </div>
-                    </div>
-                    <div>
-                       <label className={LABEL_STYLE}>Texto do Cartão</label>
-                       <div className="flex gap-2">
-                          <input type="color" value={settingsForm.colors?.cardText || '#1C1917'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, cardText: e.target.value} as any})} className="h-10 w-10 rounded cursor-pointer border-0" />
-                          <input value={settingsForm.colors?.cardText || '#1C1917'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, cardText: e.target.value} as any})} className={INPUT_STYLE} />
-                       </div>
+                 <div className="flex justify-between items-center mb-6 border-b border-stone-100 pb-2">
+                    <h3 className="font-bold text-lg flex items-center gap-2"><Palette className="w-5 h-5"/> Identidade Visual</h3>
+                    <div className="flex gap-1 bg-stone-100 p-1 rounded-lg">
+                       <button onClick={() => setColorTab('general')} className={`px-3 py-1 text-xs font-bold rounded transition-all ${colorTab === 'general' ? 'bg-white shadow text-stone-800' : 'text-stone-500'}`}>Geral</button>
+                       <button onClick={() => setColorTab('light')} className={`px-3 py-1 text-xs font-bold rounded transition-all flex items-center gap-1 ${colorTab === 'light' ? 'bg-white shadow text-stone-800' : 'text-stone-500'}`}><Sun className="w-3 h-3"/> Modo Claro</button>
+                       <button onClick={() => setColorTab('dark')} className={`px-3 py-1 text-xs font-bold rounded transition-all flex items-center gap-1 ${colorTab === 'dark' ? 'bg-stone-800 text-white shadow' : 'text-stone-500'}`}><Moon className="w-3 h-3"/> Modo Escuro</button>
                     </div>
                  </div>
+
+                 {colorTab === 'general' && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in">
+                        <div>
+                           <label className={LABEL_STYLE}>Cor Principal (Botões)</label>
+                           <div className="flex gap-2">
+                              <input type="color" value={settingsForm.colors?.primary || '#C8102E'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, primary: e.target.value} as any})} className="h-10 w-10 rounded cursor-pointer border-0" />
+                              <input value={settingsForm.colors?.primary || '#C8102E'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, primary: e.target.value} as any})} className={INPUT_STYLE} />
+                           </div>
+                        </div>
+                        <div>
+                           <label className={LABEL_STYLE}>Cor Secundária (Detalhes)</label>
+                           <div className="flex gap-2">
+                              <input type="color" value={settingsForm.colors?.secondary || '#008C45'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, secondary: e.target.value} as any})} className="h-10 w-10 rounded cursor-pointer border-0" />
+                              <input value={settingsForm.colors?.secondary || '#008C45'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, secondary: e.target.value} as any})} className={INPUT_STYLE} />
+                           </div>
+                        </div>
+                        <div>
+                            <label className={LABEL_STYLE}>Fonte Principal</label>
+                            <select value={settingsForm.fontFamily || 'Outfit'} onChange={e => setSettingsForm({...settingsForm, fontFamily: e.target.value})} className={INPUT_STYLE}>
+                                {FONTS_LIST.map(font => <option key={font} value={font}>{font}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                           <label className={LABEL_STYLE}>Fundo do Cabeçalho</label>
+                           <div className="flex gap-2">
+                              <input type="color" value={settingsForm.colors?.headerBackground || settingsForm.colors?.primary || '#C8102E'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, headerBackground: e.target.value} as any})} className="h-10 w-10 rounded cursor-pointer border-0" />
+                              <input value={settingsForm.colors?.headerBackground || '#C8102E'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, headerBackground: e.target.value} as any})} className={INPUT_STYLE} />
+                           </div>
+                        </div>
+                        <div>
+                           <label className={LABEL_STYLE}>Texto do Cabeçalho</label>
+                           <div className="flex gap-2">
+                              <input type="color" value={settingsForm.colors?.headerText || '#FFFFFF'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, headerText: e.target.value} as any})} className="h-10 w-10 rounded cursor-pointer border-0" />
+                              <input value={settingsForm.colors?.headerText || '#FFFFFF'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, headerText: e.target.value} as any})} className={INPUT_STYLE} />
+                           </div>
+                        </div>
+                    </div>
+                 )}
+
+                 {(colorTab === 'light' || colorTab === 'dark') && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in">
+                        <div>
+                           <label className={LABEL_STYLE}>Fundo da Página</label>
+                           <div className="flex gap-2">
+                              <input type="color" value={settingsForm.colors?.modes?.[colorTab]?.background || '#ffffff'} 
+                                onChange={e => setSettingsForm({
+                                    ...settingsForm, 
+                                    colors: {
+                                        ...settingsForm.colors!,
+                                        modes: {
+                                            ...settingsForm.colors?.modes!,
+                                            [colorTab]: { ...settingsForm.colors?.modes?.[colorTab], background: e.target.value }
+                                        }
+                                    }
+                                })} className="h-10 w-10 rounded cursor-pointer border-0" />
+                              <input value={settingsForm.colors?.modes?.[colorTab]?.background} className={INPUT_STYLE} readOnly />
+                           </div>
+                        </div>
+                        <div>
+                           <label className={LABEL_STYLE}>Texto Geral</label>
+                           <div className="flex gap-2">
+                              <input type="color" value={settingsForm.colors?.modes?.[colorTab]?.text || '#000000'} 
+                                onChange={e => setSettingsForm({
+                                    ...settingsForm, 
+                                    colors: {
+                                        ...settingsForm.colors!,
+                                        modes: {
+                                            ...settingsForm.colors?.modes!,
+                                            [colorTab]: { ...settingsForm.colors?.modes?.[colorTab], text: e.target.value }
+                                        }
+                                    }
+                                })} className="h-10 w-10 rounded cursor-pointer border-0" />
+                              <input value={settingsForm.colors?.modes?.[colorTab]?.text} className={INPUT_STYLE} readOnly />
+                           </div>
+                        </div>
+                        <div>
+                           <label className={LABEL_STYLE}>Fundo do Cartão</label>
+                           <div className="flex gap-2">
+                              <input type="color" value={settingsForm.colors?.modes?.[colorTab]?.cardBackground || '#ffffff'} 
+                                onChange={e => setSettingsForm({
+                                    ...settingsForm, 
+                                    colors: {
+                                        ...settingsForm.colors!,
+                                        modes: {
+                                            ...settingsForm.colors?.modes!,
+                                            [colorTab]: { ...settingsForm.colors?.modes?.[colorTab], cardBackground: e.target.value }
+                                        }
+                                    }
+                                })} className="h-10 w-10 rounded cursor-pointer border-0" />
+                              <input value={settingsForm.colors?.modes?.[colorTab]?.cardBackground} className={INPUT_STYLE} readOnly />
+                           </div>
+                        </div>
+                    </div>
+                 )}
               </div>
 
               {/* SEO & Sharing */}

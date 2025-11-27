@@ -152,22 +152,43 @@ function App() {
       root.style.setProperty('--color-primary', storeSettings.colors.primary);
       root.style.setProperty('--color-secondary', storeSettings.colors.secondary);
       
-      // Detailed Customization
+      // Header is always Primary color or specific override
       root.style.setProperty('--header-bg', storeSettings.colors.headerBackground || storeSettings.colors.primary);
       root.style.setProperty('--header-text', storeSettings.colors.headerText || '#FFFFFF');
       
-      // Card Customization (Default to white/dark logic if not set)
-      root.style.setProperty('--bg-card', storeSettings.colors.cardBackground || (isDarkMode ? '#1c1917' : '#ffffff'));
-      root.style.setProperty('--text-card', storeSettings.colors.cardText || (isDarkMode ? '#ffffff' : '#1c1917'));
+      // DETERMINE MODE (Dark vs Light) and apply nested palette
+      const mode = isDarkMode ? 'dark' : 'light';
       
-      // Body Customization
-      root.style.setProperty('--bg-body', storeSettings.colors.background || (isDarkMode ? '#0c0a09' : '#f5f5f4'));
-      root.style.setProperty('--text-body', storeSettings.colors.textColor || (isDarkMode ? '#e7e5e4' : '#292524'));
+      // Fallback defaults if 'modes' not present (legacy support)
+      const defaultLight = {
+         background: '#f5f5f4',
+         cardBackground: '#ffffff',
+         text: '#292524',
+         cardText: '#1c1917',
+         border: '#e7e5e4'
+      };
+      const defaultDark = {
+         background: '#0c0a09',
+         cardBackground: '#1c1917',
+         text: '#f5f5f4',
+         cardText: '#ffffff',
+         border: '#292524'
+      };
+
+      const palette = storeSettings.colors.modes ? storeSettings.colors.modes[mode] : (isDarkMode ? defaultDark : defaultLight);
+
+      root.style.setProperty('--bg-body', palette?.background || defaultLight.background);
+      root.style.setProperty('--bg-card', palette?.cardBackground || defaultLight.cardBackground);
+      root.style.setProperty('--text-body', palette?.text || defaultLight.text);
+      root.style.setProperty('--text-card', palette?.cardText || defaultLight.cardText);
+      
+      // Granular Control (Buttons, Cart, etc.)
+      root.style.setProperty('--btn-primary', storeSettings.colors.primary); // Fallback
+      root.style.setProperty('--btn-text', '#FFFFFF');
     }
 
     if (storeSettings.fontFamily) {
       root.style.setProperty('font-family', `"${storeSettings.fontFamily}", sans-serif`);
-      // Inject font from Google Fonts dynamically if needed
       const linkId = 'dynamic-font-link';
       let link = document.getElementById(linkId) as HTMLLinkElement;
       if (!link) {
@@ -176,7 +197,6 @@ function App() {
         link.rel = 'stylesheet';
         document.head.appendChild(link);
       }
-      // Basic Google Fonts support for common fonts
       const fontName = storeSettings.fontFamily.replace(/ /g, '+');
       link.href = `https://fonts.googleapis.com/css2?family=${fontName}:wght@300;400;600;700&display=swap`;
     }
@@ -334,6 +354,10 @@ function App() {
            try { colors = JSON.parse(colors); } catch(e) { colors = DEFAULT_SETTINGS.colors; }
         }
 
+        // Merge with default structure to ensure 'modes' exists if using old data
+        const mergedColors = { ...DEFAULT_SETTINGS.colors, ...colors };
+        if (!mergedColors.modes) mergedColors.modes = DEFAULT_SETTINGS.colors?.modes;
+
         setStoreSettings({
             name: settingsData.name || DEFAULT_SETTINGS.name,
             whatsapp: settingsData.whatsapp || DEFAULT_SETTINGS.whatsapp,
@@ -348,7 +372,7 @@ function App() {
             freeShipping: settingsData.free_shipping ?? false,
             currencySymbol: settingsData.currency_symbol || DEFAULT_SETTINGS.currencySymbol,
             timezone: settingsData.timezone || DEFAULT_SETTINGS.timezone,
-            colors: colors || DEFAULT_SETTINGS.colors,
+            colors: mergedColors,
             fontFamily: settingsData.font_family || 'Outfit',
             seoTitle: settingsData.seo_title || DEFAULT_SETTINGS.seoTitle,
             seoDescription: settingsData.seo_description || DEFAULT_SETTINGS.seoDescription,
@@ -362,7 +386,8 @@ function App() {
       setError(null);
 
     } catch (err: any) {
-      if (err.code === '42P01' || err.code === 'PGRST205') { 
+      // If column not found or other SQL errors, fallback gracefully
+      if (err.code === '42P01' || err.code === '42703' || err.code === 'PGRST205') { 
          setMenuData(MENU_DATA);
          setStoreSettings(DEFAULT_SETTINGS);
          setError(null);

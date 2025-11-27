@@ -65,14 +65,14 @@ export const CategoryNav: React.FC<CategoryNavProps> = ({ categories, activeCate
                 </div>
                 
                 <span 
-                  className={`text-xs md:text-sm font-bold text-center line-clamp-2 leading-tight transition-colors px-1 ${
+                  className={`text-xs md:text-sm font-medium text-center line-clamp-2 leading-tight transition-colors px-1 ${
                     activeCategory === cat.id
-                      ? 'scale-105'
+                      ? 'scale-105 font-bold'
                       : 'group-hover/item:opacity-100 text-stone-600 dark:text-stone-400'
                   }`}
                   style={{ 
                       color: activeCategory === cat.id ? 'var(--color-primary)' : undefined,
-                      opacity: activeCategory === cat.id ? 1 : 0.8
+                      opacity: activeCategory === cat.id ? 1 : 0.9
                   }}
                 >
                   {cat.name}

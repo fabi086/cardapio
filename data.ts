@@ -49,6 +49,24 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   colors: {
     primary: '#C8102E', // Standard Italian Red
     secondary: '#008C45', // Standard Italian Green
+    
+    // Independent Modes
+    modes: {
+      light: {
+        background: '#f5f5f4', // Stone 100
+        cardBackground: '#ffffff',
+        text: '#292524', // Stone 800
+        cardText: '#1c1917', // Stone 900
+        border: '#e7e5e4' // Stone 200
+      },
+      dark: {
+        background: '#0c0a09', // Stone 950
+        cardBackground: '#1c1917', // Stone 900
+        text: '#f5f5f4', // Stone 100
+        cardText: '#ffffff',
+        border: '#292524' // Stone 800
+      }
+    }
   },
 
   seoTitle: 'Spagnolli Pizzaria - Cardápio Digital',

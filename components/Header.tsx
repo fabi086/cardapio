@@ -39,7 +39,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header 
-      className="sticky top-0 z-40 shadow-md transition-colors duration-300"
+      className="sticky top-0 z-50 shadow-md transition-colors duration-300"
       style={{ 
         backgroundColor: 'var(--header-bg, var(--color-primary))', 
         color: 'var(--header-text, #FFFFFF)' 

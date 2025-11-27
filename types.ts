@@ -82,19 +82,31 @@ export interface WeeklySchedule {
   sunday: DaySchedule;
 }
 
+export interface ColorPalette {
+  background: string;       // Page Background
+  cardBackground: string;   // Product Card Background
+  text: string;             // General Text Color
+  cardText: string;         // Product Card Text
+  border: string;           // Border Color
+}
+
 export interface StoreColors {
   primary: string;   // Main Action Color (Buttons, Accents)
   secondary: string; // Secondary Accent
   
-  // Advanced Customization
-  background?: string;       // Page Background
-  textColor?: string;        // General Text Color
-  
-  headerBackground?: string; // Specific for Top Bar
-  headerText?: string;       // Specific for Top Bar Text
-  
-  cardBackground?: string;   // Product Card Background
-  cardText?: string;         // Product Card Text
+  // Separate Palettes for Modes
+  modes?: {
+    light: ColorPalette;
+    dark: ColorPalette;
+  };
+
+  // Legacy Fallbacks (Optional)
+  background?: string;       
+  textColor?: string;        
+  headerBackground?: string; 
+  headerText?: string;       
+  cardBackground?: string;   
+  cardText?: string;         
 }
 
 export interface StoreSettings {

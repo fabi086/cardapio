@@ -135,7 +135,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
       <div id={`product-${product.id}`} className="absolute -top-28 left-0 w-full h-0 opacity-0 pointer-events-none" />
 
       <div 
-        className="h-40 w-full bg-stone-100 relative overflow-hidden cursor-pointer dark:bg-stone-800"
+        className="h-48 w-full bg-stone-100 relative overflow-hidden cursor-pointer dark:bg-stone-800"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <OptimizedImage 
@@ -146,7 +146,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
           className="transition-transform duration-700 ease-out group-hover/card:scale-105"
         />
         
-        {/* Readable Tags - High Contrast & Elegant */}
+        {/* Readable Tags */}
         {product.tags && product.tags.length > 0 && (
            <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
               {product.tags.map(tag => (
@@ -171,7 +171,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
         </button>
 
         <div className="absolute bottom-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded shadow-sm dark:bg-stone-900/90">
-          <span className="font-bold text-italian-green text-sm">{currencySymbol} {product.price.toFixed(2).replace('.', ',')}</span>
+          <span className="font-bold text-stone-800 text-sm dark:text-white">{currencySymbol} {product.price.toFixed(2).replace('.', ',')}</span>
         </div>
       </div>
 
@@ -205,7 +205,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
           <button 
             onClick={() => setIsExpanded(true)}
             className="w-full py-3 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-md active:scale-95"
-            style={{ backgroundColor: 'var(--color-primary)', color: '#FFFFFF' }}
+            style={{ backgroundColor: 'var(--btn-primary, var(--color-primary))', color: 'var(--btn-text, #FFFFFF)' }}
           >
             <Plus className="w-4 h-4" /> Adicionar
           </button>
@@ -216,13 +216,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
                <div className="bg-stone-50 p-1 rounded-lg flex mb-4 dark:bg-stone-800 border border-stone-200 dark:border-stone-700">
                   <button 
                     onClick={() => setMode('whole')}
-                    className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${mode === 'whole' ? 'bg-white text-italian-green shadow-sm border border-stone-100 dark:bg-stone-700 dark:text-white dark:border-stone-600' : 'text-stone-500 hover:text-stone-800 dark:text-stone-400'}`}
+                    className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${mode === 'whole' ? 'bg-white text-stone-800 shadow-sm border border-stone-100 dark:bg-stone-700 dark:text-white dark:border-stone-600' : 'text-stone-500 hover:text-stone-800 dark:text-stone-400'}`}
                   >
                     Inteira
                   </button>
                   <button 
                     onClick={() => setMode('half')}
-                    className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${mode === 'half' ? 'bg-white text-italian-green shadow-sm border border-stone-100 dark:bg-stone-700 dark:text-white dark:border-stone-600' : 'text-stone-500 hover:text-stone-800 dark:text-stone-400'}`}
+                    className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${mode === 'half' ? 'bg-white text-stone-800 shadow-sm border border-stone-100 dark:bg-stone-700 dark:text-white dark:border-stone-600' : 'text-stone-500 hover:text-stone-800 dark:text-stone-400'}`}
                   >
                     Meia a Meia
                   </button>
@@ -233,11 +233,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
                <div className="bg-stone-50 border border-stone-200 rounded-lg p-4 text-center dark:bg-stone-800 dark:border-stone-700">
                   <div className="mb-3 text-stone-700 dark:text-stone-300 text-sm">
                      <p className="font-bold mb-1">1ª Metade Selecionada:</p>
-                     <p className="text-italian-green font-bold">{product.name}</p>
+                     <p className="text-stone-800 font-bold">{product.name}</p>
                   </div>
                   <button 
                     onClick={() => onOpenPizzaBuilder && onOpenPizzaBuilder(product)}
-                    className="w-full bg-italian-green text-white py-2.5 rounded-lg font-bold text-sm hover:bg-green-700 flex items-center justify-center gap-2 shadow-sm"
+                    className="w-full bg-stone-800 text-white py-2.5 rounded-lg font-bold text-sm hover:bg-stone-700 flex items-center justify-center gap-2 shadow-sm"
                   >
                     <PieChart className="w-4 h-4" /> Escolher 2ª Metade
                   </button>
@@ -259,7 +259,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
                                return (
                                  <label key={idx} className="flex items-center justify-between cursor-pointer group p-1.5 hover:bg-white rounded dark:hover:bg-stone-700/50 transition-colors">
                                    <div className="flex items-center gap-2">
-                                     <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${option.type === 'single' ? 'rounded-full' : 'rounded'} ${isSelected ? 'bg-italian-green border-italian-green' : 'bg-white border-stone-300 group-hover:border-italian-green dark:bg-stone-900 dark:border-stone-500'}`}>
+                                     <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${option.type === 'single' ? 'rounded-full' : 'rounded'} ${isSelected ? 'bg-stone-800 border-stone-800' : 'bg-white border-stone-300 group-hover:border-stone-400 dark:bg-stone-900 dark:border-stone-500'}`}>
                                         {isSelected && <div className={`bg-white ${option.type === 'single' ? 'w-2 h-2 rounded-full' : 'w-3 h-3 icon-check'}`} />}
                                      </div>
                                      <input type={option.type === 'single' ? 'radio' : 'checkbox'} name={`opt-${product.id}-${option.id}`} className="hidden" onChange={() => handleOptionChange(option.id, choice.name, option.type)} checked={isSelected} />
@@ -276,14 +276,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
                   )}
 
                   <div>
-                    <input type="text" value={observation} onChange={(e) => setObservation(e.target.value)} placeholder="Obs: Sem cebola..." className="w-full text-sm p-2.5 bg-white border border-stone-300 rounded-lg focus:outline-none focus:border-italian-green focus:ring-1 focus:ring-italian-green text-stone-800 placeholder-stone-400 dark:bg-stone-800 dark:border-stone-700 dark:text-white" />
+                    <input type="text" value={observation} onChange={(e) => setObservation(e.target.value)} placeholder="Obs: Sem cebola..." className="w-full text-sm p-2.5 bg-white border border-stone-300 rounded-lg focus:outline-none focus:border-stone-400 focus:ring-1 focus:ring-stone-400 text-stone-800 placeholder-stone-400 dark:bg-stone-800 dark:border-stone-700 dark:text-white" />
                   </div>
                   
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center border border-stone-200 rounded-lg bg-white shadow-sm h-10 dark:bg-stone-800 dark:border-stone-700">
-                      <button onClick={handleDecrement} className="w-9 h-full flex items-center justify-center text-stone-500 hover:text-italian-red active:bg-stone-100 rounded-l-lg dark:text-stone-400 dark:active:bg-stone-700 border-r border-stone-100 dark:border-stone-700"><Minus className="w-4 h-4" /></button>
+                      <button onClick={handleDecrement} className="w-9 h-full flex items-center justify-center text-stone-500 hover:text-red-600 active:bg-stone-100 rounded-l-lg dark:text-stone-400 dark:active:bg-stone-700 border-r border-stone-100 dark:border-stone-700"><Minus className="w-4 h-4" /></button>
                       <span className="w-9 text-center font-bold text-stone-800 text-sm dark:text-white">{quantity}</span>
-                      <button onClick={handleIncrement} className="w-9 h-full flex items-center justify-center text-stone-500 hover:text-italian-green active:bg-stone-100 rounded-r-lg dark:text-stone-400 dark:active:bg-stone-700 border-l border-stone-100 dark:border-stone-700"><Plus className="w-4 h-4" /></button>
+                      <button onClick={handleIncrement} className="w-9 h-full flex items-center justify-center text-stone-500 hover:text-green-600 active:bg-stone-100 rounded-r-lg dark:text-stone-400 dark:active:bg-stone-700 border-l border-stone-100 dark:border-stone-700"><Plus className="w-4 h-4" /></button>
                     </div>
                     
                     <button 
@@ -291,8 +291,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
                       disabled={isAdded} 
                       className={`flex-1 h-10 rounded-lg font-bold text-xs md:text-sm transition-all shadow-md flex items-center justify-center gap-1 ${isAdded ? 'scale-105' : 'hover:opacity-90 active:scale-95'}`}
                       style={{ 
-                          backgroundColor: isAdded ? '#16a34a' : 'var(--color-primary)',
-                          color: '#FFFFFF'
+                          backgroundColor: isAdded ? '#16a34a' : 'var(--btn-primary, var(--color-primary))',
+                          color: 'var(--btn-text, #FFFFFF)'
                       }}
                     >
                       {isAdded ? <><Check className="w-4 h-4" /> Add!</> : `Add ${currencySymbol} ${totalPrice.toFixed(2).replace('.',',')}`}
