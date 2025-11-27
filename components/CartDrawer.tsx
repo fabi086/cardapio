@@ -256,10 +256,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             if (!region.zipRules || region.zipRules.length === 0) return false;
             
             return region.zipRules.some(rule => {
-                // Heuristic: Count digits to determine if it's a range or single value
+                // Heuristic to handle various formats like "12345-678" vs "12345678-12345999" vs "12345"
                 const digits = rule.replace(/\D/g, '');
                 
-                // Case 1: Range of two 8-digit CEPs (e.g., "13295000-13295999") -> 16 digits
+                // Case 1: Full Range (16 digits: 8 start + 8 end)
                 if (digits.length === 16) {
                     const start = parseInt(digits.substring(0, 8));
                     const end = parseInt(digits.substring(8, 16));
@@ -267,7 +267,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     return current >= start && current <= end;
                 }
                 
-                // Case 2: Range of two 5-digit prefixes (e.g., "13295-13299") -> 10 digits
+                // Case 2: Prefix Range (10 digits: 5 start + 5 end)
                 if (digits.length === 10) {
                      const startPrefix = parseInt(digits.substring(0, 5));
                      const endPrefix = parseInt(digits.substring(5, 10));
@@ -275,8 +275,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                      return currentPrefix >= startPrefix && currentPrefix <= endPrefix;
                 }
 
-                // Case 3: Single CEP or Prefix (5 or 8 digits usually)
-                // Also handles explicit single CEPs with hyphens like "13295-000" -> 8 digits
+                // Case 3: Single CEP or Prefix match
+                // If rule was "13295-000", digits is "13295000". cleanCep "13295000". startsWith -> true.
+                // If rule was "13295", digits is "13295". cleanCep "13295000". startsWith -> true.
                 return cleanCep.startsWith(digits);
             });
         });
@@ -589,15 +590,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 <h3 className="font-bold text-stone-700 dark:text-stone-300 text-sm uppercase tracking-wider border-b border-stone-200 dark:border-stone-700 pb-2">Itens do Carrinho</h3>
                 
                 {items.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center text-stone-400 gap-3 py-12 h-64">
-                      <ShoppingBag className="w-16 h-16 opacity-10" />
-                      <p className="text-sm font-medium text-stone-500">Seu carrinho está vazio</p>
-                      <button 
-                        onClick={onClose}
-                        className="mt-2 bg-italian-green/10 text-italian-green px-4 py-2 rounded-lg text-sm font-bold hover:bg-italian-green hover:text-white transition-colors flex items-center gap-2"
-                      >
-                         <ArrowLeft className="w-4 h-4" /> Ver Cardápio
-                      </button>
+                    <div className="flex flex-col items-center justify-center text-stone-400 gap-3 py-8">
+                      <ShoppingBag className="w-12 h-12 opacity-20" />
+                      <p className="text-sm font-medium">Seu carrinho está vazio</p>
                     </div>
                   ) : (
                     items.map((item, index) => {

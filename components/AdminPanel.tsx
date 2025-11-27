@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Category, Product, StoreSettings, ProductOption, ProductChoice, Order, Coupon, DeliveryRegion, WeeklySchedule, Table } from '../types';
 import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Ticket, QrCode, Clock, CreditCard, LayoutDashboard, ShoppingBag, Palette, Phone, Share2, Calendar, Printer, Filter, ChevronDown, ChevronUp, AlertTriangle, User, Truck, Utensils, Minus, Type, Ban, Wifi, WifiOff, Loader2, Database, Globe, DollarSign, Sun, Moon } from 'lucide-react';
@@ -26,6 +27,8 @@ const WEEKDAYS_PT = {
   saturday: 'Sábado',
   sunday: 'Domingo'
 };
+
+const WEEKDAYS_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 const FONTS_LIST = ['Outfit', 'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Poppins', 'Inter'];
 
@@ -453,6 +456,40 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleRemoveRegion = (id: string) => { const updatedRegions = settingsForm.deliveryRegions?.filter(r => r.id !== id) || []; setSettingsForm({ ...settingsForm, deliveryRegions: updatedRegions }); };
   const handleAddPhone = () => { if(newPhone) { setSettingsForm({...settingsForm, phones: [...settingsForm.phones, newPhone]}); setNewPhone(''); } };
   const handleRemovePhone = (idx: number) => { setSettingsForm({...settingsForm, phones: settingsForm.phones.filter((_, i) => i !== idx)}); };
+
+  // --- SCHEDULE HANDLING ---
+  const handleScheduleUpdate = (day: string, field: 'isOpen' | 'start' | 'end', value: any) => {
+    setSettingsForm(prev => {
+        const currentSchedule = prev.schedule || {} as WeeklySchedule;
+        const daySchedule = currentSchedule[day as keyof WeeklySchedule] || { isOpen: false, intervals: [] };
+        
+        let newDaySchedule = { ...daySchedule };
+        
+        if (field === 'isOpen') {
+            newDaySchedule.isOpen = value;
+            // Ensure at least one interval exists if opening
+            if (value && (!newDaySchedule.intervals || newDaySchedule.intervals.length === 0)) {
+                newDaySchedule.intervals = [{ start: '18:00', end: '23:00' }];
+            }
+        } else {
+            // Update first interval (simplified for UI)
+            const currentIntervals = [...(newDaySchedule.intervals || [])];
+            if (currentIntervals.length === 0) currentIntervals.push({ start: '18:00', end: '23:00' });
+            
+            const firstInterval = { ...currentIntervals[0], [field]: value };
+            currentIntervals[0] = firstInterval;
+            newDaySchedule.intervals = currentIntervals;
+        }
+
+        return {
+            ...prev,
+            schedule: {
+                ...currentSchedule,
+                [day]: newDaySchedule
+            }
+        };
+    });
+  };
   
   // COUPONS LOGIC
   const handleEditCoupon = (coupon: Coupon) => { 
@@ -1085,6 +1122,55 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                        </div>
                        <div className="flex gap-2"><input value={newPhone} onChange={e => setNewPhone(e.target.value)} className={INPUT_STYLE} placeholder="Novo telefone" /><button onClick={handleAddPhone} className="bg-stone-800 text-white px-4 rounded-lg font-bold">Add</button></div>
                     </div>
+                 </div>
+              </div>
+
+              {/* Schedule Settings - New Section */}
+              <div className={CARD_STYLE}>
+                 <h3 className="font-bold text-lg mb-6 flex items-center gap-2 border-b border-stone-100 pb-2"><Clock className="w-5 h-5"/> Horários de Funcionamento (Automático)</h3>
+                 <p className="text-sm text-stone-500 mb-4">Configure os dias e horários para que o site mostre automaticamente se está Aberto ou Fechado.</p>
+                 <div className="space-y-4">
+                    {WEEKDAYS_ORDER.map((dayKey) => {
+                       const schedule = settingsForm.schedule || {} as WeeklySchedule;
+                       const daySchedule = schedule[dayKey as keyof WeeklySchedule] || { isOpen: false, intervals: [] };
+                       const interval = daySchedule.intervals && daySchedule.intervals.length > 0 ? daySchedule.intervals[0] : { start: '18:00', end: '23:00' };
+
+                       return (
+                          <div key={dayKey} className={`flex flex-col md:flex-row md:items-center justify-between p-3 rounded-lg border ${daySchedule.isOpen ? 'bg-white border-stone-200' : 'bg-stone-50 border-stone-200 opacity-75'}`}>
+                             <div className="flex items-center gap-3 mb-2 md:mb-0 min-w-[150px]">
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                   <input 
+                                     type="checkbox" 
+                                     className="sr-only peer"
+                                     checked={daySchedule.isOpen}
+                                     onChange={(e) => handleScheduleUpdate(dayKey, 'isOpen', e.target.checked)}
+                                   />
+                                   <div className="w-9 h-5 bg-stone-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-italian-red rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-italian-green"></div>
+                                </label>
+                                <span className={`font-bold ${daySchedule.isOpen ? 'text-stone-800' : 'text-stone-400'}`}>{WEEKDAYS_PT[dayKey as keyof typeof WEEKDAYS_PT]}</span>
+                             </div>
+
+                             {daySchedule.isOpen && (
+                                <div className="flex items-center gap-2">
+                                   <input 
+                                     type="time" 
+                                     value={interval.start} 
+                                     onChange={(e) => handleScheduleUpdate(dayKey, 'start', e.target.value)}
+                                     className="p-2 border border-stone-300 rounded text-sm bg-white text-stone-900 focus:ring-2 focus:ring-italian-red outline-none"
+                                   />
+                                   <span className="text-stone-400">até</span>
+                                   <input 
+                                     type="time" 
+                                     value={interval.end} 
+                                     onChange={(e) => handleScheduleUpdate(dayKey, 'end', e.target.value)}
+                                     className="p-2 border border-stone-300 rounded text-sm bg-white text-stone-900 focus:ring-2 focus:ring-italian-red outline-none"
+                                   />
+                                </div>
+                             )}
+                             {!daySchedule.isOpen && <span className="text-sm text-stone-400 italic">Fechado</span>}
+                          </div>
+                       );
+                    })}
                  </div>
               </div>
 
