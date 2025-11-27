@@ -129,7 +129,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
   return (
     <div 
       id={id} 
-      className="rounded-xl shadow-sm border border-stone-200 overflow-hidden flex flex-col h-full hover:shadow-md transition-all relative group/card bg-white dark:bg-stone-900 dark:border-stone-700"
+      className="rounded-xl shadow-sm border-2 border-stone-200 overflow-hidden flex flex-col h-full hover:shadow-md transition-all relative group/card bg-white dark:bg-stone-900 dark:border-stone-700"
       style={{ backgroundColor: 'var(--bg-card, #ffffff)' }}
     >
       <div id={`product-${product.id}`} className="absolute -top-28 left-0 w-full h-0 opacity-0 pointer-events-none" />
