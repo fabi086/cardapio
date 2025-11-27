@@ -440,7 +440,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           }
           
           if (msg.includes('Could not find the') && msg.includes('column')) {
-             msg = `ERRO DE BANCO DE DADOS: Faltam colunas novas. Execute o script schema.sql no Supabase. Detalhe: ${msg}`;
+             msg = `ERRO DE BANCO DE DADOS: Faltam colunas novas (ex: free_shipping). Copie o código SQL fornecido na conversa e rode no SQL Editor do Supabase. Detalhe: ${msg}`;
           }
           
           alert('Erro ao salvar configurações: ' + msg);
@@ -756,13 +756,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             </ul>
                         </div>
                         <div className="p-3 border-t border-stone-100 bg-white grid grid-cols-4 gap-2">
-                            <button onClick={() => handlePrintOrder(order)} className="col-span-1 bg-stone-100 text-stone-600 rounded-lg hover:bg-stone-200 flex items-center justify-center transition-colors" title="Imprimir Pedido"><Printer className="w-5 h-5" /></button>
-                            <button onClick={() => handleEditOrder(order)} className="col-span-1 bg-stone-100 text-stone-600 rounded-lg hover:bg-stone-200 flex items-center justify-center transition-colors" title="Editar Pedido"><Edit3 className="w-5 h-5" /></button>
-                            <div className="col-span-2 flex gap-2">
-                                {order.status === 'pending' && <button onClick={() => handleUpdateOrderStatus(order.id, 'preparing')} className="w-full bg-blue-600 text-white py-2.5 rounded-lg text-xs font-bold hover:bg-blue-700 shadow-sm transition-all">Aprovar</button>}
-                                {order.status === 'preparing' && <button onClick={() => handleUpdateOrderStatus(order.id, 'delivery')} className="w-full bg-orange-500 text-white py-2.5 rounded-lg text-xs font-bold hover:bg-orange-600 shadow-sm transition-all">Enviar</button>}
-                                {order.status === 'delivery' && <button onClick={() => handleUpdateOrderStatus(order.id, 'completed')} className="w-full bg-green-600 text-white py-2.5 rounded-lg text-xs font-bold hover:bg-green-700 shadow-sm transition-all">Concluir</button>}
-                                {(order.status === 'completed' || order.status === 'cancelled') && <button disabled className="w-full bg-stone-100 text-stone-400 py-2.5 rounded-lg text-xs font-bold cursor-not-allowed">Arquivado</button>}
+                            <button onClick={() => handlePrintOrder(order)} className="col-span-1 bg-stone-100 text-stone-600 rounded-lg hover:bg-stone-200 flex items-center justify-center transition-colors h-9" title="Imprimir"><Printer className="w-4 h-4" /></button>
+                            <button onClick={() => handleEditOrder(order)} className="col-span-1 bg-stone-100 text-stone-600 rounded-lg hover:bg-stone-200 flex items-center justify-center transition-colors h-9" title="Editar"><Edit3 className="w-4 h-4" /></button>
+                            <div className="col-span-2 flex gap-1">
+                                {order.status === 'pending' && <button onClick={() => handleUpdateOrderStatus(order.id, 'preparing')} className="w-full bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 shadow-sm transition-all h-9">Aprovar</button>}
+                                {order.status === 'preparing' && <button onClick={() => handleUpdateOrderStatus(order.id, 'delivery')} className="w-full bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600 shadow-sm transition-all h-9">Enviar</button>}
+                                {order.status === 'delivery' && <button onClick={() => handleUpdateOrderStatus(order.id, 'completed')} className="w-full bg-green-600 text-white rounded-lg text-xs font-bold hover:bg-green-700 shadow-sm transition-all h-9">Concluir</button>}
+                                {(order.status === 'completed' || order.status === 'cancelled') && <button disabled className="w-full bg-stone-100 text-stone-400 rounded-lg text-xs font-bold cursor-not-allowed h-9">Arquivado</button>}
                             </div>
                         </div>
                         {(order.status !== 'completed' && order.status !== 'cancelled') && (
