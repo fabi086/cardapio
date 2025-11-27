@@ -28,15 +28,15 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onClose, 
   items, 
   onRemoveItem, 
-  onClearCart,
-  onUpdateQuantity,
-  onUpdateObservation,
+  onClearCart, 
+  onUpdateQuantity, 
+  onUpdateObservation, 
   onAddToCart,
-  whatsappNumber,
-  storeName,
-  deliveryRegions = [],
-  paymentMethods = [],
-  freeShipping = false,
+  whatsappNumber, 
+  storeName, 
+  deliveryRegions = [], 
+  paymentMethods = [], 
+  freeShipping = false, 
   menuData = [],
   currencySymbol = 'R$',
   tableNumber = null
@@ -254,14 +254,30 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             if (region.zipExclusions && region.zipExclusions.some(ex => cleanCep.startsWith(ex.replace(/\D/g, '')))) return false;
             
             if (!region.zipRules || region.zipRules.length === 0) return false;
+            
             return region.zipRules.some(rule => {
-                if (rule.includes('-')) {
-                    const [start, end] = rule.split('-').map(r => parseInt(r.replace(/\D/g, '')));
+                // Heuristic: Count digits to determine if it's a range or single value
+                const digits = rule.replace(/\D/g, '');
+                
+                // Case 1: Range of two 8-digit CEPs (e.g., "13295000-13295999") -> 16 digits
+                if (digits.length === 16) {
+                    const start = parseInt(digits.substring(0, 8));
+                    const end = parseInt(digits.substring(8, 16));
                     const current = parseInt(cleanCep);
                     return current >= start && current <= end;
-                } else {
-                    return cleanCep.startsWith(rule.replace(/\D/g, ''));
                 }
+                
+                // Case 2: Range of two 5-digit prefixes (e.g., "13295-13299") -> 10 digits
+                if (digits.length === 10) {
+                     const startPrefix = parseInt(digits.substring(0, 5));
+                     const endPrefix = parseInt(digits.substring(5, 10));
+                     const currentPrefix = parseInt(cleanCep.substring(0, 5));
+                     return currentPrefix >= startPrefix && currentPrefix <= endPrefix;
+                }
+
+                // Case 3: Single CEP or Prefix (5 or 8 digits usually)
+                // Also handles explicit single CEPs with hyphens like "13295-000" -> 8 digits
+                return cleanCep.startsWith(digits);
             });
         });
 
