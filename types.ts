@@ -106,7 +106,13 @@ export interface StoreColors {
   headerBackground?: string; 
   headerText?: string;       
   cardBackground?: string;   
-  cardText?: string;         
+  cardText?: string;
+
+  // New customizations
+  footer?: string;
+  footerText?: string;
+  buttons?: string;
+  cart?: string;
 }
 
 export interface StoreSettings {
