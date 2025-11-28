@@ -1,7 +1,7 @@
 
 
 import React, { useState } from 'react';
-import { ShoppingBag, Moon, Sun, Phone, Info, Clock } from 'lucide-react';
+import { ShoppingBag, Moon, Sun, Phone, Info, Clock, Sparkles } from 'lucide-react';
 
 interface HeaderProps {
   cartCount: number;
@@ -16,6 +16,7 @@ interface HeaderProps {
   onOpenInfo: () => void;
   isOpenNow: boolean;
   onOpenTracker: () => void; // New prop
+  onOpenAI: () => void; // New AI prop
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
@@ -30,7 +31,8 @@ export const Header: React.FC<HeaderProps> = ({
   phone,
   onOpenInfo,
   isOpenNow,
-  onOpenTracker
+  onOpenTracker,
+  onOpenAI
 }) => {
   const [logoError, setLogoError] = useState(false);
 
@@ -102,6 +104,16 @@ export const Header: React.FC<HeaderProps> = ({
                 <Phone className="w-4 h-4" /> Ligar
              </a>
           </div>
+
+          {/* AI Button - New Feature */}
+          <button 
+             onClick={onOpenAI}
+             className="relative p-2 rounded-full hover:bg-white/10 transition-colors group"
+             title="Assistente Virtual (IA)"
+          >
+             <Sparkles className="w-6 h-6 text-yellow-300 animate-pulse group-hover:scale-110 transition-transform" />
+             <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white/10"></span>
+          </button>
 
           {/* Mobile Contact Icons */}
           <a href={whatsLink} target="_blank" rel="noreferrer" className="md:hidden p-2 rounded-full hover:bg-white/10 transition-colors">

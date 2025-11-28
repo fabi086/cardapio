@@ -203,3 +203,10 @@ export interface Order {
   items: any[]; 
   observation?: string;
 }
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'model';
+  text: string;
+  isStreaming?: boolean;
+}
