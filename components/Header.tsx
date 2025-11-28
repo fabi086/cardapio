@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { ShoppingBag, Moon, Sun, Phone, Info, Clock } from 'lucide-react';
 
@@ -48,44 +49,33 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="max-w-5xl mx-auto px-4 py-2 flex justify-between items-center h-[72px]">
         
         {/* Logo Section */}
-        <div id="tour-logo-area" className="flex items-center gap-3 h-full cursor-pointer overflow-hidden" onClick={onOpenInfo}>
-          {!logoError && logoUrl ? (
-             <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 h-full cursor-pointer overflow-hidden" onClick={onOpenInfo}>
+           <div className="flex items-center gap-3">
+             {(!logoError && logoUrl) ? (
                <img 
                  src={logoUrl} 
                  alt={storeName} 
-                 className="h-[52px] w-auto object-contain py-1"
+                 className="h-[52px] w-[52px] rounded-full object-cover border-2 border-white/20 bg-white aspect-square !rounded-full" 
                  onError={() => setLogoError(true)}
                />
-               {/* Status Indicator for Logo Mode */}
-               <div className="hidden sm:flex flex-col justify-center">
-                  <div className="flex items-center gap-1.5 bg-white/10 px-2 py-0.5 rounded-full border border-white/10">
-                    <span className={`w-2 h-2 rounded-full ${isOpenNow ? 'bg-green-400 shadow-[0_0_5px_rgba(74,222,128,0.8)]' : 'bg-red-400'}`} />
-                    <span className="text-[10px] font-bold uppercase tracking-wider opacity-90">
-                      {isOpenNow ? 'Aberto' : 'Fechado'}
-                    </span>
-                  </div>
-               </div>
-             </div>
-          ) : (
-            <div className="flex items-center gap-2 animate-in fade-in">
-               <div className="bg-white/10 p-1.5 rounded-full border-2 border-white/20 shrink-0">
+             ) : (
+               <div className="bg-white/10 p-1.5 rounded-full border-2 border-white/20 shrink-0 h-[52px] w-[52px] flex items-center justify-center aspect-square">
                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
                     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
                   </svg>
                </div>
-               <div className="flex flex-col justify-center">
-                  <h1 className="font-display text-lg sm:text-xl leading-none break-words max-w-[180px] sm:max-w-xs">{storeName}</h1>
-                  {/* Status Indicator for Text Mode */}
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className={`w-2 h-2 rounded-full ${isOpenNow ? 'bg-green-400 shadow-[0_0_5px_rgba(74,222,128,0.8)]' : 'bg-red-400'}`} />
-                    <span className="text-[10px] font-bold uppercase tracking-wider opacity-90">
-                      {isOpenNow ? 'Aberto' : 'Fechado'}
-                    </span>
-                  </div>
-               </div>
-            </div>
-          )}
+             )}
+             
+             <div className="flex flex-col justify-center">
+                <h1 className="font-display text-lg sm:text-xl leading-none break-words max-w-[180px] sm:max-w-xs drop-shadow-sm">{storeName}</h1>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className={`w-2 h-2 rounded-full ${isOpenNow ? 'bg-green-400 shadow-[0_0_5px_rgba(74,222,128,0.8)]' : 'bg-red-400'}`} />
+                  <span className="text-[10px] font-bold uppercase tracking-wider opacity-90">
+                    {isOpenNow ? 'Aberto' : 'Fechado'}
+                  </span>
+                </div>
+             </div>
+           </div>
         </div>
 
         {/* Actions Section */}
@@ -158,7 +148,7 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <ShoppingBag className={`w-6 h-6 ${animateCart ? 'animate-bounce' : ''}`} />
             {cartCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-italian-green text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-white/20 transition-transform duration-300">
+              <span className="absolute -top-1 -right-1 bg-italian-green text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-white/20 transition-transform duration-300" style={{ backgroundColor: 'var(--cart-bg, var(--color-secondary))' }}>
                 {cartCount}
               </span>
             )}

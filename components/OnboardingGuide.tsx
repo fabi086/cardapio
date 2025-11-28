@@ -1,6 +1,5 @@
-
-import React, { useState, useEffect, useRef } from 'react';
-import { X, ChevronRight, ChevronLeft, Volume2, VolumeX } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, ChevronRight, ChevronLeft } from 'lucide-react';
 
 interface GuideStep {
   targetId: string;
@@ -50,30 +49,6 @@ export const OnboardingGuide: React.FC<OnboardingGuideProps> = ({ onClose }) => 
   const [currentStep, setCurrentStep] = useState(0);
   const [position, setPosition] = useState({ top: 0, left: 0, width: 0, height: 0 });
   const [isVisible, setIsVisible] = useState(false);
-  
-  // Voice State
-  const [isMuted, setIsMuted] = useState(false);
-  const hasSpokenRef = useRef(false);
-
-  // Speech Function
-  const speakText = (text: string) => {
-    if (isMuted || typeof window === 'undefined') return;
-    
-    // Cancel previous speech to avoid overlapping
-    window.speechSynthesis.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'pt-BR'; // Brazilian Portuguese
-    utterance.rate = 1.1; // Slightly faster for better flow
-    utterance.pitch = 1;
-    
-    // Try to find a good PT-BR voice
-    const voices = window.speechSynthesis.getVoices();
-    const ptVoice = voices.find(v => v.lang.includes('pt-BR') || v.lang.includes('pt'));
-    if (ptVoice) utterance.voice = ptVoice;
-
-    window.speechSynthesis.speak(utterance);
-  };
 
   useEffect(() => {
     const updatePosition = () => {
@@ -92,13 +67,6 @@ export const OnboardingGuide: React.FC<OnboardingGuideProps> = ({ onClose }) => 
           height: rect.height
         });
         setIsVisible(true);
-        
-        // Speak the content
-        // We add a small delay to allow the scroll to finish and user to focus
-        setTimeout(() => {
-             speakText(`${step.title}. ${step.description}`);
-        }, 500);
-
       } else {
         // Element not found (maybe filtered out), try next step or skip
         console.warn(`Guide element not found: ${step.targetId}`);
@@ -112,19 +80,8 @@ export const OnboardingGuide: React.FC<OnboardingGuideProps> = ({ onClose }) => 
     return () => {
       clearTimeout(timer);
       window.removeEventListener('resize', updatePosition);
-      window.speechSynthesis.cancel(); // Stop speaking when unmounting or changing step
     };
   }, [currentStep]);
-
-  // Handle Mute Toggle re-triggering speech if unmuted
-  useEffect(() => {
-      if (!isMuted && isVisible) {
-          const step = STEPS[currentStep];
-          speakText(`${step.title}. ${step.description}`);
-      } else {
-          window.speechSynthesis.cancel();
-      }
-  }, [isMuted]);
 
   const handleNext = () => {
     if (currentStep < STEPS.length - 1) {
@@ -139,11 +96,6 @@ export const OnboardingGuide: React.FC<OnboardingGuideProps> = ({ onClose }) => 
       setCurrentStep(prev => prev - 1);
     }
   };
-
-  const handleClose = () => {
-      window.speechSynthesis.cancel();
-      onClose();
-  }
 
   if (!isVisible) return null;
 
@@ -171,6 +123,9 @@ export const OnboardingGuide: React.FC<OnboardingGuideProps> = ({ onClose }) => 
   return (
     <div className="fixed inset-0 z-[100] overflow-hidden">
       {/* Semi-transparent overlay with a "hole" */}
+      {/* Since creating a true hole with CSS clip-path is complex for dynamic rects, 
+          we use a massive box-shadow approach on the highlighter div */}
+      
       <div 
         className="absolute transition-all duration-300 ease-out border-2 border-italian-green rounded-lg shadow-[0_0_0_9999px_rgba(0,0,0,0.7)]"
         style={{
@@ -190,17 +145,8 @@ export const OnboardingGuide: React.FC<OnboardingGuideProps> = ({ onClose }) => 
         }}
       >
         <div className="flex justify-between items-start">
-           <div className="flex items-center gap-2">
-               <h3 className="font-bold text-lg text-italian-red">{step.title}</h3>
-               <button 
-                 onClick={() => setIsMuted(!isMuted)} 
-                 className="p-1 rounded-full hover:bg-stone-100 text-stone-400 hover:text-stone-600 transition-colors"
-                 title={isMuted ? "Ativar Narração" : "Silenciar"}
-               >
-                   {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4 text-italian-green" />}
-               </button>
-           </div>
-           <button onClick={handleClose} className="text-stone-400 hover:text-stone-600">
+           <h3 className="font-bold text-lg text-italian-red">{step.title}</h3>
+           <button onClick={onClose} className="text-stone-400 hover:text-stone-600">
              <X className="w-5 h-5" />
            </button>
         </div>

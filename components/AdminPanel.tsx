@@ -1,8 +1,9 @@
+
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Category, Product, StoreSettings, ProductOption, ProductChoice, Order, Coupon, DeliveryRegion, WeeklySchedule, Table } from '../types';
 import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Ticket, QrCode, Clock, CreditCard, LayoutDashboard, ShoppingBag, Palette, Phone, Share2, Calendar, Printer, Filter, ChevronDown, ChevronUp, AlertTriangle, User, Truck, Utensils, Minus, Type, Ban, Wifi, WifiOff, Loader2, Database, Globe, DollarSign, Sun, Moon, Instagram, Facebook, Youtube, Store } from 'lucide-react';
 import { supabase } from '../supabaseClient';
-import { AdminTour } from './AdminTour';
 
 interface AdminPanelProps {
   menuData: Category[];
@@ -16,8 +17,6 @@ interface AdminPanelProps {
   onAddCategory: (name: string) => void;
   onUpdateCategory: (id: string, updates: { name?: string; image?: string }) => void;
   onDeleteCategory: (id: string) => void;
-  startTour?: boolean;
-  onTourFinish?: () => void;
 }
 
 const WEEKDAYS_PT = {
@@ -49,9 +48,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onBack,
   onAddCategory,
   onUpdateCategory,
-  onDeleteCategory,
-  startTour = false,
-  onTourFinish
+  onDeleteCategory
 }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
@@ -59,7 +56,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [dbError, setDbError] = useState<string | null>(null);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
-  const [runAdminTour, setRunAdminTour] = useState(false);
   
   // Dashboard State
   const [orders, setOrders] = useState<Order[]>([]);
@@ -127,17 +123,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [customDashEnd, setCustomDashEnd] = useState('');
   const [orderFilterStart, setOrderFilterStart] = useState('');
   const [orderFilterEnd, setOrderFilterEnd] = useState('');
-
-  useEffect(() => {
-    if (isAuthenticated && startTour) {
-        setRunAdminTour(true);
-    }
-  }, [isAuthenticated, startTour]);
-
-  const handleCloseAdminTour = () => {
-    setRunAdminTour(false);
-    if (onTourFinish) onTourFinish();
-  };
 
   // Initialize settings form when props change
   useEffect(() => { 
@@ -574,7 +559,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   return (
     <div className="min-h-screen bg-stone-50 pb-20 text-stone-800 font-sans">
-      {runAdminTour && <AdminTour onClose={handleCloseAdminTour} setActiveTab={setActiveTab} />}
       <header className="bg-white border-b border-stone-200 sticky top-0 z-30 shadow-sm">
          <div className="max-w-6xl mx-auto px-4 pt-4">
           
@@ -605,7 +589,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
           <div className="flex space-x-1 md:space-x-6 overflow-x-auto hide-scrollbar pb-0">
              {[{ id: 'dashboard', icon: LayoutDashboard, label: 'Dash' }, { id: 'orders', icon: ShoppingBag, label: 'Pedidos' }, { id: 'menu', icon: Grid, label: 'Cardápio' }, { id: 'coupons', icon: Ticket, label: 'Cupons' }, { id: 'tables', icon: QrCode, label: 'Mesas' }, { id: 'settings', icon: Settings, label: 'Config' }].map(tab => (
-               <button id={`admin-tour-${tab.id}`} key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex items-center gap-2 px-3 py-3 text-sm font-bold transition-colors whitespace-nowrap border-b-2 ${activeTab === tab.id ? 'border-italian-red text-italian-red' : 'border-transparent text-stone-500 hover:text-stone-800'}`}><tab.icon className="w-4 h-4" /> {tab.label}</button>
+               <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex items-center gap-2 px-3 py-3 text-sm font-bold transition-colors whitespace-nowrap border-b-2 ${activeTab === tab.id ? 'border-italian-red text-italian-red' : 'border-transparent text-stone-500 hover:text-stone-800'}`}><tab.icon className="w-4 h-4" /> {tab.label}</button>
              ))}
           </div>
         </div>
@@ -639,7 +623,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                      <h3 className="text-stone-500 text-xs md:text-sm font-bold uppercase flex items-center gap-2"><ShoppingBag className="w-4 h-4"/> Pedidos</h3>
                      <p className="text-2xl md:text-3xl font-bold text-stone-800 mt-2">{dashboardMetrics.totalOrders}</p>
                   </div>
-                  <div id="admin-tour-revenue-card" className={CARD_STYLE}>
+                  <div className={CARD_STYLE}>
                      <h3 className="text-stone-500 text-xs md:text-sm font-bold uppercase flex items-center gap-2"><CreditCard className="w-4 h-4"/> Receita</h3>
                      <p className="text-2xl md:text-3xl font-bold text-green-600 mt-2">{settings.currencySymbol} {dashboardMetrics.totalRevenue.toFixed(2)}</p>
                   </div>
@@ -696,7 +680,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
               
               {/* Order List */}
-              <div id="admin-tour-order-list" className="grid gap-4">
+              <div className="grid gap-4">
                   {orders.filter(o => orderFilter === 'all' || o.status === orderFilter).map(order => (
                       <div key={order.id} className="bg-white p-4 rounded-xl shadow-sm border border-stone-200 relative">
                           <div className="flex justify-between items-start mb-3">
@@ -741,7 +725,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
         {activeTab === 'menu' && (
            <div className="space-y-6 animate-in fade-in">
-              <div id="admin-tour-product-list" className="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
                  <h2 className="text-xl font-bold mb-4">Gerenciar Cardápio</h2>
                  <p className="text-stone-500 text-sm mb-4">Adicione, edite ou remova produtos e categorias.</p>
                  
@@ -1042,7 +1026,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
            <div className="space-y-6 animate-in fade-in">
               
               {/* General Settings */}
-              <div id="admin-tour-settings-general" className={CARD_STYLE}>
+              <div className={CARD_STYLE}>
                  <h3 className="font-bold text-lg mb-6 flex items-center gap-2 border-b border-stone-100 pb-2"><Settings className="w-5 h-5"/> Informações Gerais</h3>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div><label className={LABEL_STYLE}>Nome da Loja</label><input value={settingsForm.name} onChange={e => setSettingsForm({...settingsForm, name: e.target.value})} className={INPUT_STYLE} /></div>
@@ -1194,7 +1178,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                  </div>
 
                  {colorTab === 'general' && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in">
+                        {/* Primary */}
                         <div>
                            <label className={LABEL_STYLE}>Cor Principal</label>
                            <div className="flex gap-2">
@@ -1202,10 +1187,67 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                               <input value={settingsForm.colors?.primary || '#C8102E'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, primary: e.target.value} as any})} className={INPUT_STYLE} />
                            </div>
                         </div>
+                        {/* Secondary */}
+                        <div>
+                           <label className={LABEL_STYLE}>Cor Secundária</label>
+                           <div className="flex gap-2">
+                              <input type="color" value={settingsForm.colors?.secondary || '#008C45'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, secondary: e.target.value} as any})} className="h-10 w-10 rounded cursor-pointer border-0" />
+                              <input value={settingsForm.colors?.secondary || '#008C45'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, secondary: e.target.value} as any})} className={INPUT_STYLE} />
+                           </div>
+                        </div>
+                        {/* Header BG */}
+                         <div>
+                           <label className={LABEL_STYLE}>Fundo do Cabeçalho</label>
+                           <div className="flex gap-2">
+                              <input type="color" value={settingsForm.colors?.headerBackground || settingsForm.colors?.primary || '#C8102E'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, headerBackground: e.target.value} as any})} className="h-10 w-10 rounded cursor-pointer border-0" />
+                              <input value={settingsForm.colors?.headerBackground || ''} placeholder="Padrão: Principal" onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, headerBackground: e.target.value} as any})} className={INPUT_STYLE} />
+                           </div>
+                        </div>
+                        {/* Header Text */}
+                        <div>
+                           <label className={LABEL_STYLE}>Texto do Cabeçalho</label>
+                           <div className="flex gap-2">
+                              <input type="color" value={settingsForm.colors?.headerText || '#FFFFFF'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, headerText: e.target.value} as any})} className="h-10 w-10 rounded cursor-pointer border-0" />
+                              <input value={settingsForm.colors?.headerText || ''} placeholder="Padrão: Branco" onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, headerText: e.target.value} as any})} className={INPUT_STYLE} />
+                           </div>
+                        </div>
+                        {/* Footer BG */}
+                        <div>
+                           <label className={LABEL_STYLE}>Fundo do Rodapé</label>
+                           <div className="flex gap-2">
+                              <input type="color" value={settingsForm.colors?.footer || '#1c1917'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, footer: e.target.value} as any})} className="h-10 w-10 rounded cursor-pointer border-0" />
+                              <input value={settingsForm.colors?.footer || ''} placeholder="Padrão: Escuro" onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, footer: e.target.value} as any})} className={INPUT_STYLE} />
+                           </div>
+                        </div>
+                        {/* Footer Text */}
+                        <div>
+                           <label className={LABEL_STYLE}>Texto do Rodapé</label>
+                           <div className="flex gap-2">
+                              <input type="color" value={settingsForm.colors?.footerText || '#a8a29e'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, footerText: e.target.value} as any})} className="h-10 w-10 rounded cursor-pointer border-0" />
+                              <input value={settingsForm.colors?.footerText || ''} placeholder="Padrão: Cinza" onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, footerText: e.target.value} as any})} className={INPUT_STYLE} />
+                           </div>
+                        </div>
+                        {/* Buttons Color */}
+                        <div>
+                           <label className={LABEL_STYLE}>Cor dos Botões</label>
+                           <div className="flex gap-2">
+                              <input type="color" value={settingsForm.colors?.buttons || settingsForm.colors?.primary || '#C8102E'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, buttons: e.target.value} as any})} className="h-10 w-10 rounded cursor-pointer border-0" />
+                              <input value={settingsForm.colors?.buttons || ''} placeholder="Padrão: Principal" onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, buttons: e.target.value} as any})} className={INPUT_STYLE} />
+                           </div>
+                        </div>
+                        {/* Cart Color */}
+                        <div>
+                           <label className={LABEL_STYLE}>Cor do Carrinho</label>
+                           <div className="flex gap-2">
+                              <input type="color" value={settingsForm.colors?.cart || settingsForm.colors?.secondary || '#008C45'} onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, cart: e.target.value} as any})} className="h-10 w-10 rounded cursor-pointer border-0" />
+                              <input value={settingsForm.colors?.cart || ''} placeholder="Padrão: Secundária" onChange={e => setSettingsForm({...settingsForm, colors: {...settingsForm.colors, cart: e.target.value} as any})} className={INPUT_STYLE} />
+                           </div>
+                        </div>
                     </div>
                  )}
                  {(colorTab === 'light' || colorTab === 'dark') && (
-                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in">
+                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in">
+                        {/* Background */}
                         <div>
                            <label className={LABEL_STYLE}>Fundo da Página</label>
                            <div className="flex gap-2">
@@ -1220,7 +1262,124 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                         }
                                     }
                                 })} className="h-10 w-10 rounded cursor-pointer border-0" />
-                              <input value={settingsForm.colors?.modes?.[colorTab]?.background} className={INPUT_STYLE} readOnly />
+                              <input value={settingsForm.colors?.modes?.[colorTab]?.background || ''} onChange={e => setSettingsForm({
+                                    ...settingsForm, 
+                                    colors: {
+                                        ...settingsForm.colors!,
+                                        modes: {
+                                            ...settingsForm.colors?.modes!,
+                                            [colorTab]: { ...settingsForm.colors?.modes?.[colorTab], background: e.target.value }
+                                        }
+                                    }
+                                })} className={INPUT_STYLE} />
+                           </div>
+                        </div>
+                        {/* Card Background */}
+                        <div>
+                           <label className={LABEL_STYLE}>Fundo dos Cards</label>
+                           <div className="flex gap-2">
+                              <input type="color" value={settingsForm.colors?.modes?.[colorTab]?.cardBackground || '#ffffff'} 
+                                onChange={e => setSettingsForm({
+                                    ...settingsForm, 
+                                    colors: {
+                                        ...settingsForm.colors!,
+                                        modes: {
+                                            ...settingsForm.colors?.modes!,
+                                            [colorTab]: { ...settingsForm.colors?.modes?.[colorTab], cardBackground: e.target.value }
+                                        }
+                                    }
+                                })} className="h-10 w-10 rounded cursor-pointer border-0" />
+                              <input value={settingsForm.colors?.modes?.[colorTab]?.cardBackground || ''} onChange={e => setSettingsForm({
+                                    ...settingsForm, 
+                                    colors: {
+                                        ...settingsForm.colors!,
+                                        modes: {
+                                            ...settingsForm.colors?.modes!,
+                                            [colorTab]: { ...settingsForm.colors?.modes?.[colorTab], cardBackground: e.target.value }
+                                        }
+                                    }
+                                })} className={INPUT_STYLE} />
+                           </div>
+                        </div>
+                        {/* Text Body */}
+                        <div>
+                           <label className={LABEL_STYLE}>Texto Principal</label>
+                           <div className="flex gap-2">
+                              <input type="color" value={settingsForm.colors?.modes?.[colorTab]?.text || '#000000'} 
+                                onChange={e => setSettingsForm({
+                                    ...settingsForm, 
+                                    colors: {
+                                        ...settingsForm.colors!,
+                                        modes: {
+                                            ...settingsForm.colors?.modes!,
+                                            [colorTab]: { ...settingsForm.colors?.modes?.[colorTab], text: e.target.value }
+                                        }
+                                    }
+                                })} className="h-10 w-10 rounded cursor-pointer border-0" />
+                              <input value={settingsForm.colors?.modes?.[colorTab]?.text || ''} onChange={e => setSettingsForm({
+                                    ...settingsForm, 
+                                    colors: {
+                                        ...settingsForm.colors!,
+                                        modes: {
+                                            ...settingsForm.colors?.modes!,
+                                            [colorTab]: { ...settingsForm.colors?.modes?.[colorTab], text: e.target.value }
+                                        }
+                                    }
+                                })} className={INPUT_STYLE} />
+                           </div>
+                        </div>
+                        {/* Text Card */}
+                         <div>
+                           <label className={LABEL_STYLE}>Texto dos Cards</label>
+                           <div className="flex gap-2">
+                              <input type="color" value={settingsForm.colors?.modes?.[colorTab]?.cardText || '#000000'} 
+                                onChange={e => setSettingsForm({
+                                    ...settingsForm, 
+                                    colors: {
+                                        ...settingsForm.colors!,
+                                        modes: {
+                                            ...settingsForm.colors?.modes!,
+                                            [colorTab]: { ...settingsForm.colors?.modes?.[colorTab], cardText: e.target.value }
+                                        }
+                                    }
+                                })} className="h-10 w-10 rounded cursor-pointer border-0" />
+                              <input value={settingsForm.colors?.modes?.[colorTab]?.cardText || ''} onChange={e => setSettingsForm({
+                                    ...settingsForm, 
+                                    colors: {
+                                        ...settingsForm.colors!,
+                                        modes: {
+                                            ...settingsForm.colors?.modes!,
+                                            [colorTab]: { ...settingsForm.colors?.modes?.[colorTab], cardText: e.target.value }
+                                        }
+                                    }
+                                })} className={INPUT_STYLE} />
+                           </div>
+                        </div>
+                         {/* Border */}
+                         <div>
+                           <label className={LABEL_STYLE}>Bordas / Divisórias</label>
+                           <div className="flex gap-2">
+                              <input type="color" value={settingsForm.colors?.modes?.[colorTab]?.border || '#e5e5e5'} 
+                                onChange={e => setSettingsForm({
+                                    ...settingsForm, 
+                                    colors: {
+                                        ...settingsForm.colors!,
+                                        modes: {
+                                            ...settingsForm.colors?.modes!,
+                                            [colorTab]: { ...settingsForm.colors?.modes?.[colorTab], border: e.target.value }
+                                        }
+                                    }
+                                })} className="h-10 w-10 rounded cursor-pointer border-0" />
+                              <input value={settingsForm.colors?.modes?.[colorTab]?.border || ''} onChange={e => setSettingsForm({
+                                    ...settingsForm, 
+                                    colors: {
+                                        ...settingsForm.colors!,
+                                        modes: {
+                                            ...settingsForm.colors?.modes!,
+                                            [colorTab]: { ...settingsForm.colors?.modes?.[colorTab], border: e.target.value }
+                                        }
+                                    }
+                                })} className={INPUT_STYLE} />
                            </div>
                         </div>
                      </div>
