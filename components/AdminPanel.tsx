@@ -1,8 +1,8 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Category, Product, StoreSettings, ProductOption, ProductChoice, Order, Coupon, DeliveryRegion, WeeklySchedule, Table } from '../types';
 import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Ticket, QrCode, Clock, CreditCard, LayoutDashboard, ShoppingBag, Palette, Phone, Share2, Calendar, Printer, Filter, ChevronDown, ChevronUp, AlertTriangle, User, Truck, Utensils, Minus, Type, Ban, Wifi, WifiOff, Loader2, Database, Globe, DollarSign, Sun, Moon, Instagram, Facebook, Youtube, Store } from 'lucide-react';
 import { supabase } from '../supabaseClient';
+import { AdminTour } from './AdminTour';
 
 interface AdminPanelProps {
   menuData: Category[];
@@ -16,6 +16,8 @@ interface AdminPanelProps {
   onAddCategory: (name: string) => void;
   onUpdateCategory: (id: string, updates: { name?: string; image?: string }) => void;
   onDeleteCategory: (id: string) => void;
+  startTour?: boolean;
+  onTourFinish?: () => void;
 }
 
 const WEEKDAYS_PT = {
@@ -47,7 +49,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onBack,
   onAddCategory,
   onUpdateCategory,
-  onDeleteCategory
+  onDeleteCategory,
+  startTour = false,
+  onTourFinish
 }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
@@ -55,6 +59,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [dbError, setDbError] = useState<string | null>(null);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [runAdminTour, setRunAdminTour] = useState(false);
   
   // Dashboard State
   const [orders, setOrders] = useState<Order[]>([]);
@@ -122,6 +127,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [customDashEnd, setCustomDashEnd] = useState('');
   const [orderFilterStart, setOrderFilterStart] = useState('');
   const [orderFilterEnd, setOrderFilterEnd] = useState('');
+
+  useEffect(() => {
+    if (isAuthenticated && startTour) {
+        setRunAdminTour(true);
+    }
+  }, [isAuthenticated, startTour]);
+
+  const handleCloseAdminTour = () => {
+    setRunAdminTour(false);
+    if (onTourFinish) onTourFinish();
+  };
 
   // Initialize settings form when props change
   useEffect(() => { 
@@ -558,6 +574,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   return (
     <div className="min-h-screen bg-stone-50 pb-20 text-stone-800 font-sans">
+      {runAdminTour && <AdminTour onClose={handleCloseAdminTour} setActiveTab={setActiveTab} />}
       <header className="bg-white border-b border-stone-200 sticky top-0 z-30 shadow-sm">
          <div className="max-w-6xl mx-auto px-4 pt-4">
           
@@ -588,7 +605,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
           <div className="flex space-x-1 md:space-x-6 overflow-x-auto hide-scrollbar pb-0">
              {[{ id: 'dashboard', icon: LayoutDashboard, label: 'Dash' }, { id: 'orders', icon: ShoppingBag, label: 'Pedidos' }, { id: 'menu', icon: Grid, label: 'Cardápio' }, { id: 'coupons', icon: Ticket, label: 'Cupons' }, { id: 'tables', icon: QrCode, label: 'Mesas' }, { id: 'settings', icon: Settings, label: 'Config' }].map(tab => (
-               <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex items-center gap-2 px-3 py-3 text-sm font-bold transition-colors whitespace-nowrap border-b-2 ${activeTab === tab.id ? 'border-italian-red text-italian-red' : 'border-transparent text-stone-500 hover:text-stone-800'}`}><tab.icon className="w-4 h-4" /> {tab.label}</button>
+               <button id={`admin-tour-${tab.id}`} key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex items-center gap-2 px-3 py-3 text-sm font-bold transition-colors whitespace-nowrap border-b-2 ${activeTab === tab.id ? 'border-italian-red text-italian-red' : 'border-transparent text-stone-500 hover:text-stone-800'}`}><tab.icon className="w-4 h-4" /> {tab.label}</button>
              ))}
           </div>
         </div>
@@ -622,7 +639,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                      <h3 className="text-stone-500 text-xs md:text-sm font-bold uppercase flex items-center gap-2"><ShoppingBag className="w-4 h-4"/> Pedidos</h3>
                      <p className="text-2xl md:text-3xl font-bold text-stone-800 mt-2">{dashboardMetrics.totalOrders}</p>
                   </div>
-                  <div className={CARD_STYLE}>
+                  <div id="admin-tour-revenue-card" className={CARD_STYLE}>
                      <h3 className="text-stone-500 text-xs md:text-sm font-bold uppercase flex items-center gap-2"><CreditCard className="w-4 h-4"/> Receita</h3>
                      <p className="text-2xl md:text-3xl font-bold text-green-600 mt-2">{settings.currencySymbol} {dashboardMetrics.totalRevenue.toFixed(2)}</p>
                   </div>
@@ -679,7 +696,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
               
               {/* Order List */}
-              <div className="grid gap-4">
+              <div id="admin-tour-order-list" className="grid gap-4">
                   {orders.filter(o => orderFilter === 'all' || o.status === orderFilter).map(order => (
                       <div key={order.id} className="bg-white p-4 rounded-xl shadow-sm border border-stone-200 relative">
                           <div className="flex justify-between items-start mb-3">
@@ -724,7 +741,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
         {activeTab === 'menu' && (
            <div className="space-y-6 animate-in fade-in">
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+              <div id="admin-tour-product-list" className="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
                  <h2 className="text-xl font-bold mb-4">Gerenciar Cardápio</h2>
                  <p className="text-stone-500 text-sm mb-4">Adicione, edite ou remova produtos e categorias.</p>
                  
@@ -1025,7 +1042,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
            <div className="space-y-6 animate-in fade-in">
               
               {/* General Settings */}
-              <div className={CARD_STYLE}>
+              <div id="admin-tour-settings-general" className={CARD_STYLE}>
                  <h3 className="font-bold text-lg mb-6 flex items-center gap-2 border-b border-stone-100 pb-2"><Settings className="w-5 h-5"/> Informações Gerais</h3>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div><label className={LABEL_STYLE}>Nome da Loja</label><input value={settingsForm.name} onChange={e => setSettingsForm({...settingsForm, name: e.target.value})} className={INPUT_STYLE} /></div>

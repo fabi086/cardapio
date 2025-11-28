@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { MENU_DATA, DEFAULT_SETTINGS, CATEGORY_IMAGES } from './data';
 import { Product, CartItem, Category, StoreSettings, WeeklySchedule } from './types';
@@ -15,6 +12,7 @@ import { InfoModal } from './components/InfoModal';
 import { OnboardingGuide } from './components/OnboardingGuide';
 import { PizzaBuilderModal } from './components/PizzaBuilderModal';
 import { OrderTrackerModal } from './components/OrderTrackerModal';
+import { SalesPresentation } from './components/SalesPresentation';
 import { ShoppingBag, Check, Loader2, Search, X, Filter, Clock, AlertCircle, HelpCircle, Leaf, Flame, Star, Zap, PieChart, ArrowUp } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
@@ -116,6 +114,11 @@ function App() {
 
   // Guide State
   const [showGuide, setShowGuide] = useState(false);
+  
+  // Sales Tour State
+  const [showSalesDemo, setShowSalesDemo] = useState(false);
+  const [salesTourCompleted, setSalesTourCompleted] = useState(false);
+
 
   // Pizza Builder State
   const [isPizzaBuilderOpen, setIsPizzaBuilderOpen] = useState(false);
@@ -148,6 +151,11 @@ function App() {
     const tableParam = params.get('mesa');
     if (tableParam) {
       setTableNumber(tableParam);
+    }
+    // New: Check for Demo Mode trigger in URL
+    const demoParam = params.get('demo');
+    if (demoParam === 'true') {
+       setShowSalesDemo(true);
     }
   }, []);
 
@@ -264,11 +272,11 @@ function App() {
      
      if (storeSettings.enableGuide !== false) {
        const hasSeenGuide = localStorage.getItem('hasSeenGuide_v1');
-       if (!hasSeenGuide) {
+       if (!hasSeenGuide && !showSalesDemo) {
          setTimeout(() => setShowGuide(true), 1500);
        }
      }
-  }, [storeSettings]);
+  }, [storeSettings, showSalesDemo]);
 
   const closeGuide = () => {
     setShowGuide(false);
@@ -729,13 +737,44 @@ function App() {
 
   if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin" /></div>;
 
-  if (view === 'admin') return <AdminPanel menuData={menuData} settings={storeSettings} onUpdateProduct={handleUpdateProduct} onAddProduct={handleAddProduct} onDeleteProduct={handleDeleteProduct} onUpdateSettings={handleUpdateSettings} onAddCategory={handleAddCategory} onUpdateCategory={handleUpdateCategory} onDeleteCategory={handleDeleteCategory} onResetMenu={handleResetMenu} onBack={() => setView('customer')} />;
+  if (view === 'admin') {
+    return (
+      <AdminPanel 
+        menuData={menuData} 
+        settings={storeSettings} 
+        onUpdateProduct={handleUpdateProduct} 
+        onAddProduct={handleAddProduct} 
+        onDeleteProduct={handleDeleteProduct} 
+        onUpdateSettings={handleUpdateSettings} 
+        onAddCategory={handleAddCategory} 
+        onUpdateCategory={handleUpdateCategory} 
+        onDeleteCategory={handleDeleteCategory} 
+        onResetMenu={handleResetMenu} 
+        onBack={() => { setView('customer'); setSalesTourCompleted(false); }}
+        startTour={salesTourCompleted}
+        onTourFinish={() => setSalesTourCompleted(false)}
+      />
+    );
+  }
 
   let firstProductFound = false;
 
   return (
     <div className="min-h-screen pb-24 md:pb-0 font-sans transition-colors duration-300" style={{ backgroundColor: 'var(--bg-body, #f5f5f4)', color: 'var(--text-body, #292524)' }}>
-      {showGuide && <OnboardingGuide onClose={closeGuide} />}
+      <div id="admin-welcome" />
+      <div id="admin-final" />
+      {showGuide && !showSalesDemo && <OnboardingGuide onClose={closeGuide} />}
+      {showSalesDemo && (
+         <SalesPresentation 
+           onClose={() => setShowSalesDemo(false)} 
+           logoUrl={storeSettings.logoUrl}
+           onFinish={() => {
+             setShowSalesDemo(false);
+             setSalesTourCompleted(true);
+             setView('admin');
+           }}
+         />
+      )}
       
       {/* Table Mode Banner */}
       {tableNumber && (
@@ -794,6 +833,8 @@ function App() {
            </div>
         </div>
 
+        <div id="checkout-demo" />
+
         {!searchTerm && searchScope === 'all' && activeTags.length === 0 && activePromotions.length > 0 && <PromoBanner promotions={activePromotions} onAddToCart={(p) => addToCart(p, 1, '')} currencySymbol={storeSettings.currencySymbol} />}
 
         <div className="space-y-10">
@@ -840,7 +881,7 @@ function App() {
                              const isFirst = !firstProductFound;
                              if (isFirst) firstProductFound = true;
                              return (
-                               <ProductCard key={product.id} product={product} onAddToCart={addToCart} id={isFirst ? "tour-product-card" : undefined} allowHalfHalf={isPizzaCategory} onOpenPizzaBuilder={(p) => openPizzaBuilder(category.id, p)} currencySymbol={storeSettings.currencySymbol} />
+                               <ProductCard key={product.id} product={product} onAddToCart={addToCart} id={isFirst ? "tour-product-card" : undefined} allowHalfHalf={isPizzaCategory} onOpenPizzaBuilder={(p) => openPizzaBuilder(category.id, p)} currencySymbol={storeSettings.currencySymbol} storeName={storeSettings.name} />
                              );
                            })}
                          </div>
@@ -850,7 +891,7 @@ function App() {
                             <h3 className="text-lg font-bold text-stone-800 dark:text-stone-300 mb-3 ml-1 flex items-center gap-2"><span className="w-1.5 h-1.5 bg-stone-500 rounded-full"></span>{sub}</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                {products.map((product) => (
-                                 <ProductCard key={product.id} product={product} onAddToCart={addToCart} allowHalfHalf={isPizzaCategory} onOpenPizzaBuilder={(p) => openPizzaBuilder(category.id, p)} currencySymbol={storeSettings.currencySymbol} />
+                                 <ProductCard key={product.id} product={product} onAddToCart={addToCart} allowHalfHalf={isPizzaCategory} onOpenPizzaBuilder={(p) => openPizzaBuilder(category.id, p)} currencySymbol={storeSettings.currencySymbol} storeName={storeSettings.name} />
                                ))}
                             </div>
                          </div>
@@ -862,7 +903,7 @@ function App() {
                        const isFirst = !firstProductFound;
                        if (isFirst) firstProductFound = true;
                        return (
-                         <ProductCard key={product.id} product={product} onAddToCart={addToCart} id={isFirst ? "tour-product-card" : undefined} allowHalfHalf={isPizzaCategory} onOpenPizzaBuilder={(p) => openPizzaBuilder(category.id, p)} currencySymbol={storeSettings.currencySymbol} />
+                         <ProductCard key={product.id} product={product} onAddToCart={addToCart} id={isFirst ? "tour-product-card" : undefined} allowHalfHalf={isPizzaCategory} onOpenPizzaBuilder={(p) => openPizzaBuilder(category.id, p)} currencySymbol={storeSettings.currencySymbol} storeName={storeSettings.name} />
                        );
                      })}
                    </div>
@@ -879,9 +920,9 @@ function App() {
         </div>
       </main>
 
-      <Footer onOpenAdmin={() => setView('admin')} settings={storeSettings} />
+      <Footer onOpenAdmin={() => setView('admin')} settings={storeSettings} onStartDemo={() => setShowSalesDemo(true)} />
       
-      {storeSettings.enableGuide && (
+      {!showSalesDemo && storeSettings.enableGuide && (
          <div className="fixed bottom-24 left-4 md:bottom-8 md:left-8 z-[60]">
              <button onClick={restartGuide} className="bg-white text-italian-green p-2 rounded-full shadow-lg border border-stone-300 hover:scale-105 transition-transform" title="Ajuda"><HelpCircle className="w-6 h-6" /></button>
          </div>
@@ -902,51 +943,49 @@ function App() {
 
       <CartDrawer 
         isOpen={isCartOpen} 
-        onClose={() => setIsCartOpen(false)} 
+        onClose={() => setIsCartOpen(false)}
         items={cartItems} 
         onRemoveItem={removeFromCart} 
-        onClearCart={clearCart} 
-        onUpdateQuantity={updateQuantity} 
-        onUpdateObservation={updateObservation} 
+        onClearCart={clearCart}
+        onUpdateQuantity={updateQuantity}
+        onUpdateObservation={updateObservation}
         onAddToCart={addToCart}
-        whatsappNumber={storeSettings.whatsapp} 
-        storeName={storeSettings.name} 
-        deliveryRegions={storeSettings.deliveryRegions || []} 
-        paymentMethods={storeSettings.paymentMethods} 
-        freeShipping={storeSettings.freeShipping} 
+        whatsappNumber={storeSettings.whatsapp}
+        storeName={storeSettings.name}
+        deliveryRegions={storeSettings.deliveryRegions}
+        paymentMethods={storeSettings.paymentMethods}
+        freeShipping={storeSettings.freeShipping}
         menuData={menuData}
         currencySymbol={storeSettings.currencySymbol}
         tableNumber={tableNumber}
       />
-      <InfoModal isOpen={isInfoModalOpen} onClose={() => setIsInfoModalOpen(false)} settings={storeSettings} isOpenNow={storeStatus.isOpen} />
-      <PizzaBuilderModal isOpen={isPizzaBuilderOpen} onClose={() => setIsPizzaBuilderOpen(false)} availablePizzas={pizzasForBuilder} onAddToCart={addToCart} initialFirstHalf={pizzaBuilderFirstHalf} currencySymbol={storeSettings.currencySymbol} />
-      <OrderTrackerModal isOpen={isTrackerOpen} onClose={() => setIsTrackerOpen(false)} />
+
+      <InfoModal 
+        isOpen={isInfoModalOpen} 
+        onClose={() => setIsInfoModalOpen(false)} 
+        settings={storeSettings}
+        isOpenNow={storeStatus.isOpen}
+      />
+      
+      <PizzaBuilderModal
+        isOpen={isPizzaBuilderOpen}
+        onClose={() => setIsPizzaBuilderOpen(false)}
+        availablePizzas={pizzasForBuilder}
+        onAddToCart={addToCart}
+        initialFirstHalf={pizzaBuilderFirstHalf}
+        currencySymbol={storeSettings.currencySymbol}
+      />
+      
+      <OrderTrackerModal
+         isOpen={isTrackerOpen}
+         onClose={() => setIsTrackerOpen(false)}
+      />
 
       {showToast && (
-        <div className="fixed top-20 right-4 z-50 animate-in fade-in slide-in-from-right duration-300 pointer-events-none">
-          <div className="bg-italian-green text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2">
-            <div className="bg-white/20 p-1 rounded-full"><Check className="w-4 h-4" /></div>
-            <span className="font-medium">Item adicionado ao carrinho!</span>
-          </div>
+        <div className="fixed bottom-24 right-4 md:bottom-8 md:right-8 z-[60] bg-stone-900 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-3 animate-in fade-in slide-in-from-bottom">
+          <Check className="w-5 h-5 text-green-400" />
+          <span className="font-bold text-sm">Item adicionado!</span>
         </div>
-      )}
-
-      {/* Floating Cart */}
-      {totalItems > 0 && !isCartOpen && (
-        <>
-          <div className="fixed bottom-4 left-4 right-4 md:hidden z-40">
-            <button onClick={() => setIsCartOpen(true)} className={`w-full bg-italian-green text-white py-3 px-6 rounded-xl shadow-xl flex items-center justify-between animate-in slide-in-from-bottom-4 ${isCartAnimating ? 'scale-105 bg-green-600' : ''}`}>
-              <div className="flex flex-col items-start text-left"><span className="text-xs font-light text-green-100">Total</span><span className="font-bold text-lg">{storeSettings.currencySymbol || 'R$'} {totalPrice.toFixed(2).replace('.', ',')}</span></div>
-              <div className={`flex items-center gap-2 bg-green-700/50 px-3 py-1.5 rounded-lg ${isCartAnimating ? 'scale-110' : ''}`}><ShoppingBag className="w-5 h-5" /><span className="font-bold">{totalItems}</span></div>
-            </button>
-          </div>
-          <div className="hidden md:block fixed bottom-8 right-8 z-40">
-            <button onClick={() => setIsCartOpen(true)} className={`bg-italian-green text-white w-16 h-16 rounded-full shadow-xl flex items-center justify-center hover:scale-110 group ${isCartAnimating ? 'scale-125 bg-green-600' : ''}`}>
-              <ShoppingBag className={`w-8 h-8 group-hover:animate-pulse ${isCartAnimating ? 'animate-bounce' : ''}`} />
-              <span className="absolute -top-2 -right-2 bg-italian-red text-white text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full border-2 border-white dark:border-stone-800">{totalItems}</span>
-            </button>
-          </div>
-        </>
       )}
     </div>
   );

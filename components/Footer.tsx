@@ -1,14 +1,15 @@
 
 import React from 'react';
-import { Phone, Clock, MapPin, Lock, Instagram, Facebook, Youtube, Store } from 'lucide-react';
+import { Phone, Clock, MapPin, Lock, Instagram, Facebook, Youtube, Store, MonitorPlay } from 'lucide-react';
 import { StoreSettings } from '../types';
 
 interface FooterProps {
   onOpenAdmin: () => void;
   settings: StoreSettings;
+  onStartDemo?: () => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onOpenAdmin, settings }) => {
+export const Footer: React.FC<FooterProps> = ({ onOpenAdmin, settings, onStartDemo }) => {
   const hasSocials = settings.instagram || settings.facebook || settings.youtube || settings.googleBusiness;
 
   return (
@@ -89,13 +90,22 @@ export const Footer: React.FC<FooterProps> = ({ onOpenAdmin, settings }) => {
         </div>
       </div>
       
-      <div className="max-w-5xl mx-auto px-4 mt-8 pt-4 border-t border-stone-800 flex justify-center">
+      <div className="max-w-5xl mx-auto px-4 mt-8 pt-4 border-t border-stone-800 flex justify-center gap-4">
         <button 
+          id="admin-button-demo"
           onClick={onOpenAdmin} 
           className="flex items-center gap-1 text-xs text-stone-700 hover:text-stone-500 transition-colors"
         >
           <Lock className="w-3 h-3" /> Área Restrita
         </button>
+        {onStartDemo && (
+          <button 
+            onClick={onStartDemo} 
+            className="flex items-center gap-1 text-xs text-stone-700 hover:text-stone-500 transition-colors"
+          >
+            <MonitorPlay className="w-3 h-3" /> Modo Apresentação
+          </button>
+        )}
       </div>
     </footer>
   );

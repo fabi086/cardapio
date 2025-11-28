@@ -48,7 +48,7 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="max-w-5xl mx-auto px-4 py-2 flex justify-between items-center h-[72px]">
         
         {/* Logo Section */}
-        <div className="flex items-center gap-3 h-full cursor-pointer overflow-hidden" onClick={onOpenInfo}>
+        <div id="tour-logo-area" className="flex items-center gap-3 h-full cursor-pointer overflow-hidden" onClick={onOpenInfo}>
           {!logoError && logoUrl ? (
              <div className="flex items-center gap-3">
                <img 
