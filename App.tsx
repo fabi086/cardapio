@@ -1,8 +1,3 @@
-
-
-
-
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { MENU_DATA, DEFAULT_SETTINGS, CATEGORY_IMAGES } from './data';
 import { Product, CartItem, Category, StoreSettings, WeeklySchedule } from './types';
@@ -150,6 +145,8 @@ function App() {
     const tableParam = params.get('mesa');
     if (tableParam) {
       setTableNumber(tableParam);
+      // Persist table for session if needed, but usually URL is enough
+      // localStorage.setItem('spagnolli_table', tableParam);
     }
   }, []);
 
@@ -386,7 +383,7 @@ function App() {
             seoTitle: settingsData.seo_title || DEFAULT_SETTINGS.seoTitle,
             seoDescription: settingsData.seo_description || DEFAULT_SETTINGS.seoDescription,
             seoBannerUrl: settingsData.seo_banner_url || DEFAULT_SETTINGS.seoBannerUrl,
-            enableTableOrder: settingsData.enable_table_order ?? false,
+            enableTableOrder: settingsData.enable_table_order ?? true, // Force to true if undefined
             
             // New Social fields
             instagram: settingsData.instagram || '',
@@ -616,7 +613,37 @@ function App() {
               if(error) throw error;
               if(data) setSettingsId(data[0].id);
            }
-       } catch (e) {
+       } catch (e: any) {
+           // RETRY LOGIC for Missing Columns (code 42703 is 'undefined_column')
+           if (e.code === '42703') {
+              console.warn("Database missing columns, retrying with legacy payload...");
+              const legacyPayload = {
+                  name: newSettings.name,
+                  whatsapp: newSettings.whatsapp,
+                  address: newSettings.address,
+                  opening_hours: newSettings.openingHours,
+                  schedule: JSON.stringify(newSettings.schedule || {}),
+                  phones: newSettings.phones,
+                  logo_url: newSettings.logoUrl,
+                  delivery_regions: JSON.stringify(newSettings.deliveryRegions || []),
+                  enable_guide: newSettings.enableGuide,
+                  payment_methods: newSettings.paymentMethods,
+                  free_shipping: newSettings.freeShipping,
+                  currency_symbol: newSettings.currencySymbol,
+                  timezone: newSettings.timezone,
+                  colors: JSON.stringify(newSettings.colors || {}),
+                  font_family: newSettings.fontFamily,
+                  seo_title: newSettings.seoTitle,
+                  seo_description: newSettings.seoDescription,
+                  seo_banner_url: newSettings.seoBannerUrl
+              };
+               if (settingsId) {
+                  const { error: retryError } = await supabase.from('settings').update(legacyPayload).eq('id', settingsId);
+                  if(retryError) throw retryError;
+                  // If successful, throw a specific error to warn user but confirm partial save
+                  throw new Error("Salvo parcialmente! O banco de dados está desatualizado (faltam colunas), então algumas configurações novas (como mesas e redes sociais) não foram persistidas.");
+               }
+           }
            console.error("Error saving settings:", e);
            throw e; // Propagate error to AdminPanel
        }
@@ -742,8 +769,8 @@ function App() {
       
       {/* Table Mode Banner */}
       {tableNumber && (
-        <div className="bg-italian-green text-white px-4 py-2 text-center text-sm font-bold sticky top-0 z-50 shadow-md flex items-center justify-center gap-2 animate-in slide-in-from-top">
-           <div className="bg-white text-italian-green rounded-full w-6 h-6 flex items-center justify-center text-xs">{tableNumber}</div>
+        <div className="bg-italian-green text-white px-4 py-2 text-center text-sm font-bold sticky top-0 z-[60] shadow-md flex items-center justify-center gap-2 animate-in slide-in-from-top border-b border-green-700">
+           <div className="bg-white text-italian-green rounded-full w-6 h-6 flex items-center justify-center text-xs shadow-sm font-extrabold">{tableNumber}</div>
            Você está pedindo na Mesa {tableNumber}
         </div>
       )}
@@ -920,6 +947,7 @@ function App() {
         menuData={menuData}
         currencySymbol={storeSettings.currencySymbol}
         tableNumber={tableNumber}
+        enableTableOrder={storeSettings.enableTableOrder} // NEW PROP PASSED
       />
       <InfoModal isOpen={isInfoModalOpen} onClose={() => setIsInfoModalOpen(false)} settings={storeSettings} isOpenNow={storeStatus.isOpen} />
       <PizzaBuilderModal isOpen={isPizzaBuilderOpen} onClose={() => setIsPizzaBuilderOpen(false)} availablePizzas={pizzasForBuilder} onAddToCart={addToCart} initialFirstHalf={pizzaBuilderFirstHalf} currencySymbol={storeSettings.currencySymbol} />

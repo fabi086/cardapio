@@ -77,7 +77,9 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   instagram: '',
   facebook: '',
   youtube: '',
-  googleBusiness: ''
+  googleBusiness: '',
+  
+  enableTableOrder: true, // Default to true so it appears immediately
 };
 
 export const WHATSAPP_NUMBER = DEFAULT_SETTINGS.whatsapp; // Legacy support if needed

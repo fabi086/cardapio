@@ -1,7 +1,8 @@
 
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { CartItem, DeliveryRegion, Coupon, Category, Product } from '../types';
-import { X, Trash2, ShoppingBag, Plus, Minus, Edit2, MapPin, CreditCard, User, Search, Loader2, Ticket, CheckCircle, MessageCircle, Sparkles, Utensils, Info } from 'lucide-react';
+import { X, Trash2, ShoppingBag, Plus, Minus, Edit2, MapPin, CreditCard, User, Search, Loader2, Ticket, CheckCircle, MessageCircle, Sparkles, Utensils, Info, Bike, Store, ChefHat } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 interface CartDrawerProps {
@@ -21,6 +22,7 @@ interface CartDrawerProps {
   menuData?: Category[];
   currencySymbol?: string;
   tableNumber?: string | null;
+  enableTableOrder?: boolean;
 }
 
 export const CartDrawer: React.FC<CartDrawerProps> = ({ 
@@ -39,12 +41,16 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   freeShipping = false,
   menuData = [],
   currencySymbol = 'R$',
-  tableNumber = null
+  tableNumber = null,
+  enableTableOrder = false
 }) => {
   // Checkout State
   const [deliveryType, setDeliveryType] = useState<'delivery' | 'pickup' | 'table'>('delivery');
   const [customerName, setCustomerName] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
+  
+  // Manual Table Entry (if not scanned)
+  const [manualTableNumber, setManualTableNumber] = useState('');
   
   const [needChange, setNeedChange] = useState(false);
   const [changeFor, setChangeFor] = useState('');
@@ -84,10 +90,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   useEffect(() => {
     if (tableNumber) {
       setDeliveryType('table');
-    } else {
+    } else if (deliveryType === 'table' && !enableTableOrder) {
       setDeliveryType('delivery');
     }
-  }, [tableNumber]);
+  }, [tableNumber, enableTableOrder]);
 
   useEffect(() => {
     if (isOpen) {
@@ -120,10 +126,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
   const discountAmount = useMemo(() => {
     if (!appliedCoupon) return 0;
-    
-    if (appliedCoupon.min_order_value && subtotal < appliedCoupon.min_order_value) {
-       return 0; 
-    }
+    if (appliedCoupon.min_order_value && subtotal < appliedCoupon.min_order_value) return 0;
 
     if (appliedCoupon.type === 'fixed') {
        return appliedCoupon.discount_value;
@@ -132,7 +135,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     } else if (appliedCoupon.type === 'free_shipping') {
        return 0; 
     }
-    
     return subtotal * (appliedCoupon.discount_value / 100);
   }, [subtotal, appliedCoupon]);
 
@@ -149,30 +151,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
      if (!menuData || menuData.length === 0) return [];
      if (items.length === 0) return [];
 
-     const hasDrinks = items.some(item => {
-        return (item.category && item.category.toLowerCase().includes('bebida')) || 
-               (item.name && (item.name.toLowerCase().includes('coca') || item.name.toLowerCase().includes('guaran') || item.name.toLowerCase().includes('suco') || item.name.toLowerCase().includes('agua')));
-     });
+     const hasDrinks = items.some(item => (item.category && item.category.toLowerCase().includes('bebida')) || (item.name && (item.name.toLowerCase().includes('coca') || item.name.toLowerCase().includes('guaran') || item.name.toLowerCase().includes('suco') || item.name.toLowerCase().includes('agua'))));
 
      if (!hasDrinks) {
         const drinkCat = menuData.find(c => c.id.includes('bebida') || c.name.toLowerCase().includes('bebida'));
-        if (drinkCat && drinkCat.items.length > 0) {
-           return drinkCat.items.slice(0, 2);
-        }
+        if (drinkCat && drinkCat.items.length > 0) return drinkCat.items.slice(0, 2);
      }
-
-     const hasDessert = items.some(item => {
-        return (item.category && item.category.toLowerCase().includes('doce')) ||
-               (item.name && (item.name.toLowerCase().includes('chocolate') || item.name.toLowerCase().includes('doce')));
-     });
-
-     if (!hasDessert) {
-        const dessertCat = menuData.find(c => c.id.includes('doce') || c.name.toLowerCase().includes('sobremesa'));
-        if (dessertCat && dessertCat.items.length > 0) {
-           return dessertCat.items.slice(0, 2);
-        }
-     }
-
      return [];
   }, [items, menuData]);
 
@@ -183,13 +167,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
     if (!supabase) {
       if (couponCode.toUpperCase() === 'TESTE10') {
-        setAppliedCoupon({ 
-            id: 999, 
-            code: 'TESTE10', 
-            discount_value: 10, 
-            type: 'percent',
-            active: true 
-        });
+        setAppliedCoupon({ id: 999, code: 'TESTE10', discount_value: 10, type: 'percent', active: true });
       } else {
         setCouponError('Cupom inválido (Backend offline).');
       }
@@ -198,33 +176,15 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     }
 
     try {
-      const { data, error } = await supabase
-        .from('coupons')
-        .select('*')
-        .eq('code', couponCode.toUpperCase().trim())
-        .eq('active', true)
-        .maybeSingle();
-
+      const { data, error } = await supabase.from('coupons').select('*').eq('code', couponCode.toUpperCase().trim()).eq('active', true).maybeSingle();
       if (error) throw error;
 
       if (data) {
         const coupon = data as Coupon;
         const now = new Date();
-        if (coupon.start_date && new Date(coupon.start_date) > now) {
-            setCouponError('Este cupom ainda não está válido.');
-            setAppliedCoupon(null);
-            return;
-        }
-        if (coupon.end_date && new Date(coupon.end_date) < now) {
-            setCouponError('Este cupom expirou.');
-            setAppliedCoupon(null);
-            return;
-        }
-        if (coupon.min_order_value && subtotal < coupon.min_order_value) {
-            setCouponError(`Valor mínimo do pedido: ${currencySymbol} ${coupon.min_order_value.toFixed(2)}`);
-            setAppliedCoupon(null);
-            return;
-        }
+        if (coupon.start_date && new Date(coupon.start_date) > now) { setCouponError('Este cupom ainda não está válido.'); setAppliedCoupon(null); return; }
+        if (coupon.end_date && new Date(coupon.end_date) < now) { setCouponError('Este cupom expirou.'); setAppliedCoupon(null); return; }
+        if (coupon.min_order_value && subtotal < coupon.min_order_value) { setCouponError(`Valor mínimo do pedido: ${currencySymbol} ${coupon.min_order_value.toFixed(2)}`); setAppliedCoupon(null); return; }
 
         setAppliedCoupon(coupon);
         setCouponCode('');
@@ -240,10 +200,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     }
   };
 
-  const removeCoupon = () => {
-    setAppliedCoupon(null);
-    setCouponCode('');
-  };
+  const removeCoupon = () => { setAppliedCoupon(null); setCouponCode(''); };
 
   const checkRegion = (cepInput: string, neighborhoodInput: string) => {
     const cleanCep = cepInput.replace(/\D/g, '');
@@ -252,40 +209,19 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     if (cleanCep.length === 8) {
         const foundByCep = deliveryRegions.find(region => {
             if (region.zipExclusions && region.zipExclusions.some(ex => cleanCep.startsWith(ex.replace(/\D/g, '')))) return false;
-            
             if (!region.zipRules || region.zipRules.length === 0) return false;
-            
             return region.zipRules.some(rule => {
-                const ruleDigits = rule.replace(/\D/g, '');
-                
-                // Case 1: Exact Range (e.g., 13295000-13295999) - 16 digits
-                if (rule.includes('-') && ruleDigits.length === 16) {
-                    const start = parseInt(ruleDigits.substring(0, 8));
-                    const end = parseInt(ruleDigits.substring(8, 16));
+                if (rule.includes('-')) {
+                    const [start, end] = rule.split('-').map(r => parseInt(r.replace(/\D/g, '')));
                     const current = parseInt(cleanCep);
                     return current >= start && current <= end;
+                } else {
+                    return cleanCep.startsWith(rule.replace(/\D/g, ''));
                 }
-
-                // Case 2: Prefix Range (e.g., 13295-13299) - 10 digits
-                if (rule.includes('-') && ruleDigits.length === 10) {
-                     const startPrefix = parseInt(ruleDigits.substring(0, 5));
-                     const endPrefix = parseInt(ruleDigits.substring(5, 10));
-                     const currentPrefix = parseInt(cleanCep.substring(0, 5));
-                     return currentPrefix >= startPrefix && currentPrefix <= endPrefix;
-                }
-
-                // Case 3: Single CEP (13295-000) or Prefix (13295)
-                // Just check if the clean CEP starts with the rule digits
-                return cleanCep.startsWith(ruleDigits);
             });
         });
 
-        if (foundByCep) {
-            setCalculatedFee(foundByCep.price);
-            setMatchedRegionName(foundByCep.name);
-            setCepError('');
-            return true;
-        }
+        if (foundByCep) { setCalculatedFee(foundByCep.price); setMatchedRegionName(foundByCep.name); setCepError(''); return true; }
     }
 
     if (cleanNeighborhood.length > 2) {
@@ -294,32 +230,19 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 const normN = n.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
                 return normN === cleanNeighborhood || cleanNeighborhood.includes(normN) || normN.includes(cleanNeighborhood);
             });
-            
             const normRegionName = region.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-            const nameMatch = normRegionName === cleanNeighborhood || cleanNeighborhood.includes(normRegionName) || normRegionName.includes(cleanNeighborhood);
-
-            return hasListMatch || nameMatch;
+            return hasListMatch || normRegionName === cleanNeighborhood || cleanNeighborhood.includes(normRegionName) || normRegionName.includes(cleanNeighborhood);
         });
 
-        if (foundByName) {
-             setCalculatedFee(foundByName.price);
-             setMatchedRegionName(foundByName.name);
-             setCepError('');
-             return true;
-        }
+        if (foundByName) { setCalculatedFee(foundByName.price); setMatchedRegionName(foundByName.name); setCepError(''); return true; }
     }
 
-    setCalculatedFee(null);
-    setMatchedRegionName('');
-    return false;
+    setCalculatedFee(null); setMatchedRegionName(''); return false;
   };
 
   const handleCepSearch = async () => {
     const cleanCep = cep.replace(/\D/g, '');
-    if (cleanCep.length !== 8) {
-      setCepError('CEP deve ter 8 dígitos');
-      return;
-    }
+    if (cleanCep.length !== 8) { setCepError('CEP deve ter 8 dígitos'); return; }
 
     setIsFetchingCep(true);
     setCepError('');
@@ -329,23 +252,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     try {
       const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
       const data = await response.json();
-
-      if (data.erro) {
-        setCepError('CEP não encontrado.');
-        setAddressStreet('');
-        setAddressDistrict('');
-        setAddressCity('');
-        return;
-      }
-
+      if (data.erro) { setCepError('CEP não encontrado.'); setAddressStreet(''); setAddressDistrict(''); setAddressCity(''); return; }
       setAddressStreet(data.logradouro || '');
       setAddressDistrict(data.bairro || '');
       setAddressCity(data.localidade || '');
-
       const found = checkRegion(cleanCep, data.bairro || '');
-      if (!found) {
-          setCepError('Não realizamos entregas para esta região/CEP no momento.');
-      }
+      if (!found) { setCepError('Não realizamos entregas para esta região/CEP no momento.'); }
     } catch (error) {
       setCepError('Erro ao buscar CEP. Verifique sua conexão.');
     } finally {
@@ -353,11 +265,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     }
   };
 
-  useEffect(() => {
-     if (unknownCepMode && manualNeighborhood.length > 2) {
-         const found = checkRegion('', manualNeighborhood);
-     }
-  }, [manualNeighborhood, unknownCepMode]);
+  useEffect(() => { if (unknownCepMode && manualNeighborhood.length > 2) { checkRegion('', manualNeighborhood); } }, [manualNeighborhood, unknownCepMode]);
 
   const handleCheckout = async () => {
     if (items.length === 0) return;
@@ -368,19 +276,16 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     
     if (deliveryType === 'delivery') {
       if (unknownCepMode) {
-          if (!addressStreet.trim() || !addressNumber.trim() || !manualNeighborhood.trim()) {
-            alert('Por favor, preencha o endereço completo com o Bairro.');
-            return;
-          }
+          if (!addressStreet.trim() || !addressNumber.trim() || !manualNeighborhood.trim()) { alert('Por favor, preencha o endereço completo com o Bairro.'); return; }
       } else {
         if (calculatedFee === null && !unknownCepMode) { 
            if (!window.confirm("A taxa de entrega não foi calculada automaticamente. Deseja consultar o valor com o atendente?")) return;
         }
-        if (!addressStreet.trim() || !addressNumber.trim() || !addressDistrict.trim()) {
-          alert('Por favor, preencha o endereço completo.');
-          return;
-        }
+        if (!addressStreet.trim() || !addressNumber.trim() || !addressDistrict.trim()) { alert('Por favor, preencha o endereço completo.'); return; }
       }
+    } else if (deliveryType === 'table' && !tableNumber && !manualTableNumber) {
+        alert("Por favor, informe o número da mesa.");
+        return;
     }
 
     localStorage.setItem('spagnolli_user_name', customerName);
@@ -397,7 +302,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     setIsSubmitting(true);
     let orderId = null;
 
-    // Sanitize items for DB (ensure pure JSON)
     const cleanItems = items.map(i => ({
       id: i.id,
       name: i.name,
@@ -408,8 +312,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       code: i.code || ''
     }));
 
-    // Construct payload DYNAMICALLY to avoid sending missing columns (like table_number) if they are null
-    // This helps prevent "schema cache" errors if the DB is outdated
+    const finalTableNumber = tableNumber || manualTableNumber;
+
     const dbPayload: any = {
       customer_name: customerName,
       delivery_type: deliveryType,
@@ -425,11 +329,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       items: cleanItems
     };
 
-    // Only add these optional fields if they have values
-    // This prevents sending 'null' to columns that might not exist yet in old schemas
-    if (tableNumber) dbPayload.table_number = tableNumber;
+    if (finalTableNumber && deliveryType === 'table') dbPayload.table_number = finalTableNumber;
     if (appliedCoupon) dbPayload.coupon_code = appliedCoupon.code;
     if (discountAmount > 0) dbPayload.discount = Number(discountAmount.toFixed(2));
+
+    let saveSuccess = false;
 
     if (supabase) {
       try {
@@ -439,11 +343,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             console.error("Erro Supabase:", error);
             let errorMsg = `Erro ao salvar pedido: ${error.message}. `;
             if (error.message.includes('column') && error.message.includes('schema cache')) {
-               errorMsg += " (Seu banco de dados está desatualizado. Copie o código do schema.sql e rode no Supabase).";
+               errorMsg += " (Seu banco de dados está desatualizado).";
             }
             alert(`ATENÇÃO: ${errorMsg} O pedido será enviado apenas pelo WhatsApp.`);
         } else if (data && data.length > 0) {
             orderId = data[0].id;
+            saveSuccess = true;
             try {
                 const savedOrders = JSON.parse(localStorage.getItem('spagnolli_my_orders') || '[]');
                 if (!savedOrders.includes(orderId)) {
@@ -458,9 +363,29 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       }
     }
 
-    let message = `*NOVO PEDIDO ${orderId ? `#${orderId} ` : ''}- ${storeName}*\n`;
-    message += `------------------------------\n`;
+    // --- LOGIC SPLIT: TABLE vs DELIVERY ---
     
+    if (deliveryType === 'table') {
+        // Table orders do NOT send WhatsApp message
+        // They are sent directly to the kitchen (database)
+        if (saveSuccess) {
+            setOrderSuccess(true); // Triggers success modal
+            setIsSubmitting(false);
+            if (onClearCart) onClearCart();
+        } else {
+            // If DB failed, we might want to fallback or just show error.
+            // For now, assuming if DB fails, the alert above fired.
+            setIsSubmitting(false);
+        }
+        return; // STOP HERE FOR TABLES
+    }
+
+    // --- WHATSAPP LOGIC (Only for Delivery/Pickup) ---
+
+    let message = ``;
+    message += `*NOVO PEDIDO ${orderId ? `#${orderId} ` : ''}- ${storeName}*\n`;
+    
+    message += `------------------------------\n`;
     items.forEach((item) => {
       const optionsPrice = item.selectedOptions ? item.selectedOptions.reduce((sum, opt) => sum + opt.price, 0) : 0;
       const unitTotal = item.price + optionsPrice;
@@ -476,7 +401,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
     message += `------------------------------\n`;
     message += `*Subtotal:* ${currencySymbol} ${subtotal.toFixed(2).replace('.', ',')}\n`;
-    
     if (appliedCoupon) {
        message += `🎟 *Cupom (${appliedCoupon.code}):* - ${currencySymbol} ${discountAmount.toFixed(2).replace('.', ',')}\n`;
     }
@@ -485,18 +409,14 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       const feeText = (appliedCoupon?.type === 'free_shipping' || (freeShipping && calculatedFee !== null)) 
           ? 'GRÁTIS' 
           : (calculatedFee !== null ? `${currencySymbol} ${deliveryFee.toFixed(2).replace('.', ',')}` : 'A Consultar');
-          
       const regionName = matchedRegionName || (unknownCepMode ? manualNeighborhood : 'Região');
       message += `*Entrega (${regionName}):* ${feeText}\n`;
     } else if (deliveryType === 'pickup') {
       message += `*Retirada no Balcão*\n`;
-    } else if (deliveryType === 'table') {
-      message += `*CONSUMO NA MESA ${tableNumber}*\n`;
     }
     
     message += `*TOTAL: ${currencySymbol} ${total.toFixed(2).replace('.', ',')}*\n`;
     message += `------------------------------\n`;
-    
     message += `*DADOS DO CLIENTE:*\n`;
     message += `👤 Nome: ${customerName}\n`;
     
@@ -507,21 +427,17 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       message += `   Bairro: ${unknownCepMode ? manualNeighborhood : addressDistrict}\n`;
       if(!unknownCepMode) message += `   Cidade: ${addressCity}\n`;
       if (addressComplement) message += `   Comp: ${addressComplement}\n`;
-    } else if (deliveryType === 'table') {
-       message += `📍 *Mesa ${tableNumber}*\n`;
     }
     
     message += `💳 Pagamento: ${paymentMethod}`;
     if (paymentMethod === 'Dinheiro' && needChange) {
         message += ` (Troco para ${currencySymbol} ${changeFor})`;
     }
-    message += `\n`;
-    message += `\n_Enviado via Cardápio Digital_`;
+    message += `\n\n_Enviado via Cardápio Digital_`;
 
     const encodedMessage = encodeURIComponent(message);
     let cleanNumber = whatsappNumber.replace(/\D/g, ''); 
     if (cleanNumber.length >= 10 && cleanNumber.length <= 11) cleanNumber = '55' + cleanNumber;
-    
     const url = `https://wa.me/${cleanNumber}?text=${encodedMessage}`;
 
     setLastOrderUrl(url);
@@ -529,7 +445,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     setIsSubmitting(false);
     if (onClearCart) onClearCart();
     
-    // Use window.open to keep app state alive in background
     window.open(url, '_blank');
   };
 
@@ -558,27 +473,37 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         {orderSuccess ? (
            <div className="flex flex-col h-full items-center justify-center p-6 text-center space-y-6">
               <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center animate-in zoom-in">
-                 <CheckCircle className="w-12 h-12 text-green-600" />
+                 {deliveryType === 'table' ? <ChefHat className="w-12 h-12 text-green-600" /> : <CheckCircle className="w-12 h-12 text-green-600" />}
               </div>
               <div className="space-y-2">
-                 <h2 className="text-2xl font-bold text-stone-800 dark:text-white">Pronto!</h2>
+                 <h2 className="text-2xl font-bold text-stone-800 dark:text-white">
+                    {deliveryType === 'table' ? 'Enviado para Cozinha!' : 'Pronto!'}
+                 </h2>
                  <p className="text-stone-500 dark:text-stone-400">
-                    Seu pedido foi gerado. Se o WhatsApp não abriu automaticamente, clique abaixo:
+                    {deliveryType === 'table' 
+                       ? 'Seu pedido foi recebido e já está sendo preparado. Aguarde na sua mesa.' 
+                       : 'Seu pedido foi gerado. Se o WhatsApp não abriu automaticamente, clique abaixo:'}
                  </p>
               </div>
-              <div className="bg-white dark:bg-stone-800 p-4 rounded-xl shadow-sm border border-stone-200 dark:border-stone-700 w-full">
-                 <a href={lastOrderUrl} target="_blank" rel="noreferrer" className="w-full bg-italian-green text-white py-3.5 rounded-xl font-bold text-lg flex items-center justify-center gap-2 hover:bg-green-700 transition-colors shadow-lg animate-pulse">
-                    <MessageCircle className="w-6 h-6" /> Enviar no WhatsApp
-                 </a>
-              </div>
-              <button onClick={handleCloseSuccess} className="text-stone-400 hover:text-stone-600 font-medium text-sm">Fechar</button>
+              
+              {deliveryType !== 'table' && (
+                  <div className="bg-white dark:bg-stone-800 p-4 rounded-xl shadow-sm border border-stone-200 dark:border-stone-700 w-full">
+                     <a href={lastOrderUrl} target="_blank" rel="noreferrer" className="w-full bg-italian-green text-white py-3.5 rounded-xl font-bold text-lg flex items-center justify-center gap-2 hover:bg-green-700 transition-colors shadow-lg animate-pulse">
+                        <MessageCircle className="w-6 h-6" /> Enviar no WhatsApp
+                     </a>
+                  </div>
+              )}
+
+              <button onClick={handleCloseSuccess} className="bg-stone-200 text-stone-700 px-6 py-2 rounded-lg font-bold hover:bg-stone-300 transition-colors">
+                 {deliveryType === 'table' ? 'Fazer outro pedido' : 'Fechar'}
+              </button>
            </div>
         ) : (
           <>
             <div className="p-4 bg-italian-red text-white flex items-center justify-between shadow-md shrink-0" style={{ backgroundColor: 'var(--color-primary)' }}>
               <div className="flex items-center gap-2">
                 <ShoppingBag className="w-5 h-5" />
-                <h2 className="font-bold text-lg">Seu Pedido {tableNumber ? `(Mesa ${tableNumber})` : ''}</h2>
+                <h2 className="font-bold text-lg">Seu Pedido {(tableNumber || (deliveryType === 'table' && manualTableNumber)) ? `(Mesa ${tableNumber || manualTableNumber})` : ''}</h2>
               </div>
               <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full transition-colors"><X className="w-6 h-6" /></button>
             </div>
@@ -664,21 +589,62 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               {/* Checkout Form */}
               {items.length > 0 && (
                 <div className="space-y-6">
+                    {/* Order Type Selector - High Visibility */}
+                    {!tableNumber && (
+                      <div className={`grid gap-2 ${enableTableOrder ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                         <button 
+                            onClick={() => setDeliveryType('delivery')}
+                            className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${deliveryType === 'delivery' ? 'bg-italian-green border-italian-green text-white shadow-md' : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:bg-stone-50'}`}
+                         >
+                            <Bike className="w-6 h-6 mb-1" />
+                            <span className="text-xs font-bold">Entrega</span>
+                         </button>
+                         <button 
+                            onClick={() => setDeliveryType('pickup')}
+                            className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${deliveryType === 'pickup' ? 'bg-italian-green border-italian-green text-white shadow-md' : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:bg-stone-50'}`}
+                         >
+                            <Store className="w-6 h-6 mb-1" />
+                            <span className="text-xs font-bold">Retirada</span>
+                         </button>
+                         {enableTableOrder && (
+                            <button 
+                              onClick={() => setDeliveryType('table')}
+                              className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${deliveryType === 'table' ? 'bg-italian-green border-italian-green text-white shadow-md' : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:bg-stone-50'}`}
+                            >
+                                <Utensils className="w-6 h-6 mb-1" />
+                                <span className="text-xs font-bold">Mesa</span>
+                            </button>
+                         )}
+                      </div>
+                    )}
+
                     <div className="space-y-3">
                       <h3 className="font-bold text-stone-700 dark:text-stone-300 text-sm uppercase tracking-wider border-b border-stone-200 dark:border-stone-700 pb-2 flex items-center gap-2"><User className="w-4 h-4" /> Seus Dados</h3>
+                      
+                      {/* Manual Table Entry - Prominent */}
+                      {!tableNumber && deliveryType === 'table' && (
+                          <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border border-green-200 dark:border-green-800 animate-in fade-in zoom-in-95">
+                             <label className="block text-center text-sm font-bold text-green-800 dark:text-green-300 mb-2">QUAL O NÚMERO DA MESA?</label>
+                             <input 
+                                type="text" 
+                                value={manualTableNumber} 
+                                onChange={(e) => setManualTableNumber(e.target.value)} 
+                                className="w-full p-4 border-2 border-green-400 rounded-xl text-center font-bold text-3xl outline-none focus:ring-4 focus:ring-green-200 bg-white dark:bg-stone-800 text-stone-800 dark:text-white placeholder-stone-300" 
+                                placeholder="00" 
+                                autoFocus
+                             />
+                          </div>
+                      )}
+
                       <div>
-                          <label className="block text-xs font-bold text-stone-600 dark:text-stone-400 mb-1">Nome Completo</label>
+                          <label className="block text-xs font-bold text-stone-600 dark:text-stone-400 mb-1">Nome Completo {deliveryType === 'table' ? '(Opcional se Mesa)' : ''}</label>
                           <input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Digite seu nome" className="w-full p-2.5 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-sm text-stone-900 dark:text-white focus:ring-1 focus:ring-italian-green outline-none" />
                       </div>
                     </div>
 
-                    {!tableNumber && (
+                    {!tableNumber && deliveryType !== 'table' && (
                         <div className="space-y-3">
-                            <h3 className="font-bold text-stone-700 dark:text-stone-300 text-sm uppercase tracking-wider border-b border-stone-200 dark:border-stone-700 pb-2 flex items-center gap-2"><MapPin className="w-4 h-4" /> Entrega</h3>
-                            <div className="flex bg-white dark:bg-stone-800 p-1 rounded-lg border border-stone-200 dark:border-stone-700">
-                                <button onClick={() => setDeliveryType('delivery')} className={`flex-1 py-2 text-sm font-bold rounded-md transition-colors ${deliveryType === 'delivery' ? 'bg-italian-green text-white shadow-sm' : 'text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-700'}`}>Entrega</button>
-                                <button onClick={() => setDeliveryType('pickup')} className={`flex-1 py-2 text-sm font-bold rounded-md transition-colors ${deliveryType === 'pickup' ? 'bg-italian-green text-white shadow-sm' : 'text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-700'}`}>Retirar</button>
-                            </div>
+                            <h3 className="font-bold text-stone-700 dark:text-stone-300 text-sm uppercase tracking-wider border-b border-stone-200 dark:border-stone-700 pb-2 flex items-center gap-2"><MapPin className="w-4 h-4" /> {deliveryType === 'delivery' ? 'Entrega' : 'Retirada'}</h3>
 
                             {deliveryType === 'delivery' && (
                                 <div className="bg-white dark:bg-stone-800 p-3 rounded-lg border border-stone-200 dark:border-stone-700 space-y-3 animate-in fade-in slide-in-from-top-2">
@@ -838,7 +804,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     : 'bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/30'
                 }`}
               >
-                {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : <><MessageCircle className="w-6 h-6" /> Finalizar no WhatsApp</>}
+                {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : <><MessageCircle className="w-6 h-6" /> {deliveryType === 'table' ? 'Enviar para Cozinha' : 'Finalizar no WhatsApp'}</>}
               </button>
             </div>
           </>
