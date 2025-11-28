@@ -16,8 +16,10 @@ const DEFAULT_SCHEDULE: WeeklySchedule = {
 export const DEFAULT_SETTINGS: StoreSettings = {
   name: 'Spagnolli Pizzaria',
   logoUrl: '/logo.png',
+  faviconUrl: '',
   whatsapp: '5511999147399',
   address: 'Av. Itália, 112 - Centro, Itupeva - SP',
+  cnpj: '',
   openingHours: 'Aberto todos os dias das 18h às 23h', // Fallback text
   schedule: DEFAULT_SCHEDULE,
   phones: ['4496-4188', '4496-4186', '(11) 99914-7399'],

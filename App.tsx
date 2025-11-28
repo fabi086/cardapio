@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { MENU_DATA, DEFAULT_SETTINGS, CATEGORY_IMAGES } from './data';
 import { Product, CartItem, Category, StoreSettings, WeeklySchedule } from './types';
@@ -208,6 +210,20 @@ function App() {
     }
   }, [storeSettings.colors, storeSettings.fontFamily, isDarkMode]);
 
+  // Update Favicon
+  useEffect(() => {
+    const faviconUrl = storeSettings.faviconUrl || '/favicon.ico';
+    const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+    if (link) {
+        link.href = faviconUrl;
+    } else {
+        const newLink = document.createElement('link');
+        newLink.rel = 'icon';
+        newLink.href = faviconUrl;
+        document.head.appendChild(newLink);
+    }
+  }, [storeSettings.faviconUrl]);
+
   // Force Title Update Logic
   useEffect(() => {
     // Priority: SEO Title -> Store Name -> Default
@@ -368,7 +384,9 @@ function App() {
             name: settingsData.name || DEFAULT_SETTINGS.name,
             whatsapp: settingsData.whatsapp || DEFAULT_SETTINGS.whatsapp,
             logoUrl: settingsData.logo_url || DEFAULT_SETTINGS.logoUrl,
+            faviconUrl: settingsData.favicon_url || DEFAULT_SETTINGS.faviconUrl,
             address: settingsData.address || DEFAULT_SETTINGS.address,
+            cnpj: settingsData.cnpj || DEFAULT_SETTINGS.cnpj,
             openingHours: settingsData.opening_hours || DEFAULT_SETTINGS.openingHours,
             schedule: schedule || DEFAULT_SETTINGS.schedule,
             phones: (settingsData.phones && Array.isArray(settingsData.phones)) ? settingsData.phones : DEFAULT_SETTINGS.phones,
@@ -580,10 +598,12 @@ function App() {
           name: newSettings.name,
           whatsapp: newSettings.whatsapp,
           address: newSettings.address,
+          cnpj: newSettings.cnpj,
           opening_hours: newSettings.openingHours,
           schedule: JSON.stringify(newSettings.schedule || {}),
           phones: newSettings.phones,
           logo_url: newSettings.logoUrl,
+          favicon_url: newSettings.faviconUrl,
           delivery_regions: JSON.stringify(newSettings.deliveryRegions || []),
           enable_guide: newSettings.enableGuide,
           payment_methods: newSettings.paymentMethods,
@@ -641,7 +661,7 @@ function App() {
                   const { error: retryError } = await supabase.from('settings').update(legacyPayload).eq('id', settingsId);
                   if(retryError) throw retryError;
                   // If successful, throw a specific error to warn user but confirm partial save
-                  throw new Error("Salvo parcialmente! O banco de dados está desatualizado (faltam colunas), então algumas configurações novas (como mesas e redes sociais) não foram persistidas.");
+                  throw new Error("Salvo parcialmente! O banco de dados está desatualizado (faltam colunas), então algumas configurações novas (como CNPJ, favicon e redes sociais) não foram persistidas.");
                }
            }
            console.error("Error saving settings:", e);

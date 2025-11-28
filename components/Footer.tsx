@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { Phone, Clock, MapPin, Lock, Instagram, Facebook, Youtube, Store } from 'lucide-react';
 import { StoreSettings } from '../types';
@@ -42,8 +43,9 @@ export const Footer: React.FC<FooterProps> = ({ onOpenAdmin, settings }) => {
                )}
              </div>
           )}
-
+          
           <p className="text-xs opacity-50">© {new Date().getFullYear()} {settings.name}. Todos os direitos reservados.</p>
+          {settings.cnpj && <p className="text-xs opacity-50 mt-1">CNPJ: {settings.cnpj}</p>}
         </div>
         
         <div>
@@ -64,7 +66,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenAdmin, settings }) => {
             {settings.whatsapp && (
               <li>
                 <a 
-                  href={`https://wa.me/${settings.whatsapp.replace(/\D/g, '')}`}
+                  href={`https://api.whatsapp.com/send?phone=55${settings.whatsapp.replace(/\D/g, '')}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-white hover:underline transition-colors flex items-center gap-2"

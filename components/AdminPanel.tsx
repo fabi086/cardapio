@@ -1,7 +1,9 @@
 
+
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Category, Product, StoreSettings, ProductOption, ProductChoice, Order, Coupon, DeliveryRegion, WeeklySchedule, Table } from '../types';
-import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Ticket, QrCode, Clock, CreditCard, LayoutDashboard, ShoppingBag, Palette, Phone, Share2, Calendar, Printer, Filter, ChevronDown, ChevronUp, AlertTriangle, User, Truck, Utensils, Minus, Type, Ban, Wifi, WifiOff, Loader2, Database, Globe, DollarSign, Sun, Moon, Instagram, Facebook, Youtube, Store, Edit } from 'lucide-react';
+import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Ticket, QrCode, Clock, CreditCard, LayoutDashboard, ShoppingBag, Palette, Phone, Share2, Calendar, Printer, Filter, ChevronDown, ChevronUp, AlertTriangle, User, Truck, Utensils, Minus, Type, Ban, Wifi, WifiOff, Loader2, Database, Globe, DollarSign, Sun, Moon, Instagram, Facebook, Youtube, Store, Edit, Brush } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 interface AdminPanelProps {
@@ -108,6 +110,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   
   const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [isProcessingLogo, setIsProcessingLogo] = useState(false);
+  const [isProcessingFavicon, setIsProcessingFavicon] = useState(false);
   const [isProcessingBanner, setIsProcessingBanner] = useState(false);
 
   // Custom Date Range State
@@ -442,6 +445,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, isNew = false) => { const file = e.target.files?.[0]; if (file) { setIsProcessingImage(true); try { const compressedBase64 = await compressImage(file); if (isNew) { setNewProductForm(prev => ({ ...prev, image: compressedBase64 })); } else { setEditForm(prev => ({ ...prev, image: compressedBase64 })); } } catch (err) { alert("Erro ao processar imagem"); } finally { setIsProcessingImage(false); } } };
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (file) { setIsProcessingLogo(true); try { const compressedBase64 = await compressImage(file); setSettingsForm(prev => ({ ...prev, logoUrl: compressedBase64 })); } catch (err) { alert("Erro ao processar logo"); } finally { setIsProcessingLogo(false); } } };
+  const handleFaviconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (file) { setIsProcessingFavicon(true); try { const compressedBase64 = await compressImage(file); setSettingsForm(prev => ({ ...prev, faviconUrl: compressedBase64 })); } catch (err) { alert("Erro ao processar favicon"); } finally { setIsProcessingFavicon(false); } } };
   const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (file) { setIsProcessingBanner(true); try { const compressedBase64 = await compressImage(file); setSettingsForm(prev => ({ ...prev, seoBannerUrl: compressedBase64 })); } catch (err) { alert("Erro ao processar banner"); } finally { setIsProcessingBanner(false); } } };
 
   /* ... CRUD Handlers ... */
@@ -762,462 +766,236 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
            </div>
         )}
 
-        {activeTab === 'orders' && (
-           <div className="animate-in fade-in space-y-4">
-              <div className="flex flex-col gap-4 bg-white p-4 rounded-xl shadow-sm border border-stone-200">
-                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
-                    <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-start">
-                        <h2 className="font-bold text-lg flex items-center gap-2 text-stone-800"><ShoppingBag className="w-5 h-5"/> Pedidos</h2>
-                        {/* Section Toggle */}
-                        <div className="bg-stone-100 p-1 rounded-lg flex">
-                            <button onClick={() => setActiveOrderSection('delivery')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1 ${activeOrderSection === 'delivery' ? 'bg-white shadow-sm text-stone-800' : 'text-stone-500'}`}>
-                                <Truck className="w-3 h-3"/> Delivery & Balcão
-                            </button>
-                            <button onClick={() => setActiveOrderSection('tables')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1 ${activeOrderSection === 'tables' ? 'bg-white shadow-sm text-stone-800' : 'text-stone-500'}`}>
-                                <Utensils className="w-3 h-3"/> Mesas
-                            </button>
-                        </div>
-                    </div>
-                    <div className="flex gap-2 w-full md:w-auto overflow-x-auto hide-scrollbar">
-                        {['all', 'pending', 'preparing', 'delivery', 'completed'].map(status => (
-                            <button key={status} onClick={() => setOrderFilter(status)} className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap border transition-colors ${orderFilter === status ? 'bg-stone-800 text-white border-stone-800' : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50'}`}>
-                                {status === 'all' ? 'Todos' : status === 'pending' ? 'Pendentes' : status === 'preparing' ? 'Preparo' : status === 'delivery' ? 'Entrega' : 'Concluídos'}
-                            </button>
-                        ))}
-                    </div>
-                 </div>
-              </div>
-              
-              <div className="grid gap-4">
-                  {filteredOrders.length > 0 ? (
-                      filteredOrders.map(order => (
-                          <div key={order.id} className={`bg-white p-4 rounded-xl shadow-sm border relative ${order.delivery_type === 'table' ? 'border-l-4 border-l-italian-green border-stone-200' : 'border-stone-200'}`}>
-                              <div className="flex justify-between items-start mb-3">
-                                  <div>
-                                      <div className="flex items-center gap-2">
-                                          <span className="font-bold text-lg">#{order.id}</span>
-                                          <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : order.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
-                                              {order.status === 'pending' ? 'Pendente' : order.status === 'preparing' ? 'Preparando' : order.status === 'delivery' ? 'Entregando' : order.status === 'completed' ? 'Concluído' : 'Cancelado'}
-                                          </span>
-                                          {order.delivery_type === 'table' && (
-                                             <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs font-bold flex items-center gap-1 border border-green-200">
-                                                <Utensils className="w-3 h-3" /> MESA {order.table_number}
-                                             </span>
-                                          )}
-                                      </div>
-                                      <p className="text-sm text-stone-600 font-bold">{order.customer_name || 'Cliente'}</p>
-                                      <p className="text-xs text-stone-400">{new Date(order.created_at).toLocaleString('pt-BR')}</p>
-                                  </div>
-                                  <div className="text-right">
-                                      <p className="font-bold text-lg">{settings.currencySymbol} {order.total.toFixed(2)}</p>
-                                      <p className="text-xs text-stone-500">{order.payment_method}</p>
-                                  </div>
-                              </div>
-                              <div className="border-t border-stone-100 pt-3 mt-3">
-                                  {order.items.map((item: any, i: number) => (
-                                      <p key={i} className="text-sm text-stone-600">
-                                          <span className="font-bold">{item.quantity}x</span> {item.name}
-                                          {item.selectedOptions && item.selectedOptions.length > 0 && (
-                                              <span className="text-stone-400 text-xs block pl-4">
-                                                  + {item.selectedOptions.map((o:any) => o.choiceName).join(', ')}
-                                              </span>
-                                          )}
-                                          {item.observation && <span className="text-xs text-red-500 block pl-4 font-bold">OBS: {item.observation}</span>}
-                                      </p>
-                                  ))}
-                              </div>
-                              <div className="flex justify-end gap-2 mt-4">
-                                  <button onClick={() => setEditingOrderContent(order)} className="p-2 text-stone-500 hover:bg-stone-100 rounded-lg" title="Editar Itens"><Edit className="w-4 h-4" /></button>
-                                  <button onClick={() => handlePrintOrder(order)} className="p-2 text-stone-500 hover:bg-stone-100 rounded-lg" title="Imprimir"><Printer className="w-4 h-4" /></button>
-                                  {order.status !== 'completed' && order.status !== 'cancelled' && (
-                                      <>
-                                          {order.status === 'pending' && <button onClick={() => handleUpdateOrderStatus(order.id, 'preparing')} className="px-3 py-1 bg-blue-600 text-white rounded-lg text-sm font-bold">Aceitar</button>}
-                                          {order.status === 'preparing' && <button onClick={() => handleUpdateOrderStatus(order.id, 'delivery')} className="px-3 py-1 bg-orange-500 text-white rounded-lg text-sm font-bold">{order.delivery_type === 'table' ? 'Pronto' : 'Enviar'}</button>}
-                                          {order.status === 'delivery' && <button onClick={() => handleUpdateOrderStatus(order.id, 'completed')} className="px-3 py-1 bg-green-600 text-white rounded-lg text-sm font-bold">Concluir</button>}
-                                      </>
-                                  )}
-                              </div>
-                          </div>
-                      ))
-                  ) : (
-                      <div className="text-center py-12 bg-white rounded-xl border border-stone-200">
-                          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-stone-100 text-stone-400 mb-3">
-                              {activeOrderSection === 'tables' ? <Utensils className="w-6 h-6" /> : <ShoppingBag className="w-6 h-6" />}
-                          </div>
-                          <p className="text-stone-500 font-medium">Nenhum pedido de {activeOrderSection === 'tables' ? 'mesa' : 'delivery'} encontrado.</p>
-                      </div>
-                  )}
-              </div>
-           </div>
-        )}
+        {/* Orders, Menu, Coupons, Tables - Kept as is, just truncated for brevity in output unless needed */}
+        {/* ... (Orders Tab Logic) ... */}
+        {/* ... (Menu Tab Logic) ... */}
+        {/* ... (Coupons Tab Logic) ... */}
+        {/* ... (Tables Tab Logic) ... */}
+        
+        {activeTab === 'orders' && (/* ... Same as existing ... */ <div className="animate-in fade-in space-y-4"><div className="flex flex-col gap-4 bg-white p-4 rounded-xl shadow-sm border border-stone-200"><div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3"><div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-start"><h2 className="font-bold text-lg flex items-center gap-2 text-stone-800"><ShoppingBag className="w-5 h-5"/> Pedidos</h2><div className="bg-stone-100 p-1 rounded-lg flex"><button onClick={() => setActiveOrderSection('delivery')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1 ${activeOrderSection === 'delivery' ? 'bg-white shadow-sm text-stone-800' : 'text-stone-500'}`}><Truck className="w-3 h-3"/> Delivery & Balcão</button><button onClick={() => setActiveOrderSection('tables')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1 ${activeOrderSection === 'tables' ? 'bg-white shadow-sm text-stone-800' : 'text-stone-500'}`}><Utensils className="w-3 h-3"/> Mesas</button></div></div><div className="flex gap-2 w-full md:w-auto overflow-x-auto hide-scrollbar">{['all', 'pending', 'preparing', 'delivery', 'completed'].map(status => (<button key={status} onClick={() => setOrderFilter(status)} className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap border transition-colors ${orderFilter === status ? 'bg-stone-800 text-white border-stone-800' : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50'}`}>{status === 'all' ? 'Todos' : status === 'pending' ? 'Pendentes' : status === 'preparing' ? 'Preparo' : status === 'delivery' ? 'Entrega' : 'Concluídos'}</button>))}</div></div></div><div className="grid gap-4">{filteredOrders.length > 0 ? (filteredOrders.map(order => (<div key={order.id} className={`bg-white p-4 rounded-xl shadow-sm border relative ${order.delivery_type === 'table' ? 'border-l-4 border-l-italian-green border-stone-200' : 'border-stone-200'}`}><div className="flex justify-between items-start mb-3"><div><div className="flex items-center gap-2"><span className="font-bold text-lg">#{order.id}</span><span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : order.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>{order.status === 'pending' ? 'Pendente' : order.status === 'preparing' ? 'Preparando' : order.status === 'delivery' ? 'Entregando' : order.status === 'completed' ? 'Concluído' : 'Cancelado'}</span>{order.delivery_type === 'table' && (<span className="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs font-bold flex items-center gap-1 border border-green-200"><Utensils className="w-3 h-3" /> MESA {order.table_number}</span>)}</div><p className="text-sm text-stone-600 font-bold">{order.customer_name || 'Cliente'}</p><p className="text-xs text-stone-400">{new Date(order.created_at).toLocaleString('pt-BR')}</p></div><div className="text-right"><p className="font-bold text-lg">{settings.currencySymbol} {order.total.toFixed(2)}</p><p className="text-xs text-stone-500">{order.payment_method}</p></div></div><div className="border-t border-stone-100 pt-3 mt-3">{order.items.map((item: any, i: number) => (<p key={i} className="text-sm text-stone-600"><span className="font-bold">{item.quantity}x</span> {item.name}{item.selectedOptions && item.selectedOptions.length > 0 && (<span className="text-stone-400 text-xs block pl-4">+ {item.selectedOptions.map((o:any) => o.choiceName).join(', ')}</span>)}{item.observation && <span className="text-xs text-red-500 block pl-4 font-bold">OBS: {item.observation}</span>}</p>))}</div><div className="flex justify-end gap-2 mt-4"><button onClick={() => setEditingOrderContent(order)} className="p-2 text-stone-500 hover:bg-stone-100 rounded-lg" title="Editar Itens"><Edit className="w-4 h-4" /></button><button onClick={() => handlePrintOrder(order)} className="p-2 text-stone-500 hover:bg-stone-100 rounded-lg" title="Imprimir"><Printer className="w-4 h-4" /></button>{order.status !== 'completed' && order.status !== 'cancelled' && (<>{order.status === 'pending' && <button onClick={() => handleUpdateOrderStatus(order.id, 'preparing')} className="px-3 py-1 bg-blue-600 text-white rounded-lg text-sm font-bold">Aceitar</button>}{order.status === 'preparing' && <button onClick={() => handleUpdateOrderStatus(order.id, 'delivery')} className="px-3 py-1 bg-orange-500 text-white rounded-lg text-sm font-bold">{order.delivery_type === 'table' ? 'Pronto' : 'Enviar'}</button>}{order.status === 'delivery' && <button onClick={() => handleUpdateOrderStatus(order.id, 'completed')} className="px-3 py-1 bg-green-600 text-white rounded-lg text-sm font-bold">Concluir</button>}</>)}</div></div>))) : (<div className="text-center py-12 bg-white rounded-xl border border-stone-200"><div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-stone-100 text-stone-400 mb-3">{activeOrderSection === 'tables' ? <Utensils className="w-6 h-6" /> : <ShoppingBag className="w-6 h-6" />}</div><p className="text-stone-500 font-medium">Nenhum pedido de {activeOrderSection === 'tables' ? 'mesa' : 'delivery'} encontrado.</p></div>)}</div></div>)}
+        {activeTab === 'menu' && (/* ... Same as existing ... */ <div className="space-y-6 animate-in fade-in"><div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200"><h2 className="text-xl font-bold mb-4">Gerenciar Cardápio</h2><p className="text-stone-500 text-sm mb-4">Adicione, edite ou remova produtos e categorias.</p><div className="flex gap-2"><button onClick={() => setIsAddingNew(true)} className="bg-italian-green text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow-sm hover:bg-green-700 transition-colors"><Plus className="w-4 h-4" /> Novo Produto</button><button onClick={() => { const name = prompt("Nome da nova categoria:"); if(name) onAddCategory(name); }} className="bg-white border border-stone-300 text-stone-700 px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-stone-50 transition-colors"><Grid className="w-4 h-4" /> Nova Categoria</button></div>{(isAddingNew || editingProduct !== null) && (<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"><div className="bg-white w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl shadow-2xl p-6 relative animate-in zoom-in-95"><button onClick={() => { setIsAddingNew(false); setEditingProduct(null); }} className="absolute top-4 right-4 p-2 hover:bg-stone-100 rounded-full"><X className="w-6 h-6" /></button><h3 className="text-xl font-bold mb-6">{isAddingNew ? 'Adicionar Produto' : 'Editar Produto'}</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-6"><div className="space-y-4"><div><label className={LABEL_STYLE}>Nome</label><input value={isAddingNew ? newProductForm.name : editForm.name} onChange={e => isAddingNew ? setNewProductForm({...newProductForm, name: e.target.value}) : setEditForm({...editForm, name: e.target.value})} className={INPUT_STYLE} /></div><div><label className={LABEL_STYLE}>Descrição</label><textarea value={isAddingNew ? newProductForm.description : editForm.description} onChange={e => isAddingNew ? setNewProductForm({...newProductForm, description: e.target.value}) : setEditForm({...editForm, description: e.target.value})} className={INPUT_STYLE} rows={3} /></div><div className="grid grid-cols-2 gap-4"><div><label className={LABEL_STYLE}>Preço</label><input type="number" value={isAddingNew ? newProductForm.price : editForm.price} onChange={e => isAddingNew ? setNewProductForm({...newProductForm, price: parseFloat(e.target.value)}) : setEditForm({...editForm, price: parseFloat(e.target.value)})} className={INPUT_STYLE} /></div><div><label className={LABEL_STYLE}>Código (Opcional)</label><input value={isAddingNew ? newProductForm.code : editForm.code} onChange={e => isAddingNew ? setNewProductForm({...newProductForm, code: e.target.value}) : setEditForm({...editForm, code: e.target.value})} className={INPUT_STYLE} /></div></div><div><label className={LABEL_STYLE}>Categoria Principal</label><select value={isAddingNew ? newProductForm.category : (editForm.category_id || '')} onChange={e => isAddingNew ? setNewProductForm({...newProductForm, category: e.target.value}) : setEditForm({...editForm, category_id: e.target.value})} className={INPUT_STYLE}>{menuData.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div><div><label className={LABEL_STYLE}>Subcategoria (Agrupamento)</label><input value={isAddingNew ? newProductForm.subcategory : editForm.subcategory} onChange={e => isAddingNew ? setNewProductForm({...newProductForm, subcategory: e.target.value}) : setEditForm({...editForm, subcategory: e.target.value})} className={INPUT_STYLE} placeholder="Ex: Latas, Long Neck..." /></div></div><div className="space-y-4"><div><label className={LABEL_STYLE}>Imagem</label><div className="flex items-center gap-4"><input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, isAddingNew)} className="hidden" id="prod-img-upload" /><label htmlFor="prod-img-upload" className="w-24 h-24 bg-stone-100 border border-stone-300 rounded-lg flex items-center justify-center cursor-pointer hover:bg-stone-200 overflow-hidden relative">{(isAddingNew ? newProductForm.image : editForm.image) ? <img src={isAddingNew ? newProductForm.image : editForm.image} className="w-full h-full object-cover" /> : <ImageIcon className="w-6 h-6 text-stone-400" />}{isProcessingImage && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><Loader2 className="w-5 h-5 animate-spin text-white"/></div>}</label><div className="text-xs text-stone-500">Clique para alterar imagem.</div></div></div><div><label className={LABEL_STYLE}>Tags</label><div className="flex flex-wrap gap-2">{[{id: 'popular', label: 'Popular', color: 'bg-yellow-100 text-yellow-800'},{id: 'vegetarian', label: 'Vegetariano', color: 'bg-green-100 text-green-800'},{id: 'spicy', label: 'Picante', color: 'bg-red-100 text-red-800'},{id: 'new', label: 'Novo', color: 'bg-blue-100 text-blue-800'}].map(tag => { const currentTags = isAddingNew ? (newProductForm.tags || []) : (editForm.tags || []); const isActive = currentTags.includes(tag.id); const toggleTag = () => { const newTags = isActive ? currentTags.filter(t => t !== tag.id) : [...currentTags, tag.id]; if(isAddingNew) setNewProductForm({...newProductForm, tags: newTags}); else setEditForm({...editForm, tags: newTags}); }; return (<button key={tag.id} onClick={toggleTag} className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors ${isActive ? `${tag.color} border-transparent ring-2 ring-offset-1 ring-stone-300` : 'bg-white text-stone-500 border-stone-300'}`}>{tag.label}</button>); })}</div></div><div><label className={LABEL_STYLE}>Categorias Adicionais</label><div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 border border-stone-200 rounded-lg">{menuData.map(c => { if(c.id === (isAddingNew ? newProductForm.category : editForm.category_id)) return null; const currentAddCats = isAddingNew ? (newProductForm.additional_categories || []) : (editForm.additional_categories || []); const isActive = currentAddCats.includes(c.id); return (<button key={c.id} onClick={() => toggleAdditionalCategory(c.id, isAddingNew)} className={`px-2 py-1 text-xs rounded border ${isActive ? 'bg-stone-800 text-white border-stone-800' : 'bg-white text-stone-600 border-stone-200'}`}>{c.name}</button>); })}</div></div></div></div><div className="mt-8 border-t border-stone-200 pt-6"><h4 className="font-bold text-lg mb-4">Opções e Adicionais</h4><div className="space-y-4 mb-6">{currentOptions.map((opt, idx) => (<div key={opt.id} className="border border-stone-200 rounded-lg p-4 bg-stone-50"><div className="flex justify-between items-center mb-3"><div><span className="font-bold text-sm">{opt.name}</span><span className="text-xs ml-2 text-stone-500">({opt.type === 'single' ? 'Escolha Única' : 'Múltipla Escolha'})</span></div><button onClick={() => removeOptionFromForm(opt.id, isAddingNew)} className="text-red-500 hover:text-red-700 text-xs font-bold">Remover Grupo</button></div><div className="pl-4 border-l-2 border-stone-200 space-y-2">{opt.choices.map((choice, cIdx) => (<div key={cIdx} className="flex justify-between items-center text-sm bg-white p-2 rounded border border-stone-100"><span>{choice.name}</span><div className="flex items-center gap-3"><span className="font-bold text-stone-600">+ R$ {choice.price.toFixed(2)}</span><button onClick={() => removeChoiceFromOption(opt.id, cIdx, isAddingNew)} className="text-stone-400 hover:text-red-500"><X className="w-3 h-3"/></button></div></div>))}<div className="flex gap-2 mt-2"><input id={`new-choice-name-${opt.id}`} placeholder="Nome da opção" className="flex-1 p-1.5 text-sm border rounded" /><input id={`new-choice-price-${opt.id}`} type="number" placeholder="Preço" className="w-20 p-1.5 text-sm border rounded" /><button onClick={() => { const nameInput = document.getElementById(`new-choice-name-${opt.id}`) as HTMLInputElement; const priceInput = document.getElementById(`new-choice-price-${opt.id}`) as HTMLInputElement; addChoiceToOption(opt.id, nameInput.value, priceInput.value || '0', isAddingNew); nameInput.value = ''; priceInput.value = ''; }} className="bg-stone-200 text-stone-700 px-3 py-1 rounded text-xs font-bold hover:bg-stone-300">Add Opção</button></div></div></div>))}</div><div className="flex items-end gap-3 bg-stone-100 p-4 rounded-lg"><div className="flex-1"><label className="text-xs font-bold text-stone-500 block mb-1">Novo Grupo de Opções</label><input value={newOptionName} onChange={e => setNewOptionName(e.target.value)} placeholder="Ex: Escolha a Borda" className={INPUT_STYLE} /></div><div className="w-40"><label className="text-xs font-bold text-stone-500 block mb-1">Tipo</label><select value={newOptionType} onChange={e => setNewOptionType(e.target.value as any)} className={INPUT_STYLE}><option value="single">Única (Radio)</option><option value="multiple">Múltipla (Checkbox)</option></select></div><button onClick={() => addOptionToForm(isAddingNew)} className="bg-stone-800 text-white px-4 py-3 rounded-lg font-bold h-[46px]">Criar Grupo</button></div></div><div className="mt-8 pt-6 border-t border-stone-200 flex justify-end gap-3"><button onClick={() => { setIsAddingNew(false); setEditingProduct(null); }} className="px-6 py-3 rounded-lg text-stone-600 font-bold hover:bg-stone-100">Cancelar</button><button onClick={isAddingNew ? handleAddNewProduct : saveEdit} className="bg-green-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-green-700 shadow-lg">{isAddingNew ? 'Criar Produto' : 'Salvar Alterações'}</button></div></div></div>)}<div className="space-y-4 mt-6">{menuData.map(cat => (<div key={cat.id} className="border border-stone-200 rounded-xl overflow-hidden bg-white"><div className="bg-stone-50 p-4 flex justify-between items-center cursor-pointer hover:bg-stone-100 transition-colors" onClick={() => setExpandedCategory(expandedCategory === cat.id ? null : cat.id)}><div className="flex items-center gap-3">{expandedCategory === cat.id ? <ChevronUp className="w-5 h-5 text-stone-500"/> : <ChevronDown className="w-5 h-5 text-stone-500"/>}<span className="font-bold text-lg">{cat.name}</span><span className="bg-stone-200 text-stone-600 text-xs px-2 py-0.5 rounded-full font-bold">{cat.items.length}</span></div><div className="flex gap-2"><button onClick={(e) => { e.stopPropagation(); onUpdateCategory(cat.id, { name: prompt('Novo nome:', cat.name) || cat.name }); }} className="p-2 hover:bg-white rounded-full text-stone-500"><Edit3 className="w-4 h-4"/></button><button onClick={(e) => { e.stopPropagation(); if(confirm('Apagar categoria?')) onDeleteCategory(cat.id); }} className="p-2 hover:bg-white rounded-full text-stone-500 hover:text-red-500"><Trash2 className="w-4 h-4"/></button></div></div>{expandedCategory === cat.id && (<div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 border-t border-stone-200 animate-in slide-in-from-top-2">{cat.items.map(product => (<div key={product.id} className="flex gap-3 p-3 border border-stone-100 rounded-lg hover:shadow-md transition-shadow bg-white"><div className="w-16 h-16 bg-stone-100 rounded-md shrink-0 overflow-hidden">{product.image ? <img src={product.image} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-stone-300"><ImageIcon className="w-6 h-6"/></div>}</div><div className="flex-1 min-w-0"><p className="font-bold text-stone-800 truncate">{product.name}</p><p className="text-sm text-stone-500">{settings.currencySymbol} {product.price.toFixed(2)}</p><div className="flex gap-2 mt-2"><button onClick={() => startEditing(product)} className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded hover:bg-blue-100 font-bold">Editar</button><button onClick={() => { if(confirm('Excluir produto?')) onDeleteProduct(cat.id, product.id); }} className="text-xs bg-red-50 text-red-600 px-2 py-1 rounded hover:bg-red-100 font-bold">Excluir</button></div></div></div>))}{cat.items.length === 0 && <p className="text-stone-400 text-sm italic p-2">Nenhum produto nesta categoria.</p>}</div>)}</div>))}</div></div></div>)}
+        {activeTab === 'coupons' && (/* ... Same as existing ... */ <div className="space-y-6 animate-in fade-in"><div className={CARD_STYLE}><h3 className="font-bold text-lg mb-4 flex items-center gap-2"><Ticket className="w-5 h-5"/> Gerenciar Cupons</h3>{!isAddingCoupon ? (<><button onClick={() => setIsAddingCoupon(true)} className="bg-italian-green text-white px-4 py-2 rounded-lg font-bold text-sm mb-6 flex items-center gap-2"><Plus className="w-4 h-4"/> Criar Cupom</button><div className="space-y-3">{coupons.map(coupon => (<div key={coupon.id} className="flex justify-between items-center bg-stone-50 p-4 rounded-lg border border-stone-200"><div><div className="flex items-center gap-3"><span className="font-bold text-lg text-stone-800">{coupon.code}</span><span className={`px-2 py-0.5 rounded text-xs font-bold ${coupon.active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{coupon.active ? 'Ativo' : 'Inativo'}</span></div><p className="text-sm text-stone-500">{coupon.type === 'percent' ? `${coupon.discount_value}% OFF` : coupon.type === 'fixed' ? `R$ ${coupon.discount_value} OFF` : 'Frete Grátis'}{coupon.min_order_value ? ` (Mín: R$ ${coupon.min_order_value})` : ''}</p></div><div className="flex gap-2"><button onClick={() => handleEditCoupon(coupon)} className="p-2 text-blue-500 hover:bg-blue-50 rounded"><Edit3 className="w-4 h-4"/></button><button onClick={() => handleDeleteCoupon(coupon.id)} className="p-2 text-red-500 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4"/></button></div></div>))}</div></>) : (<div className="bg-stone-50 p-4 rounded-lg border border-stone-200 max-w-lg"><h4 className="font-bold mb-4">{editingCouponId ? 'Editar Cupom' : 'Novo Cupom'}</h4><div className="space-y-4"><div><label className={LABEL_STYLE}>Código</label><input value={couponForm.code || ''} onChange={e => setCouponForm({...couponForm, code: e.target.value.toUpperCase()})} className={INPUT_STYLE} placeholder="EX: PROMO10" /></div><div className="grid grid-cols-2 gap-4"><div><label className={LABEL_STYLE}>Tipo</label><select value={couponForm.type} onChange={e => setCouponForm({...couponForm, type: e.target.value as any})} className={INPUT_STYLE}><option value="percent">Porcentagem (%)</option><option value="fixed">Valor Fixo (R$)</option><option value="free_shipping">Frete Grátis</option></select></div><div><label className={LABEL_STYLE}>Valor</label><input type="number" value={couponForm.discount_value || ''} onChange={e => setCouponForm({...couponForm, discount_value: parseFloat(e.target.value)})} className={INPUT_STYLE} disabled={couponForm.type === 'free_shipping'} /></div></div><div className="grid grid-cols-2 gap-4"><div><label className={LABEL_STYLE}>Pedido Mínimo (R$)</label><input type="number" value={couponForm.min_order_value || ''} onChange={e => setCouponForm({...couponForm, min_order_value: parseFloat(e.target.value)})} className={INPUT_STYLE} /></div><div><label className={LABEL_STYLE}>Validade</label><input type="date" value={couponForm.end_date || ''} onChange={e => setCouponForm({...couponForm, end_date: e.target.value})} className={INPUT_STYLE} /></div></div><div className="flex items-center gap-2"><input type="checkbox" checked={couponForm.active} onChange={e => setCouponForm({...couponForm, active: e.target.checked})} className="w-5 h-5 text-italian-green focus:ring-italian-green" /><span className="font-bold text-stone-700">Ativo</span></div><div className="flex justify-end gap-2 pt-4"><button onClick={cancelEditCoupon} className="px-4 py-2 text-stone-600 font-bold hover:bg-stone-200 rounded-lg">Cancelar</button><button onClick={handleSaveCoupon} className="bg-italian-green text-white px-6 py-2 rounded-lg font-bold hover:bg-green-700">Salvar</button></div></div></div>)}</div></div>)}
+        {activeTab === 'tables' && (/* ... Same as existing ... */ <div className="space-y-6 animate-in fade-in"><div className={CARD_STYLE}><h3 className="font-bold text-lg mb-2">Gerenciar Mesas</h3><p className="text-sm text-stone-500 mb-6">Imprima o QR Code e cole na mesa. Quando o cliente escanear, o pedido será vinculado automaticamente à mesa.</p><div className="flex gap-2 mb-6"><input value={newTableNumber} onChange={e => setNewTableNumber(e.target.value)} placeholder="Número/Nome da Mesa" className="p-2 border rounded-lg w-full max-w-xs" /><button onClick={handleAddTable} className="bg-stone-800 text-white px-4 py-2 rounded-lg font-bold">Adicionar</button></div><div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">{tables.map(table => (<div key={table.id} className="bg-stone-50 border border-stone-200 rounded-xl p-4 flex flex-col items-center justify-center text-center relative group hover:shadow-md transition-all"><span className="font-bold text-2xl text-stone-800 mb-2">{table.number}</span><div className="flex gap-2 mt-2"><button onClick={() => printQrCode(table.number)} className="p-1.5 bg-blue-100 text-blue-700 rounded hover:bg-blue-200" title="Imprimir Plaquinha"><QrCode className="w-4 h-4"/></button><button onClick={() => handleDeleteTable(table.id)} className="p-1.5 bg-red-100 text-red-700 rounded hover:bg-red-200" title="Remover"><Trash2 className="w-4 h-4"/></button></div></div>))}</div>{tables.length === 0 && (<p className="text-center text-stone-400 py-8 italic">Nenhuma mesa cadastrada.</p>)}</div></div>)}
 
-        {/* ... (Menu and Coupons tabs remain the same) ... */}
-        {/* ... Rest of components ... */}
-        {activeTab === 'menu' && (
-           <div className="space-y-6 animate-in fade-in">
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
-                 {/* ... Existing Menu Content ... */}
-                 {/* Re-using the exact same JSX as previous implementation to keep code concise */}
-                 <h2 className="text-xl font-bold mb-4">Gerenciar Cardápio</h2>
-                 <p className="text-stone-500 text-sm mb-4">Adicione, edite ou remova produtos e categorias.</p>
-                 
-                 <div className="flex gap-2">
-                    <button onClick={() => setIsAddingNew(true)} className="bg-italian-green text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow-sm hover:bg-green-700 transition-colors">
-                       <Plus className="w-4 h-4" /> Novo Produto
-                    </button>
-                    <button onClick={() => { const name = prompt("Nome da nova categoria:"); if(name) onAddCategory(name); }} className="bg-white border border-stone-300 text-stone-700 px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-stone-50 transition-colors">
-                       <Grid className="w-4 h-4" /> Nova Categoria
-                    </button>
-                 </div>
-
-                 {/* Product Form Overlay code block same as provided file */}
-                 {(isAddingNew || editingProduct !== null) && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                       <div className="bg-white w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl shadow-2xl p-6 relative animate-in zoom-in-95">
-                          <button onClick={() => { setIsAddingNew(false); setEditingProduct(null); }} className="absolute top-4 right-4 p-2 hover:bg-stone-100 rounded-full"><X className="w-6 h-6" /></button>
-                          
-                          <h3 className="text-xl font-bold mb-6">{isAddingNew ? 'Adicionar Produto' : 'Editar Produto'}</h3>
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                             <div className="space-y-4">
-                                <div><label className={LABEL_STYLE}>Nome</label><input value={isAddingNew ? newProductForm.name : editForm.name} onChange={e => isAddingNew ? setNewProductForm({...newProductForm, name: e.target.value}) : setEditForm({...editForm, name: e.target.value})} className={INPUT_STYLE} /></div>
-                                <div><label className={LABEL_STYLE}>Descrição</label><textarea value={isAddingNew ? newProductForm.description : editForm.description} onChange={e => isAddingNew ? setNewProductForm({...newProductForm, description: e.target.value}) : setEditForm({...editForm, description: e.target.value})} className={INPUT_STYLE} rows={3} /></div>
-                                <div className="grid grid-cols-2 gap-4">
-                                   <div><label className={LABEL_STYLE}>Preço</label><input type="number" value={isAddingNew ? newProductForm.price : editForm.price} onChange={e => isAddingNew ? setNewProductForm({...newProductForm, price: parseFloat(e.target.value)}) : setEditForm({...editForm, price: parseFloat(e.target.value)})} className={INPUT_STYLE} /></div>
-                                   <div><label className={LABEL_STYLE}>Código (Opcional)</label><input value={isAddingNew ? newProductForm.code : editForm.code} onChange={e => isAddingNew ? setNewProductForm({...newProductForm, code: e.target.value}) : setEditForm({...editForm, code: e.target.value})} className={INPUT_STYLE} /></div>
-                                </div>
-                                <div>
-                                   <label className={LABEL_STYLE}>Categoria Principal</label>
-                                   <select value={isAddingNew ? newProductForm.category : (editForm.category_id || '')} onChange={e => isAddingNew ? setNewProductForm({...newProductForm, category: e.target.value}) : setEditForm({...editForm, category_id: e.target.value})} className={INPUT_STYLE}>
-                                      {menuData.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                   </select>
-                                </div>
-                                <div><label className={LABEL_STYLE}>Subcategoria (Agrupamento)</label><input value={isAddingNew ? newProductForm.subcategory : editForm.subcategory} onChange={e => isAddingNew ? setNewProductForm({...newProductForm, subcategory: e.target.value}) : setEditForm({...editForm, subcategory: e.target.value})} className={INPUT_STYLE} placeholder="Ex: Latas, Long Neck..." /></div>
-                             </div>
-
-                             <div className="space-y-4">
-                                <div>
-                                   <label className={LABEL_STYLE}>Imagem</label>
-                                   <div className="flex items-center gap-4">
-                                      <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, isAddingNew)} className="hidden" id="prod-img-upload" />
-                                      <label htmlFor="prod-img-upload" className="w-24 h-24 bg-stone-100 border border-stone-300 rounded-lg flex items-center justify-center cursor-pointer hover:bg-stone-200 overflow-hidden relative">
-                                         {(isAddingNew ? newProductForm.image : editForm.image) ? <img src={isAddingNew ? newProductForm.image : editForm.image} className="w-full h-full object-cover" /> : <ImageIcon className="w-6 h-6 text-stone-400" />}
-                                         {isProcessingImage && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><Loader2 className="w-5 h-5 animate-spin text-white"/></div>}
-                                      </label>
-                                      <div className="text-xs text-stone-500">Clique para alterar imagem.</div>
-                                   </div>
-                                </div>
-
-                                <div>
-                                   <label className={LABEL_STYLE}>Tags</label>
-                                   <div className="flex flex-wrap gap-2">
-                                      {[
-                                         {id: 'popular', label: 'Popular', color: 'bg-yellow-100 text-yellow-800'},
-                                         {id: 'vegetarian', label: 'Vegetariano', color: 'bg-green-100 text-green-800'},
-                                         {id: 'spicy', label: 'Picante', color: 'bg-red-100 text-red-800'},
-                                         {id: 'new', label: 'Novo', color: 'bg-blue-100 text-blue-800'}
-                                      ].map(tag => {
-                                         const currentTags = isAddingNew ? (newProductForm.tags || []) : (editForm.tags || []);
-                                         const isActive = currentTags.includes(tag.id);
-                                         const toggleTag = () => {
-                                            const newTags = isActive ? currentTags.filter(t => t !== tag.id) : [...currentTags, tag.id];
-                                            if(isAddingNew) setNewProductForm({...newProductForm, tags: newTags});
-                                            else setEditForm({...editForm, tags: newTags});
-                                         };
-                                         return (
-                                            <button key={tag.id} onClick={toggleTag} className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors ${isActive ? `${tag.color} border-transparent ring-2 ring-offset-1 ring-stone-300` : 'bg-white text-stone-500 border-stone-300'}`}>
-                                               {tag.label}
-                                            </button>
-                                         );
-                                      })}
-                                   </div>
-                                </div>
-
-                                <div>
-                                   <label className={LABEL_STYLE}>Categorias Adicionais</label>
-                                   <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 border border-stone-200 rounded-lg">
-                                      {menuData.map(c => {
-                                         if(c.id === (isAddingNew ? newProductForm.category : editForm.category_id)) return null;
-                                         const currentAddCats = isAddingNew ? (newProductForm.additional_categories || []) : (editForm.additional_categories || []);
-                                         const isActive = currentAddCats.includes(c.id);
-                                         return (
-                                            <button key={c.id} onClick={() => toggleAdditionalCategory(c.id, isAddingNew)} className={`px-2 py-1 text-xs rounded border ${isActive ? 'bg-stone-800 text-white border-stone-800' : 'bg-white text-stone-600 border-stone-200'}`}>
-                                               {c.name}
-                                            </button>
-                                         );
-                                      })}
-                                   </div>
-                                </div>
-                             </div>
-                          </div>
-
-                          {/* Options Management Section */}
-                          <div className="mt-8 border-t border-stone-200 pt-6">
-                             <h4 className="font-bold text-lg mb-4">Opções e Adicionais</h4>
-                             
-                             <div className="space-y-4 mb-6">
-                                {currentOptions.map((opt, idx) => (
-                                   <div key={opt.id} className="border border-stone-200 rounded-lg p-4 bg-stone-50">
-                                      <div className="flex justify-between items-center mb-3">
-                                         <div>
-                                            <span className="font-bold text-sm">{opt.name}</span>
-                                            <span className="text-xs ml-2 text-stone-500">({opt.type === 'single' ? 'Escolha Única' : 'Múltipla Escolha'})</span>
-                                         </div>
-                                         <button onClick={() => removeOptionFromForm(opt.id, isAddingNew)} className="text-red-500 hover:text-red-700 text-xs font-bold">Remover Grupo</button>
-                                      </div>
-                                      
-                                      <div className="pl-4 border-l-2 border-stone-200 space-y-2">
-                                         {opt.choices.map((choice, cIdx) => (
-                                            <div key={cIdx} className="flex justify-between items-center text-sm bg-white p-2 rounded border border-stone-100">
-                                               <span>{choice.name}</span>
-                                               <div className="flex items-center gap-3">
-                                                  <span className="font-bold text-stone-600">+ R$ {choice.price.toFixed(2)}</span>
-                                                  <button onClick={() => removeChoiceFromOption(opt.id, cIdx, isAddingNew)} className="text-stone-400 hover:text-red-500"><X className="w-3 h-3"/></button>
-                                               </div>
-                                            </div>
-                                         ))}
-                                         <div className="flex gap-2 mt-2">
-                                            <input id={`new-choice-name-${opt.id}`} placeholder="Nome da opção" className="flex-1 p-1.5 text-sm border rounded" />
-                                            <input id={`new-choice-price-${opt.id}`} type="number" placeholder="Preço" className="w-20 p-1.5 text-sm border rounded" />
-                                            <button onClick={() => {
-                                               const nameInput = document.getElementById(`new-choice-name-${opt.id}`) as HTMLInputElement;
-                                               const priceInput = document.getElementById(`new-choice-price-${opt.id}`) as HTMLInputElement;
-                                               addChoiceToOption(opt.id, nameInput.value, priceInput.value || '0', isAddingNew);
-                                               nameInput.value = ''; priceInput.value = '';
-                                            }} className="bg-stone-200 text-stone-700 px-3 py-1 rounded text-xs font-bold hover:bg-stone-300">Add Opção</button>
-                                         </div>
-                                      </div>
-                                   </div>
-                                ))}
-                             </div>
-
-                             <div className="flex items-end gap-3 bg-stone-100 p-4 rounded-lg">
-                                <div className="flex-1">
-                                   <label className="text-xs font-bold text-stone-500 block mb-1">Novo Grupo de Opções</label>
-                                   <input value={newOptionName} onChange={e => setNewOptionName(e.target.value)} placeholder="Ex: Escolha a Borda" className={INPUT_STYLE} />
-                                </div>
-                                <div className="w-40">
-                                   <label className="text-xs font-bold text-stone-500 block mb-1">Tipo</label>
-                                   <select value={newOptionType} onChange={e => setNewOptionType(e.target.value as any)} className={INPUT_STYLE}>
-                                      <option value="single">Única (Radio)</option>
-                                      <option value="multiple">Múltipla (Checkbox)</option>
-                                   </select>
-                                </div>
-                                <button onClick={() => addOptionToForm(isAddingNew)} className="bg-stone-800 text-white px-4 py-3 rounded-lg font-bold h-[46px]">Criar Grupo</button>
-                             </div>
-                          </div>
-
-                          <div className="mt-8 pt-6 border-t border-stone-200 flex justify-end gap-3">
-                             <button onClick={() => { setIsAddingNew(false); setEditingProduct(null); }} className="px-6 py-3 rounded-lg text-stone-600 font-bold hover:bg-stone-100">Cancelar</button>
-                             <button onClick={isAddingNew ? handleAddNewProduct : saveEdit} className="bg-green-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-green-700 shadow-lg">
-                                {isAddingNew ? 'Criar Produto' : 'Salvar Alterações'}
-                             </button>
-                          </div>
-                       </div>
-                    </div>
-                 )}
-
-                 {/* Categories & Products List */}
-                 <div className="space-y-4 mt-6">
-                    {menuData.map(cat => (
-                       <div key={cat.id} className="border border-stone-200 rounded-xl overflow-hidden bg-white">
-                          <div 
-                             className="bg-stone-50 p-4 flex justify-between items-center cursor-pointer hover:bg-stone-100 transition-colors"
-                             onClick={() => setExpandedCategory(expandedCategory === cat.id ? null : cat.id)}
-                          >
-                             <div className="flex items-center gap-3">
-                                {expandedCategory === cat.id ? <ChevronUp className="w-5 h-5 text-stone-500"/> : <ChevronDown className="w-5 h-5 text-stone-500"/>}
-                                <span className="font-bold text-lg">{cat.name}</span>
-                                <span className="bg-stone-200 text-stone-600 text-xs px-2 py-0.5 rounded-full font-bold">{cat.items.length}</span>
-                             </div>
-                             <div className="flex gap-2">
-                                <button onClick={(e) => { e.stopPropagation(); onUpdateCategory(cat.id, { name: prompt('Novo nome:', cat.name) || cat.name }); }} className="p-2 hover:bg-white rounded-full text-stone-500"><Edit3 className="w-4 h-4"/></button>
-                                <button onClick={(e) => { e.stopPropagation(); if(confirm('Apagar categoria?')) onDeleteCategory(cat.id); }} className="p-2 hover:bg-white rounded-full text-stone-500 hover:text-red-500"><Trash2 className="w-4 h-4"/></button>
-                             </div>
-                          </div>
-                          
-                          {expandedCategory === cat.id && (
-                             <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 border-t border-stone-200 animate-in slide-in-from-top-2">
-                                {cat.items.map(product => (
-                                   <div key={product.id} className="flex gap-3 p-3 border border-stone-100 rounded-lg hover:shadow-md transition-shadow bg-white">
-                                      <div className="w-16 h-16 bg-stone-100 rounded-md shrink-0 overflow-hidden">
-                                         {product.image ? <img src={product.image} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-stone-300"><ImageIcon className="w-6 h-6"/></div>}
-                                      </div>
-                                      <div className="flex-1 min-w-0">
-                                         <p className="font-bold text-stone-800 truncate">{product.name}</p>
-                                         <p className="text-sm text-stone-500">{settings.currencySymbol} {product.price.toFixed(2)}</p>
-                                         <div className="flex gap-2 mt-2">
-                                            <button onClick={() => startEditing(product)} className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded hover:bg-blue-100 font-bold">Editar</button>
-                                            <button onClick={() => { if(confirm('Excluir produto?')) onDeleteProduct(cat.id, product.id); }} className="text-xs bg-red-50 text-red-600 px-2 py-1 rounded hover:bg-red-100 font-bold">Excluir</button>
-                                         </div>
-                                      </div>
-                                   </div>
-                                ))}
-                                {cat.items.length === 0 && <p className="text-stone-400 text-sm italic p-2">Nenhum produto nesta categoria.</p>}
-                             </div>
-                          )}
-                       </div>
-                    ))}
-                 </div>
-              </div>
-           </div>
-        )}
-
-        {/* ... (Coupons and Tables tabs remain similar) ... */}
-        {activeTab === 'coupons' && (
-            <div className="space-y-6 animate-in fade-in">
-               <div className={CARD_STYLE}>
-                 <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><Ticket className="w-5 h-5"/> Gerenciar Cupons</h3>
-                 
-                 {!isAddingCoupon ? (
-                     <>
-                        <button onClick={() => setIsAddingCoupon(true)} className="bg-italian-green text-white px-4 py-2 rounded-lg font-bold text-sm mb-6 flex items-center gap-2">
-                            <Plus className="w-4 h-4"/> Criar Cupom
-                        </button>
-                        <div className="space-y-3">
-                            {coupons.map(coupon => (
-                                <div key={coupon.id} className="flex justify-between items-center bg-stone-50 p-4 rounded-lg border border-stone-200">
-                                    <div>
-                                        <div className="flex items-center gap-3">
-                                            <span className="font-bold text-lg text-stone-800">{coupon.code}</span>
-                                            <span className={`px-2 py-0.5 rounded text-xs font-bold ${coupon.active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{coupon.active ? 'Ativo' : 'Inativo'}</span>
-                                        </div>
-                                        <p className="text-sm text-stone-500">
-                                            {coupon.type === 'percent' ? `${coupon.discount_value}% OFF` : 
-                                             coupon.type === 'fixed' ? `R$ ${coupon.discount_value} OFF` : 'Frete Grátis'}
-                                            {coupon.min_order_value ? ` (Mín: R$ ${coupon.min_order_value})` : ''}
-                                        </p>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <button onClick={() => handleEditCoupon(coupon)} className="p-2 text-blue-500 hover:bg-blue-50 rounded"><Edit3 className="w-4 h-4"/></button>
-                                        <button onClick={() => handleDeleteCoupon(coupon.id)} className="p-2 text-red-500 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4"/></button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                     </>
-                 ) : (
-                     <div className="bg-stone-50 p-4 rounded-lg border border-stone-200 max-w-lg">
-                        <h4 className="font-bold mb-4">{editingCouponId ? 'Editar Cupom' : 'Novo Cupom'}</h4>
-                        <div className="space-y-4">
-                            <div><label className={LABEL_STYLE}>Código</label><input value={couponForm.code || ''} onChange={e => setCouponForm({...couponForm, code: e.target.value.toUpperCase()})} className={INPUT_STYLE} placeholder="EX: PROMO10" /></div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className={LABEL_STYLE}>Tipo</label>
-                                    <select value={couponForm.type} onChange={e => setCouponForm({...couponForm, type: e.target.value as any})} className={INPUT_STYLE}>
-                                        <option value="percent">Porcentagem (%)</option>
-                                        <option value="fixed">Valor Fixo (R$)</option>
-                                        <option value="free_shipping">Frete Grátis</option>
-                                    </select>
-                                </div>
-                                <div><label className={LABEL_STYLE}>Valor</label><input type="number" value={couponForm.discount_value || ''} onChange={e => setCouponForm({...couponForm, discount_value: parseFloat(e.target.value)})} className={INPUT_STYLE} disabled={couponForm.type === 'free_shipping'} /></div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div><label className={LABEL_STYLE}>Pedido Mínimo (R$)</label><input type="number" value={couponForm.min_order_value || ''} onChange={e => setCouponForm({...couponForm, min_order_value: parseFloat(e.target.value)})} className={INPUT_STYLE} /></div>
-                                <div><label className={LABEL_STYLE}>Validade</label><input type="date" value={couponForm.end_date || ''} onChange={e => setCouponForm({...couponForm, end_date: e.target.value})} className={INPUT_STYLE} /></div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <input type="checkbox" checked={couponForm.active} onChange={e => setCouponForm({...couponForm, active: e.target.checked})} className="w-5 h-5 text-italian-green focus:ring-italian-green" />
-                                <span className="font-bold text-stone-700">Ativo</span>
-                            </div>
-                            <div className="flex justify-end gap-2 pt-4">
-                                <button onClick={cancelEditCoupon} className="px-4 py-2 text-stone-600 font-bold hover:bg-stone-200 rounded-lg">Cancelar</button>
-                                <button onClick={handleSaveCoupon} className="bg-italian-green text-white px-6 py-2 rounded-lg font-bold hover:bg-green-700">Salvar</button>
-                            </div>
-                        </div>
-                     </div>
-                 )}
-               </div>
-            </div>
-        )}
-
-        {activeTab === 'tables' && (
-           <div className="space-y-6 animate-in fade-in">
-              <div className={CARD_STYLE}>
-                 <h3 className="font-bold text-lg mb-2">Gerenciar Mesas</h3>
-                 <p className="text-sm text-stone-500 mb-6">
-                    Imprima o QR Code e cole na mesa. Quando o cliente escanear, o pedido será vinculado automaticamente à mesa.
-                 </p>
-                 
-                 <div className="flex gap-2 mb-6">
-                    <input value={newTableNumber} onChange={e => setNewTableNumber(e.target.value)} placeholder="Número/Nome da Mesa" className="p-2 border rounded-lg w-full max-w-xs" />
-                    <button onClick={handleAddTable} className="bg-stone-800 text-white px-4 py-2 rounded-lg font-bold">Adicionar</button>
-                 </div>
-                 
-                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                    {tables.map(table => (
-                       <div key={table.id} className="bg-stone-50 border border-stone-200 rounded-xl p-4 flex flex-col items-center justify-center text-center relative group hover:shadow-md transition-all">
-                          <span className="font-bold text-2xl text-stone-800 mb-2">{table.number}</span>
-                          <div className="flex gap-2 mt-2">
-                             <button onClick={() => printQrCode(table.number)} className="p-1.5 bg-blue-100 text-blue-700 rounded hover:bg-blue-200" title="Imprimir Plaquinha"><QrCode className="w-4 h-4"/></button>
-                             <button onClick={() => handleDeleteTable(table.id)} className="p-1.5 bg-red-100 text-red-700 rounded hover:bg-red-200" title="Remover"><Trash2 className="w-4 h-4"/></button>
-                          </div>
-                       </div>
-                    ))}
-                 </div>
-                 
-                 {tables.length === 0 && (
-                     <p className="text-center text-stone-400 py-8 italic">Nenhuma mesa cadastrada.</p>
-                 )}
-              </div>
-           </div>
-        )}
-
-        {/* ... (Settings tab remains the same) ... */}
+        {/* --- SETTINGS TAB RECONSTRUCTION --- */}
         {activeTab === 'settings' && (
            <div className="space-y-6 animate-in fade-in">
-              {/* Settings content truncated for brevity since it's unchanged */}
+              
+              {/* SECTION 1: GENERAL INFO */}
               <div className={CARD_STYLE}>
                  <h3 className="font-bold text-lg mb-6 flex items-center gap-2 border-b border-stone-100 pb-2"><Settings className="w-5 h-5"/> Informações Gerais</h3>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div><label className={LABEL_STYLE}>Nome da Loja</label><input value={settingsForm.name} onChange={e => setSettingsForm({...settingsForm, name: e.target.value})} className={INPUT_STYLE} /></div>
                     <div><label className={LABEL_STYLE}>WhatsApp (Somente Números)</label><input value={settingsForm.whatsapp} onChange={e => setSettingsForm({...settingsForm, whatsapp: e.target.value})} className={INPUT_STYLE} /></div>
-                    <div className="col-span-1 md:col-span-2"><label className={LABEL_STYLE}>Endereço Completo</label><input value={settingsForm.address} onChange={e => setSettingsForm({...settingsForm, address: e.target.value})} className={INPUT_STYLE} /></div>
-                    
-                    <div className="col-span-1 md:col-span-2">
-                        <label className={LABEL_STYLE}>Horário de Funcionamento (Exibição Simples)</label>
-                        <input value={settingsForm.openingHours} onChange={e => setSettingsForm({...settingsForm, openingHours: e.target.value})} className={INPUT_STYLE} placeholder="Ex: Todos os dias das 18h às 23h" />
+                    <div><label className={LABEL_STYLE}>CNPJ</label><input value={settingsForm.cnpj || ''} onChange={e => setSettingsForm({...settingsForm, cnpj: e.target.value})} className={INPUT_STYLE} placeholder="00.000.000/0000-00" /></div>
+                    <div><label className={LABEL_STYLE}>Telefones Adicionais</label>
+                       <div className="flex gap-2">
+                           <input value={newPhone} onChange={e => setNewPhone(e.target.value)} className={INPUT_STYLE} placeholder="Adicionar telefone" />
+                           <button onClick={handleAddPhone} className="bg-stone-200 px-4 rounded-lg font-bold"><Plus className="w-4 h-4"/></button>
+                       </div>
+                       <div className="mt-2 flex flex-wrap gap-2">
+                           {settingsForm.phones.map((p, i) => (
+                               <span key={i} className="bg-stone-100 px-2 py-1 rounded text-xs flex items-center gap-1">{p} <button onClick={() => handleRemovePhone(i)}><X className="w-3 h-3"/></button></span>
+                           ))}
+                       </div>
                     </div>
+                    <div className="col-span-1 md:col-span-2"><label className={LABEL_STYLE}>Endereço Completo</label><input value={settingsForm.address} onChange={e => setSettingsForm({...settingsForm, address: e.target.value})} className={INPUT_STYLE} /></div>
+                 </div>
+              </div>
 
-                    {/* Advanced Schedule */}
-                    <div className="col-span-1 md:col-span-2 mt-4">
-                       <h4 className="font-bold text-md mb-3 flex items-center gap-2 text-stone-700"><Calendar className="w-4 h-4"/> Horário Avançado (Define Abertura/Fechamento Automático)</h4>
-                       <div className="bg-stone-50 p-4 rounded-xl border border-stone-200 space-y-2">
-                           {WEEKDAYS_ORDER.map(dayKey => {
-                               const daySchedule = (settingsForm.schedule || {})[dayKey as keyof WeeklySchedule] || { isOpen: false, intervals: [] };
-                               const interval = daySchedule.intervals[0] || { start: '18:00', end: '23:00' };
+              {/* SECTION 2: VISUAL IDENTITY */}
+              <div className={CARD_STYLE}>
+                  <h3 className="font-bold text-lg mb-6 flex items-center gap-2 border-b border-stone-100 pb-2"><Palette className="w-5 h-5"/> Identidade Visual</h3>
+                  
+                  {/* Images Upload */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                      <div>
+                          <label className={LABEL_STYLE}>Logo da Loja</label>
+                          <div className="flex items-center gap-4">
+                              <label className="w-24 h-24 bg-stone-100 border border-stone-300 rounded-full flex items-center justify-center cursor-pointer hover:bg-stone-200 overflow-hidden relative shadow-inner">
+                                  {settingsForm.logoUrl ? <img src={settingsForm.logoUrl} className="w-full h-full object-cover" /> : <ImageIcon className="w-8 h-8 text-stone-400" />}
+                                  <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+                                  {isProcessingLogo && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-white"/></div>}
+                              </label>
+                              <div className="flex flex-col gap-2">
+                                  <button onClick={() => document.querySelector<HTMLInputElement>('input[type=file][onChange=handleLogoUpload]')?.click()} className="text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded font-bold hover:bg-blue-100">Alterar</button>
+                                  {settingsForm.logoUrl && <button onClick={() => setSettingsForm({...settingsForm, logoUrl: ''})} className="text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded font-bold hover:bg-red-100 flex items-center gap-1"><Trash2 className="w-3 h-3"/> Remover</button>}
+                              </div>
+                          </div>
+                      </div>
 
-                               return (
-                                   <div key={dayKey} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 border-b border-stone-200 last:border-0">
-                                       <div className="flex items-center gap-3 min-w-[140px]">
-                                           <input type="checkbox" checked={daySchedule.isOpen} onChange={e => handleScheduleUpdate(dayKey, 'isOpen', e.target.checked)} className="w-5 h-5 text-italian-green rounded" />
-                                           <span className={`font-medium ${daySchedule.isOpen ? 'text-stone-800' : 'text-stone-400'}`}>{WEEKDAYS_PT[dayKey as keyof typeof WEEKDAYS_PT]}</span>
-                                       </div>
-                                       {daySchedule.isOpen && (
-                                           <div className="flex items-center gap-2">
-                                               <input 
-                                                 type="time" 
-                                                 value={interval.start} 
-                                                 onChange={e => handleScheduleUpdate(dayKey, 'start', e.target.value)} 
-                                                 className="p-1 border border-stone-300 rounded text-sm bg-white text-stone-900 focus:ring-2 focus:ring-italian-red" 
-                                               />
-                                               <span>até</span>
-                                               <input 
-                                                 type="time" 
-                                                 value={interval.end} 
-                                                 onChange={e => handleScheduleUpdate(dayKey, 'end', e.target.value)} 
-                                                 className="p-1 border border-stone-300 rounded text-sm bg-white text-stone-900 focus:ring-2 focus:ring-italian-red" 
-                                               />
-                                           </div>
-                                       )}
+                      <div>
+                          <label className={LABEL_STYLE}>Favicon (Ícone da Aba)</label>
+                          <div className="flex items-center gap-4">
+                              <label className="w-16 h-16 bg-stone-100 border border-stone-300 rounded-lg flex items-center justify-center cursor-pointer hover:bg-stone-200 overflow-hidden relative shadow-inner">
+                                  {settingsForm.faviconUrl ? <img src={settingsForm.faviconUrl} className="w-8 h-8 object-contain" /> : <Globe className="w-8 h-8 text-stone-400" />}
+                                  <input type="file" accept="image/*" onChange={handleFaviconUpload} className="hidden" />
+                                  {isProcessingFavicon && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><Loader2 className="w-4 h-4 animate-spin text-white"/></div>}
+                              </label>
+                              <div className="flex flex-col gap-2">
+                                  {settingsForm.faviconUrl && <button onClick={() => setSettingsForm({...settingsForm, faviconUrl: ''})} className="text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded font-bold hover:bg-red-100 flex items-center gap-1"><Trash2 className="w-3 h-3"/> Remover</button>}
+                              </div>
+                          </div>
+                      </div>
+
+                      <div>
+                           <label className={LABEL_STYLE}>Capa (Banner SEO)</label>
+                           <div className="flex items-center gap-4">
+                              <label className="w-full h-24 bg-stone-100 border border-stone-300 rounded-lg flex items-center justify-center cursor-pointer hover:bg-stone-200 overflow-hidden relative shadow-inner">
+                                  {settingsForm.seoBannerUrl ? <img src={settingsForm.seoBannerUrl} className="w-full h-full object-cover" /> : <ImageIcon className="w-8 h-8 text-stone-400" />}
+                                  <input type="file" accept="image/*" onChange={handleBannerUpload} className="hidden" />
+                                  {isProcessingBanner && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-white"/></div>}
+                              </label>
+                              {settingsForm.seoBannerUrl && <button onClick={() => setSettingsForm({...settingsForm, seoBannerUrl: ''})} className="text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded font-bold hover:bg-red-100"><Trash2 className="w-4 h-4"/></button>}
+                           </div>
+                      </div>
+                  </div>
+
+                  {/* Colors Management */}
+                  <div className="border-t border-stone-100 pt-6">
+                      <h4 className="font-bold text-md mb-4 flex items-center gap-2 text-stone-600"><Brush className="w-4 h-4"/> Cores do Sistema</h4>
+                      
+                      <div className="flex gap-2 mb-4 bg-stone-50 p-1 rounded-lg w-fit">
+                          <button onClick={() => setColorTab('general')} className={`px-3 py-1.5 text-xs font-bold rounded transition-all ${colorTab === 'general' ? 'bg-white shadow-sm text-stone-800' : 'text-stone-500'}`}>Principais</button>
+                          <button onClick={() => setColorTab('light')} className={`px-3 py-1.5 text-xs font-bold rounded transition-all ${colorTab === 'light' ? 'bg-white shadow-sm text-stone-800' : 'text-stone-500'}`}>Modo Claro</button>
+                          <button onClick={() => setColorTab('dark')} className={`px-3 py-1.5 text-xs font-bold rounded transition-all ${colorTab === 'dark' ? 'bg-white shadow-sm text-stone-800' : 'text-stone-500'}`}>Modo Escuro</button>
+                      </div>
+
+                      {colorTab === 'general' && (
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-in fade-in">
+                              <div><label className="text-xs font-bold text-stone-500 block mb-1">Cor Primária</label><div className="flex gap-2"><input type="color" value={settingsForm.colors?.primary} onChange={(e) => setSettingsForm({...settingsForm, colors: {...settingsForm.colors!, primary: e.target.value}})} className="h-10 w-10 rounded cursor-pointer border-0" /><input value={settingsForm.colors?.primary} onChange={(e) => setSettingsForm({...settingsForm, colors: {...settingsForm.colors!, primary: e.target.value}})} className={INPUT_STYLE} /></div></div>
+                              <div><label className="text-xs font-bold text-stone-500 block mb-1">Cor Secundária</label><div className="flex gap-2"><input type="color" value={settingsForm.colors?.secondary} onChange={(e) => setSettingsForm({...settingsForm, colors: {...settingsForm.colors!, secondary: e.target.value}})} className="h-10 w-10 rounded cursor-pointer border-0" /><input value={settingsForm.colors?.secondary} onChange={(e) => setSettingsForm({...settingsForm, colors: {...settingsForm.colors!, secondary: e.target.value}})} className={INPUT_STYLE} /></div></div>
+                              <div><label className="text-xs font-bold text-stone-500 block mb-1">Cor Botões</label><div className="flex gap-2"><input type="color" value={settingsForm.colors?.buttons || settingsForm.colors?.primary} onChange={(e) => setSettingsForm({...settingsForm, colors: {...settingsForm.colors!, buttons: e.target.value}})} className="h-10 w-10 rounded cursor-pointer border-0" /><input value={settingsForm.colors?.buttons} onChange={(e) => setSettingsForm({...settingsForm, colors: {...settingsForm.colors!, buttons: e.target.value}})} className={INPUT_STYLE} /></div></div>
+                              <div><label className="text-xs font-bold text-stone-500 block mb-1">Cor Carrinho</label><div className="flex gap-2"><input type="color" value={settingsForm.colors?.cart || settingsForm.colors?.secondary} onChange={(e) => setSettingsForm({...settingsForm, colors: {...settingsForm.colors!, cart: e.target.value}})} className="h-10 w-10 rounded cursor-pointer border-0" /><input value={settingsForm.colors?.cart} onChange={(e) => setSettingsForm({...settingsForm, colors: {...settingsForm.colors!, cart: e.target.value}})} className={INPUT_STYLE} /></div></div>
+                          </div>
+                      )}
+
+                      {(colorTab === 'light' || colorTab === 'dark') && (
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-in fade-in">
+                              {/* Background */}
+                              <div>
+                                  <label className="text-xs font-bold text-stone-500 block mb-1">Fundo da Página</label>
+                                  <div className="flex gap-2">
+                                      <input type="color" value={settingsForm.colors?.modes?.[colorTab].background} onChange={(e) => {
+                                          const newModes = { ...settingsForm.colors!.modes! };
+                                          newModes[colorTab].background = e.target.value;
+                                          setSettingsForm({...settingsForm, colors: {...settingsForm.colors!, modes: newModes}});
+                                      }} className="h-10 w-10 rounded cursor-pointer border-0" />
+                                  </div>
+                              </div>
+                              {/* Card BG */}
+                              <div>
+                                  <label className="text-xs font-bold text-stone-500 block mb-1">Fundo Cartão</label>
+                                  <div className="flex gap-2">
+                                      <input type="color" value={settingsForm.colors?.modes?.[colorTab].cardBackground} onChange={(e) => {
+                                          const newModes = { ...settingsForm.colors!.modes! };
+                                          newModes[colorTab].cardBackground = e.target.value;
+                                          setSettingsForm({...settingsForm, colors: {...settingsForm.colors!, modes: newModes}});
+                                      }} className="h-10 w-10 rounded cursor-pointer border-0" />
+                                  </div>
+                              </div>
+                              {/* Text */}
+                              <div>
+                                  <label className="text-xs font-bold text-stone-500 block mb-1">Cor do Texto</label>
+                                  <div className="flex gap-2">
+                                      <input type="color" value={settingsForm.colors?.modes?.[colorTab].text} onChange={(e) => {
+                                          const newModes = { ...settingsForm.colors!.modes! };
+                                          newModes[colorTab].text = e.target.value;
+                                          setSettingsForm({...settingsForm, colors: {...settingsForm.colors!, modes: newModes}});
+                                      }} className="h-10 w-10 rounded cursor-pointer border-0" />
+                                  </div>
+                              </div>
+                          </div>
+                      )}
+                  </div>
+              </div>
+
+              {/* SECTION 3: SOCIAL MEDIA */}
+              <div className={CARD_STYLE}>
+                 <h3 className="font-bold text-lg mb-6 flex items-center gap-2 border-b border-stone-100 pb-2"><Share2 className="w-5 h-5"/> Redes Sociais</h3>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label className={LABEL_STYLE}><Instagram className="w-4 h-4 inline mr-1"/> Instagram URL</label>
+                        <input value={settingsForm.instagram || ''} onChange={e => setSettingsForm({...settingsForm, instagram: e.target.value})} className={INPUT_STYLE} placeholder="https://instagram.com/..." />
+                    </div>
+                    <div>
+                        <label className={LABEL_STYLE}><Facebook className="w-4 h-4 inline mr-1"/> Facebook URL</label>
+                        <input value={settingsForm.facebook || ''} onChange={e => setSettingsForm({...settingsForm, facebook: e.target.value})} className={INPUT_STYLE} placeholder="https://facebook.com/..." />
+                    </div>
+                    <div>
+                        <label className={LABEL_STYLE}><Youtube className="w-4 h-4 inline mr-1"/> YouTube URL</label>
+                        <input value={settingsForm.youtube || ''} onChange={e => setSettingsForm({...settingsForm, youtube: e.target.value})} className={INPUT_STYLE} placeholder="https://youtube.com/..." />
+                    </div>
+                    <div>
+                        <label className={LABEL_STYLE}><Store className="w-4 h-4 inline mr-1"/> Google Meu Negócio URL</label>
+                        <input value={settingsForm.googleBusiness || ''} onChange={e => setSettingsForm({...settingsForm, googleBusiness: e.target.value})} className={INPUT_STYLE} placeholder="Link do Google Maps..." />
+                    </div>
+                 </div>
+              </div>
+
+              {/* SECTION 4: SCHEDULE & DELIVERY */}
+              <div className={CARD_STYLE}>
+                 <h3 className="font-bold text-lg mb-6 flex items-center gap-2 border-b border-stone-100 pb-2"><Truck className="w-5 h-5"/> Entregas & Horários</h3>
+                 
+                 <div className="mb-6">
+                    <label className={LABEL_STYLE}>Horário de Funcionamento (Texto Simples)</label>
+                    <input value={settingsForm.openingHours} onChange={e => setSettingsForm({...settingsForm, openingHours: e.target.value})} className={INPUT_STYLE} placeholder="Ex: Todos os dias das 18h às 23h" />
+                 </div>
+
+                 <div className="mb-6">
+                     <h4 className="font-bold text-md mb-3 flex items-center gap-2 text-stone-700"><Calendar className="w-4 h-4"/> Horário Avançado (Automático)</h4>
+                     <div className="bg-stone-50 p-4 rounded-xl border border-stone-200 space-y-2">
+                        {WEEKDAYS_ORDER.map(dayKey => {
+                            const daySchedule = (settingsForm.schedule || {})[dayKey as keyof WeeklySchedule] || { isOpen: false, intervals: [] };
+                            const interval = daySchedule.intervals[0] || { start: '18:00', end: '23:00' };
+                            return (
+                                <div key={dayKey} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 border-b border-stone-200 last:border-0">
+                                    <div className="flex items-center gap-3 min-w-[140px]">
+                                        <input type="checkbox" checked={daySchedule.isOpen} onChange={e => handleScheduleUpdate(dayKey, 'isOpen', e.target.checked)} className="w-5 h-5 text-italian-green rounded" />
+                                        <span className={`font-medium ${daySchedule.isOpen ? 'text-stone-800' : 'text-stone-400'}`}>{WEEKDAYS_PT[dayKey as keyof typeof WEEKDAYS_PT]}</span>
+                                    </div>
+                                    {daySchedule.isOpen && (
+                                        <div className="flex items-center gap-2">
+                                            <input type="time" value={interval.start} onChange={e => handleScheduleUpdate(dayKey, 'start', e.target.value)} className="p-1 border border-stone-300 rounded text-sm bg-white text-stone-900 focus:ring-2 focus:ring-italian-red" />
+                                            <span>até</span>
+                                            <input type="time" value={interval.end} onChange={e => handleScheduleUpdate(dayKey, 'end', e.target.value)} className="p-1 border border-stone-300 rounded text-sm bg-white text-stone-900 focus:ring-2 focus:ring-italian-red" />
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                     </div>
+                 </div>
+
+                 {/* Delivery Regions */}
+                 <div>
+                    <h4 className="font-bold text-md mb-3 flex items-center gap-2 text-stone-700">Taxas de Entrega</h4>
+                    <div className="bg-stone-50 p-4 rounded-xl border border-stone-200 space-y-4">
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <input value={newRegionName} onChange={e => setNewRegionName(e.target.value)} placeholder="Nome da Região" className={INPUT_STYLE} />
+                          <input type="number" value={newRegionPrice} onChange={e => setNewRegionPrice(e.target.value)} placeholder="Preço (R$)" className={INPUT_STYLE} />
+                          <input value={newRegionZips} onChange={e => setNewRegionZips(e.target.value)} placeholder="CEPs (separar por vírgula)" className={INPUT_STYLE} />
+                          <input value={newRegionNeighborhoods} onChange={e => setNewRegionNeighborhoods(e.target.value)} placeholder="Bairros (separar por vírgula)" className={INPUT_STYLE} />
+                       </div>
+                       <button onClick={handleAddRegion} className="w-full bg-stone-800 text-white py-2 rounded-lg font-bold hover:bg-stone-900">Adicionar Região</button>
+                       
+                       <div className="space-y-2 mt-4">
+                           {settingsForm.deliveryRegions?.map(region => (
+                               <div key={region.id} className="flex justify-between items-center bg-white p-3 rounded-lg border border-stone-200">
+                                   <div>
+                                       <span className="font-bold text-stone-800">{region.name}</span>
+                                       <span className="ml-2 text-green-600 font-bold">R$ {region.price.toFixed(2)}</span>
                                    </div>
-                               );
-                           })}
+                                   <button onClick={() => handleRemoveRegion(region.id)} className="text-red-500 hover:text-red-700"><Trash2 className="w-4 h-4"/></button>
+                               </div>
+                           ))}
                        </div>
                     </div>
                  </div>
               </div>
-              <div className="flex justify-end sticky bottom-6 bg-white/80 backdrop-blur-sm p-4 rounded-xl border border-stone-200 shadow-lg">
+
+              {/* SAVE BUTTON */}
+              <div className="flex justify-end sticky bottom-6 bg-white/80 backdrop-blur-sm p-4 rounded-xl border border-stone-200 shadow-lg z-20">
                   <button onClick={handleSaveSettings} disabled={isSavingSettings} className="bg-green-600 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-green-700 transition-transform hover:scale-105 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto justify-center">
                         {isSavingSettings ? <Loader2 className="w-6 h-6 animate-spin"/> : <Save className="w-6 h-6" />}
                         {isSavingSettings ? 'Salvando...' : 'Salvar Todas as Configurações'}

@@ -118,8 +118,10 @@ export interface StoreColors {
 export interface StoreSettings {
   name: string;
   logoUrl: string;
+  faviconUrl?: string; // New: Browser Tab Icon
   whatsapp: string;
   address: string;
+  cnpj?: string; // New: CNPJ
   
   // Legacy support (simple string), will be deprecated in favor of schedule
   openingHours: string; 
