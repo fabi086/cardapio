@@ -1,4 +1,6 @@
 
+
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { MENU_DATA, DEFAULT_SETTINGS, CATEGORY_IMAGES } from './data';
 import { Product, CartItem, Category, StoreSettings, WeeklySchedule } from './types';
@@ -381,7 +383,13 @@ function App() {
             seoTitle: settingsData.seo_title || DEFAULT_SETTINGS.seoTitle,
             seoDescription: settingsData.seo_description || DEFAULT_SETTINGS.seoDescription,
             seoBannerUrl: settingsData.seo_banner_url || DEFAULT_SETTINGS.seoBannerUrl,
-            enableTableOrder: settingsData.enable_table_order ?? false
+            enableTableOrder: settingsData.enable_table_order ?? false,
+            
+            // New Social fields
+            instagram: settingsData.instagram || '',
+            facebook: settingsData.facebook || '',
+            youtube: settingsData.youtube || '',
+            googleBusiness: settingsData.google_business || ''
         });
       } else {
         setStoreSettings(DEFAULT_SETTINGS);
@@ -587,7 +595,13 @@ function App() {
           seo_title: newSettings.seoTitle,
           seo_description: newSettings.seoDescription,
           seo_banner_url: newSettings.seoBannerUrl,
-          enable_table_order: newSettings.enableTableOrder
+          enable_table_order: newSettings.enableTableOrder,
+          
+          // New social fields
+          instagram: newSettings.instagram,
+          facebook: newSettings.facebook,
+          youtube: newSettings.youtube,
+          google_business: newSettings.googleBusiness
        };
        
        try {

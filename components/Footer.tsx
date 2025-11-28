@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { Phone, Clock, MapPin, Lock } from 'lucide-react';
+import { Phone, Clock, MapPin, Lock, Instagram, Facebook, Youtube, Store } from 'lucide-react';
 import { StoreSettings } from '../types';
 
 interface FooterProps {
@@ -8,12 +9,40 @@ interface FooterProps {
 }
 
 export const Footer: React.FC<FooterProps> = ({ onOpenAdmin, settings }) => {
+  const hasSocials = settings.instagram || settings.facebook || settings.youtube || settings.googleBusiness;
+
   return (
     <footer className="bg-stone-900 text-stone-400 py-8 mt-12">
       <div className="max-w-5xl mx-auto px-4 grid md:grid-cols-3 gap-8">
         <div>
           <h3 className="text-white font-display text-xl mb-3">{settings.name}</h3>
-          <p className="text-sm mb-2">A melhor pizza da região!</p>
+          <p className="text-sm mb-4">A melhor pizza da região!</p>
+          
+          {hasSocials && (
+             <div className="flex gap-4 mb-4">
+               {settings.instagram && (
+                 <a href={settings.instagram} target="_blank" rel="noreferrer" title="Instagram" className="bg-white/10 p-2 rounded-full hover:bg-white/20 transition-colors">
+                    <Instagram className="w-5 h-5 text-[#E1306C]" /> {/* Cor Oficial do Instagram (aproximada) */}
+                 </a>
+               )}
+               {settings.facebook && (
+                 <a href={settings.facebook} target="_blank" rel="noreferrer" title="Facebook" className="bg-white/10 p-2 rounded-full hover:bg-white/20 transition-colors">
+                    <Facebook className="w-5 h-5 text-[#1877F2]" /> {/* Cor Oficial do Facebook */}
+                 </a>
+               )}
+               {settings.youtube && (
+                 <a href={settings.youtube} target="_blank" rel="noreferrer" title="YouTube" className="bg-white/10 p-2 rounded-full hover:bg-white/20 transition-colors">
+                    <Youtube className="w-5 h-5 text-[#FF0000]" /> {/* Cor Oficial do YouTube */}
+                 </a>
+               )}
+               {settings.googleBusiness && (
+                 <a href={settings.googleBusiness} target="_blank" rel="noreferrer" title="Google Meu Negócio" className="bg-white/10 p-2 rounded-full hover:bg-white/20 transition-colors">
+                    <Store className="w-5 h-5 text-[#4285F4]" /> {/* Cor Oficial do Google Blue */}
+                 </a>
+               )}
+             </div>
+          )}
+
           <p className="text-xs opacity-50">© {new Date().getFullYear()} {settings.name}. Todos os direitos reservados.</p>
         </div>
         

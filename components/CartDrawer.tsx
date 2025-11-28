@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { CartItem, DeliveryRegion, Coupon, Category, Product } from '../types';
-import { X, Trash2, ShoppingBag, Plus, Minus, Edit2, MapPin, CreditCard, User, Search, Loader2, Ticket, CheckCircle, MessageCircle, Sparkles, Utensils, Info, ArrowLeft } from 'lucide-react';
+import { X, Trash2, ShoppingBag, Plus, Minus, Edit2, MapPin, CreditCard, User, Search, Loader2, Ticket, CheckCircle, MessageCircle, Sparkles, Utensils, Info } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 interface CartDrawerProps {
@@ -28,15 +28,15 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onClose, 
   items, 
   onRemoveItem, 
-  onClearCart, 
-  onUpdateQuantity, 
-  onUpdateObservation, 
+  onClearCart,
+  onUpdateQuantity,
+  onUpdateObservation,
   onAddToCart,
-  whatsappNumber, 
-  storeName, 
-  deliveryRegions = [], 
-  paymentMethods = [], 
-  freeShipping = false, 
+  whatsappNumber,
+  storeName,
+  deliveryRegions = [],
+  paymentMethods = [],
+  freeShipping = false,
   menuData = [],
   currencySymbol = 'R$',
   tableNumber = null
@@ -256,29 +256,27 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             if (!region.zipRules || region.zipRules.length === 0) return false;
             
             return region.zipRules.some(rule => {
-                // Heuristic to handle various formats like "12345-678" vs "12345678-12345999" vs "12345"
-                const digits = rule.replace(/\D/g, '');
+                const ruleDigits = rule.replace(/\D/g, '');
                 
-                // Case 1: Full Range (16 digits: 8 start + 8 end)
-                if (digits.length === 16) {
-                    const start = parseInt(digits.substring(0, 8));
-                    const end = parseInt(digits.substring(8, 16));
+                // Case 1: Exact Range (e.g., 13295000-13295999) - 16 digits
+                if (rule.includes('-') && ruleDigits.length === 16) {
+                    const start = parseInt(ruleDigits.substring(0, 8));
+                    const end = parseInt(ruleDigits.substring(8, 16));
                     const current = parseInt(cleanCep);
                     return current >= start && current <= end;
                 }
-                
-                // Case 2: Prefix Range (10 digits: 5 start + 5 end)
-                if (digits.length === 10) {
-                     const startPrefix = parseInt(digits.substring(0, 5));
-                     const endPrefix = parseInt(digits.substring(5, 10));
+
+                // Case 2: Prefix Range (e.g., 13295-13299) - 10 digits
+                if (rule.includes('-') && ruleDigits.length === 10) {
+                     const startPrefix = parseInt(ruleDigits.substring(0, 5));
+                     const endPrefix = parseInt(ruleDigits.substring(5, 10));
                      const currentPrefix = parseInt(cleanCep.substring(0, 5));
                      return currentPrefix >= startPrefix && currentPrefix <= endPrefix;
                 }
 
-                // Case 3: Single CEP or Prefix match
-                // If rule was "13295-000", digits is "13295000". cleanCep "13295000". startsWith -> true.
-                // If rule was "13295", digits is "13295". cleanCep "13295000". startsWith -> true.
-                return cleanCep.startsWith(digits);
+                // Case 3: Single CEP (13295-000) or Prefix (13295)
+                // Just check if the clean CEP starts with the rule digits
+                return cleanCep.startsWith(ruleDigits);
             });
         });
 

@@ -146,6 +146,12 @@ export interface StoreSettings {
   seoDescription?: string;
   seoBannerUrl?: string;
 
+  // Social Media
+  instagram?: string;
+  facebook?: string;
+  youtube?: string;
+  googleBusiness?: string;
+
   // Module 3: Tables
   enableTableOrder?: boolean;
 }
