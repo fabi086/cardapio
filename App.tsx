@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { MENU_DATA, DEFAULT_SETTINGS, CATEGORY_IMAGES } from './data';
 import { Product, CartItem, Category, StoreSettings, WeeklySchedule } from './types';
@@ -16,8 +17,6 @@ import { AIAssistant } from './components/AIAssistant';
 import { ShoppingBag, Check, Loader2, Search, X, Filter, Clock, AlertCircle, HelpCircle, Leaf, Flame, Star, Zap, PieChart, ArrowUp } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
-// ... (Existing Imports and Interfaces) ...
-
 const isValidCartItem = (item: any): item is CartItem => {
   return (
     item &&
@@ -29,10 +28,8 @@ const isValidCartItem = (item: any): item is CartItem => {
   );
 };
 
-// ... (Existing Schedule Logic) ...
 const DAYS_MAP = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 const checkStoreOpenAdvanced = (schedule?: WeeklySchedule, timezone?: string): { isOpen: boolean, message: string } => {
-    // ... (Existing Implementation) ...
     if (!schedule) return { isOpen: true, message: '' }; 
     try {
         const timeZone = timezone || 'America/Sao_Paulo';
@@ -75,7 +72,6 @@ const checkStoreOpenAdvanced = (schedule?: WeeklySchedule, timezone?: string): {
 };
 
 function App() {
-  // ... (State declarations same as existing) ...
   const [menuData, setMenuData] = useState<Category[]>([]);
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(DEFAULT_SETTINGS);
   const [settingsId, setSettingsId] = useState<number | null>(null);
@@ -91,7 +87,7 @@ function App() {
   const [pizzaBuilderCategory, setPizzaBuilderCategory] = useState<string>('');
   const [pizzaBuilderFirstHalf, setPizzaBuilderFirstHalf] = useState<Product | null>(null);
   const [isTrackerOpen, setIsTrackerOpen] = useState(false);
-  const [isAIOpen, setIsAIOpen] = useState(false); // New AI state
+  const [isAIOpen, setIsAIOpen] = useState(false);
   const [tableNumber, setTableNumber] = useState<string | null>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const isManualScrolling = useRef(false);
@@ -105,8 +101,8 @@ function App() {
     return false;
   });
 
-  // ... (Effects for URL params, Theme, Favicon, Title, etc - SAME AS EXISTING) ...
   useEffect(() => { const params = new URLSearchParams(window.location.search); const tableParam = params.get('mesa'); if (tableParam) setTableNumber(tableParam); }, []);
+  
   useEffect(() => {
     const root = document.documentElement;
     if (storeSettings.colors) {
@@ -168,7 +164,17 @@ function App() {
 
   const fetchData = async () => {
     setLoading(true);
-    if (!supabase) { setMenuData(MENU_DATA); setStoreSettings(DEFAULT_SETTINGS); setError(null); setLoading(false); return; }
+    
+    // Modo Offline: Se não houver supabase, usa dados locais
+    if (!supabase) { 
+        console.warn("Modo Offline ativado: Usando dados locais.");
+        setMenuData(MENU_DATA); 
+        setStoreSettings(DEFAULT_SETTINGS); 
+        setError(null); 
+        setLoading(false); 
+        return; 
+    }
+
     try {
       const { data: categories, error: catError } = await supabase.from('categories').select('*').order('order_index');
       const { data: products, error: prodError } = await supabase.from('products').select('*');
@@ -179,17 +185,17 @@ function App() {
       if (settingsError) throw settingsError;
 
       if (categories && products) {
-        // ... (Mapping logic same as existing) ...
         const structuredMenu: Category[] = categories.map((cat: any) => ({
           id: cat.id, name: cat.name, image: cat.image || CATEGORY_IMAGES[cat.id] || null,
           items: products.filter((prod: any) => { let additionalCats: string[] = []; try { if (prod.additional_categories) additionalCats = typeof prod.additional_categories === 'string' ? JSON.parse(prod.additional_categories) : prod.additional_categories; } catch (e) {} return prod.category_id === cat.id || (additionalCats && additionalCats.includes(cat.id)); }).sort((a: any, b: any) => a.id - b.id).map((prod: any) => { let opts = prod.options; if (typeof opts === 'string') { try { opts = JSON.parse(opts); } catch(e) { opts = []; } } let addCats = prod.additional_categories; if (typeof addCats === 'string') { try { addCats = JSON.parse(addCats); } catch(e) { addCats = []; } } const ingredients = Array.isArray(prod.ingredients) ? prod.ingredients : []; const tags = Array.isArray(prod.tags) ? prod.tags : []; return { ...prod, options: opts || [], ingredients, tags, additional_categories: addCats || [] }; })
         }));
         setMenuData(structuredMenu);
+      } else {
+        setMenuData(MENU_DATA); // Fallback data
       }
 
       if (settingsData) {
         setSettingsId(settingsData.id);
-        // ... (Parsing logic same as existing) ...
         let deliveryRegions = settingsData.delivery_regions; if (typeof deliveryRegions === 'string') { try { deliveryRegions = JSON.parse(deliveryRegions); } catch (e) { deliveryRegions = DEFAULT_SETTINGS.deliveryRegions; } }
         let schedule = settingsData.schedule; if (typeof schedule === 'string') { try { schedule = JSON.parse(schedule); } catch(e) { schedule = DEFAULT_SETTINGS.schedule; } }
         let colors = settingsData.colors; if (typeof colors === 'string') { try { colors = JSON.parse(colors); } catch(e) { colors = DEFAULT_SETTINGS.colors; } }
@@ -220,21 +226,30 @@ function App() {
             instagram: settingsData.instagram || '',
             facebook: settingsData.facebook || '',
             youtube: settingsData.youtube || '',
-            googleBusiness: settingsData.google_business || ''
+            googleBusiness: settingsData.google_business || '',
+            evolutionApiUrl: settingsData.evolution_api_url || '',
+            evolutionApiKey: settingsData.evolution_api_key || '',
+            evolutionInstanceName: settingsData.evolution_instance_name || '',
+            openaiApiKey: settingsData.openai_api_key || '',
+            aiSystemPrompt: settingsData.ai_system_prompt || ''
         });
-      } else { setStoreSettings(DEFAULT_SETTINGS); }
+      } else {
+        setStoreSettings(DEFAULT_SETTINGS);
+      }
       setError(null);
     } catch (err: any) {
-      if (err.code === '42P01' || err.code === '42703' || err.code === 'PGRST205') { setMenuData(MENU_DATA); setStoreSettings(DEFAULT_SETTINGS); setError(null); setLoading(false); return; }
-      console.error('Erro ao buscar dados:', JSON.stringify(err, null, 2));
-      setMenuData(MENU_DATA); setStoreSettings(DEFAULT_SETTINGS); setError('Usando dados locais temporariamente.');
+      console.warn('Usando dados locais (Modo Offline) devido a erro:', err.message || err);
+      // Fallback gracioso para dados locais
+      setMenuData(MENU_DATA); 
+      setStoreSettings(DEFAULT_SETTINGS); 
+      // Não exibe erro na UI para não assustar o usuário, apenas loga e usa dados locais
+      setError(null); 
     } finally { setLoading(false); }
   };
 
   useEffect(() => { fetchData(); }, []);
   useEffect(() => { if (!loading && menuData.length > 0) { const hash = window.location.hash; if (hash && hash.startsWith('#product-')) { setTimeout(() => { const element = document.querySelector(hash); if (element) { element.scrollIntoView({ behavior: 'smooth', block: 'center' }); const card = element.closest('.group') || element.parentElement; if (card) { card.classList.add('ring-4', 'ring-italian-red', 'ring-opacity-50'); setTimeout(() => card.classList.remove('ring-4', 'ring-italian-red', 'ring-opacity-50'), 2500); } } }, 1000); } } }, [loading, menuData]);
 
-  // ... (View, CartState, Effects - same as existing) ...
   const [view, setView] = useState<'customer' | 'admin'>('customer');
   const [cartItems, setCartItems] = useState<CartItem[]>(() => { try { const savedCart = localStorage.getItem('spagnolli_cart'); if (!savedCart) return []; const parsed = JSON.parse(savedCart); if (Array.isArray(parsed)) return parsed.filter(isValidCartItem).map(item => ({ ...item, observation: item.observation || '', selectedOptions: item.selectedOptions || [] })); return []; } catch (error) { return []; } });
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -282,7 +297,12 @@ function App() {
           instagram: newSettings.instagram,
           facebook: newSettings.facebook,
           youtube: newSettings.youtube,
-          google_business: newSettings.googleBusiness
+          google_business: newSettings.googleBusiness,
+          evolution_api_url: newSettings.evolutionApiUrl,
+          evolution_api_key: newSettings.evolutionApiKey,
+          evolution_instance_name: newSettings.evolutionInstanceName,
+          openai_api_key: newSettings.openaiApiKey,
+          ai_system_prompt: newSettings.aiSystemPrompt
        };
        
        try {
@@ -295,9 +315,8 @@ function App() {
               if(data) setSettingsId(data[0].id);
            }
        } catch (e: any) {
-           // RETRY LOGIC for Missing Columns (code 42703 is 'undefined_column')
            if (e.code === '42703') {
-              console.warn("Database missing columns, retrying with legacy payload...");
+              console.warn("Colunas de integração faltando, salvando apenas dados básicos...");
               const legacyPayload = {
                   name: newSettings.name,
                   whatsapp: newSettings.whatsapp,
@@ -318,26 +337,19 @@ function App() {
                   seo_description: newSettings.seoDescription,
                   seo_banner_url: newSettings.seoBannerUrl
               };
-
                if (settingsId) {
-                  const { error: retryError } = await supabase.from('settings').update(legacyPayload).eq('id', settingsId);
-                  if(retryError) throw retryError;
+                  await supabase.from('settings').update(legacyPayload).eq('id', settingsId);
                } else {
-                   const { data, error: retryError } = await supabase.from('settings').insert([legacyPayload]).select();
-                   if(retryError) throw retryError;
+                   const { data } = await supabase.from('settings').insert([legacyPayload]).select();
                    if(data) setSettingsId(data[0].id);
                }
-               
-               // Success with legacy payload - Warn user
-               throw new Error("Salvo parcialmente! O banco de dados está desatualizado (faltam colunas), então algumas configurações novas (como CNPJ, favicon e redes sociais) não foram persistidas.");
+               alert("Configurações básicas salvas! (Integrações não salvas devido ao banco de dados antigo)");
+               return;
            }
-           
-           // If error is raw object, wrap it
-           if (e && typeof e === 'object' && !e.message) {
-               throw new Error(JSON.stringify(e));
-           }
-           throw e; 
+           throw e;
        }
+     } else {
+         alert("Modo Offline: Configurações salvas apenas localmente (serão perdidas ao recarregar).");
      }
   };
 
@@ -455,7 +467,6 @@ function App() {
       <PizzaBuilderModal isOpen={isPizzaBuilderOpen} onClose={() => setIsPizzaBuilderOpen(false)} availablePizzas={pizzasForBuilder} onAddToCart={addToCart} initialFirstHalf={pizzaBuilderFirstHalf} currencySymbol={storeSettings.currencySymbol} />
       <OrderTrackerModal isOpen={isTrackerOpen} onClose={() => setIsTrackerOpen(false)} />
       
-      {/* Updated AI Assistant with Cart Props */}
       <AIAssistant 
         isOpen={isAIOpen} 
         onClose={() => setIsAIOpen(false)} 

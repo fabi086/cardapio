@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Category, Product, StoreSettings, ProductOption, ProductChoice, Order, Coupon, DeliveryRegion, WeeklySchedule, Table } from '../types';
-import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Ticket, QrCode, Clock, CreditCard, LayoutDashboard, ShoppingBag, Palette, Phone, Share2, Calendar, Printer, Filter, ChevronDown, ChevronUp, AlertTriangle, User, Truck, Utensils, Minus, Type, Ban, Wifi, WifiOff, Loader2, Database, Globe, DollarSign, Sun, Moon, Instagram, Facebook, Youtube, Store as StoreIcon, Edit, Brush } from 'lucide-react';
+import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Ticket, QrCode, Clock, CreditCard, LayoutDashboard, ShoppingBag, Palette, Phone, Share2, Calendar, Printer, Filter, ChevronDown, ChevronUp, AlertTriangle, User, Truck, Utensils, Minus, Type, Ban, Wifi, WifiOff, Loader2, Database, Globe, DollarSign, Sun, Moon, Instagram, Facebook, Youtube, Store as StoreIcon, Edit, Brush, Link2, Smartphone, MessageSquare, Bot, Zap } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 interface AdminPanelProps {
@@ -36,22 +36,39 @@ const INPUT_STYLE = "w-full p-3 bg-white border border-stone-300 rounded-lg text
 const LABEL_STYLE = "block text-sm font-bold text-stone-700 mb-1";
 const CARD_STYLE = "bg-white p-4 md:p-6 rounded-xl shadow-sm border border-stone-200";
 
-// Helper to extract error message safely
+// Helper robusto para extrair mensagem de erro e evitar [object Object]
 const getErrorMessage = (error: any): string => {
   if (!error) return "Erro desconhecido";
-  if (error instanceof Error) return error.message;
+  
+  // 1. Se já for string, retorna
   if (typeof error === 'string') return error;
+  
+  // 2. Se for instância de Error nativo
+  if (error instanceof Error) return error.message;
+
+  // 3. Se for objeto, tenta encontrar propriedades comuns de erro
   if (typeof error === 'object') {
-    if (error.message) return error.message;
-    if (error.error_description) return error.error_description;
-    if (error.details) return error.details;
-    try {
-      return JSON.stringify(error);
-    } catch {
-      return "Erro não identificado (Objeto)";
-    }
+     // Propriedades comuns de APIs e Supabase
+     const message = error.message || error.error_description || error.details || error.msg || error.description;
+     if (message && typeof message === 'string') return message;
+     
+     // OpenAI error structure (error.error pode ser string ou objeto)
+     if (error.error) {
+         if (typeof error.error === 'string') return error.error;
+         if (typeof error.error === 'object' && error.error.message) return String(error.error.message);
+     }
+
+     // Tenta serializar JSON como último recurso
+     try {
+        const json = JSON.stringify(error);
+        if (json && json !== '{}' && json !== '[]') return json;
+     } catch (e) {
+        // Ignora erro de stringify
+     }
   }
-  return String(error);
+  
+  // 4. Fallback final seguro
+  return "Ocorreu um erro inesperado (Detalhes não disponíveis).";
 };
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ 
@@ -69,7 +86,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'menu' | 'coupons' | 'tables' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'menu' | 'coupons' | 'tables' | 'settings' | 'integrations'>('dashboard');
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [dbError, setDbError] = useState<string | null>(null);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
@@ -126,10 +143,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [isProcessingLogo, setIsProcessingLogo] = useState(false);
   const [isProcessingFavicon, setIsProcessingFavicon] = useState(false);
   const [isProcessingBanner, setIsProcessingBanner] = useState(false);
+  const [isTestingOpenAI, setIsTestingOpenAI] = useState(false);
 
   // Custom Date Range State
   const [customDashStart, setCustomDashStart] = useState('');
   const [customDashEnd, setCustomDashEnd] = useState('');
+
+  // Webhook display
+  const projectRef = "xhjkmvaaukkplpsezeeb"; // Based on your Supabase URL
+  const webhookUrl = `https://${projectRef}.supabase.co/functions/v1/whatsapp-bot`;
 
   // Dashboard Metrics Calculation
   const dashboardMetrics = useMemo(() => {
@@ -211,7 +233,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           if (error.code === '42P01') {
              setDbError("Tabelas não encontradas. Execute o SQL de instalação.");
           } else {
-             setDbError(`Erro de conexão: ${error.message}`);
+             setDbError(`Erro de conexão: ${getErrorMessage(error)}`);
           }
        } else {
           setIsConnected(true);
@@ -269,7 +291,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     if (!error) {
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus as any } : o));
     } else {
-      alert('Erro ao atualizar status: ' + error.message);
+      alert('Erro ao atualizar status: ' + getErrorMessage(error));
     }
     setIsUpdatingOrder(null);
   };
@@ -452,10 +474,62 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
   
   const cancelEditCoupon = () => { setEditingCouponId(null); setCouponForm({ type: 'percent', active: true }); setIsAddingCoupon(false); };
-  const handleSaveCoupon = async () => { if (!couponForm.code || !couponForm.discount_value) return; if (supabase) { const payload: any = { ...couponForm, code: couponForm.code.toUpperCase().trim(), discount_value: Number(couponForm.discount_value) }; if (!payload.min_order_value) payload.min_order_value = 0; if (editingCouponId) { await supabase.from('coupons').update(payload).eq('id', editingCouponId); cancelEditCoupon(); fetchCoupons(); } else { await supabase.from('coupons').insert([payload]); setIsAddingCoupon(false); fetchCoupons(); } } };
-  const handleDeleteCoupon = async (id: number) => { if (window.confirm('Excluir cupom?')) { if (supabase) { await supabase.from('coupons').delete().eq('id', id); fetchCoupons(); } } };
   
-  const handleAddTable = async () => { if (!newTableNumber) return; if (supabase) { const { error } = await supabase.from('tables').insert([{ number: newTableNumber, active: true }]); if(!error) { setNewTableNumber(''); fetchTables(); } } };
+  const handleSaveCoupon = async () => { 
+      if (!couponForm.code || !couponForm.discount_value) return; 
+      
+      try {
+          if (supabase) { 
+              const payload: any = { ...couponForm, code: couponForm.code.toUpperCase().trim(), discount_value: Number(couponForm.discount_value) }; 
+              if (!payload.min_order_value) payload.min_order_value = 0; 
+              
+              if (editingCouponId) { 
+                  const { error } = await supabase.from('coupons').update(payload).eq('id', editingCouponId); 
+                  if(error) throw error;
+                  cancelEditCoupon(); 
+                  fetchCoupons(); 
+              } else { 
+                  const { error } = await supabase.from('coupons').insert([payload]); 
+                  if(error) throw error;
+                  setIsAddingCoupon(false); 
+                  fetchCoupons(); 
+              } 
+          } 
+      } catch (e: any) {
+          alert("Erro ao salvar cupom: " + getErrorMessage(e));
+      }
+  };
+  
+  const handleDeleteCoupon = async (id: number) => { 
+      if (window.confirm('Excluir cupom?')) { 
+          try {
+             if (supabase) { 
+                 const { error } = await supabase.from('coupons').delete().eq('id', id); 
+                 if(error) throw error;
+                 fetchCoupons(); 
+             } 
+          } catch(e) {
+             alert("Erro ao excluir: " + getErrorMessage(e));
+          }
+      } 
+  };
+  
+  const handleAddTable = async () => { 
+      if (!newTableNumber) return; 
+      try {
+         if (supabase) { 
+             const { error } = await supabase.from('tables').insert([{ number: newTableNumber, active: true }]); 
+             if(!error) { 
+                 setNewTableNumber(''); 
+                 fetchTables(); 
+             } else {
+                 throw error;
+             }
+         } 
+      } catch(e) {
+         alert("Erro ao adicionar mesa: " + getErrorMessage(e));
+      }
+  };
   
   const handleDeleteTable = async (id: number) => { 
     if (!window.confirm('Tem certeza que deseja remover esta mesa?')) return;
@@ -465,12 +539,43 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         
         if (error) {
             console.error("Erro ao excluir mesa:", error);
-            alert("Erro ao excluir mesa. Verifique se existem pedidos vinculados a ela.");
+            alert(`Erro ao excluir mesa: ${getErrorMessage(error)}`);
         } else {
             // Success
             fetchTables(); 
         }
     } 
+  };
+
+  const handleTestOpenAI = async () => {
+    setIsTestingOpenAI(true);
+    try {
+        const apiKey = settingsForm.openaiApiKey;
+        if (!apiKey) throw new Error("Insira uma chave API para testar.");
+        
+        const response = await fetch('https://api.openai.com/v1/models', {
+            headers: { 'Authorization': `Bearer ${apiKey}` }
+        });
+        
+        if (response.ok) {
+            alert("Conexão com OpenAI bem sucedida!");
+        } else {
+            // Tenta obter o corpo do erro
+            let err;
+            try {
+               err = await response.json();
+            } catch {
+               err = { message: `Erro HTTP ${response.status}` };
+            }
+            const msg = getErrorMessage(err);
+            throw new Error(msg);
+        }
+    } catch (e: any) {
+        const errMsg = getErrorMessage(e);
+        alert("Erro no teste: " + errMsg);
+    } finally {
+        setIsTestingOpenAI(false);
+    }
   };
 
   const getQrCodeUrl = (tableNum: string) => { 
@@ -628,7 +733,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           </div>
           <div className="flex space-x-1 md:space-x-6 overflow-x-auto hide-scrollbar pb-0">
-             {[{ id: 'dashboard', icon: LayoutDashboard, label: 'Dash' }, { id: 'orders', icon: ShoppingBag, label: 'Pedidos' }, { id: 'menu', icon: Grid, label: 'Cardápio' }, { id: 'coupons', icon: Ticket, label: 'Cupons' }, { id: 'tables', icon: QrCode, label: 'Mesas' }, { id: 'settings', icon: Settings, label: 'Config' }].map(tab => (
+             {[
+               { id: 'dashboard', icon: LayoutDashboard, label: 'Dash' }, 
+               { id: 'orders', icon: ShoppingBag, label: 'Pedidos' }, 
+               { id: 'menu', icon: Grid, label: 'Cardápio' }, 
+               { id: 'coupons', icon: Ticket, label: 'Cupons' }, 
+               { id: 'tables', icon: QrCode, label: 'Mesas' }, 
+               { id: 'settings', icon: Settings, label: 'Config' },
+               { id: 'integrations', icon: Bot, label: 'Robô WhatsApp' }
+             ].map(tab => (
                <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex items-center gap-2 px-3 py-3 text-sm font-bold transition-colors whitespace-nowrap border-b-2 ${activeTab === tab.id ? 'border-italian-red text-italian-red' : 'border-transparent text-stone-500 hover:text-stone-800'}`}><tab.icon className="w-4 h-4" /> {tab.label}</button>
              ))}
           </div>
@@ -698,6 +811,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
            </div>
         )}
 
+        {/* --- ORDERS, MENU, COUPONS, TABLES, SETTINGS SECTIONS REMAIN THE SAME --- */}
         {activeTab === 'orders' && (
            <div className="space-y-6 animate-in fade-in">
              <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
@@ -1148,6 +1262,110 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <button onClick={handleSaveSettings} disabled={isSavingSettings} className="bg-green-600 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-green-700 transition-transform hover:scale-105 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto justify-center">
                         {isSavingSettings ? <Loader2 className="w-6 h-6 animate-spin"/> : <Save className="w-6 h-6" />}
                         {isSavingSettings ? 'Salvando...' : 'Salvar Todas as Configurações'}
+                  </button>
+              </div>
+           </div>
+        )}
+
+        {activeTab === 'integrations' && (
+           <div className="space-y-6 animate-in fade-in">
+              <div className={CARD_STYLE + " bg-gradient-to-br from-white to-green-50"}>
+                 <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-green-800"><Bot className="w-6 h-6"/> Configuração do Robô de WhatsApp</h3>
+                 <p className="text-sm text-stone-600 mb-6">
+                    Configure a inteligência artificial para atender seus clientes automaticamente via WhatsApp. 
+                    <br/><strong>Nota:</strong> Esta funcionalidade requer a <strong>Evolution API</strong> e uma <strong>Supabase Edge Function</strong> configurada.
+                 </p>
+                 
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="col-span-1 md:col-span-2">
+                         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                             <h4 className="font-bold text-yellow-800 text-sm mb-2">Instruções de Instalação</h4>
+                             <p className="text-xs text-yellow-700 mb-2">Para que o robô funcione sem n8n, você precisa copiar o link abaixo e colar no campo <strong>Webhook URL</strong> da sua Evolution API.</p>
+                             <div className="flex items-center gap-2 bg-white p-2 rounded border border-yellow-200">
+                                <code className="text-xs font-mono text-stone-600 flex-1 break-all">{webhookUrl}</code>
+                                <button onClick={() => { navigator.clipboard.writeText(webhookUrl); alert('URL copiada!'); }} className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded hover:bg-yellow-200 font-bold">Copiar</button>
+                             </div>
+                         </div>
+                    </div>
+
+                    <div className="col-span-1 md:col-span-2">
+                        <label className={LABEL_STYLE + " flex items-center gap-2"}><MessageSquare className="w-4 h-4" /> Personalidade do Robô (Prompt do Sistema)</label>
+                        <textarea 
+                           rows={8}
+                           value={settingsForm.aiSystemPrompt || ''} 
+                           onChange={e => setSettingsForm({...settingsForm, aiSystemPrompt: e.target.value})} 
+                           className={INPUT_STYLE + " font-mono text-sm"}
+                           placeholder={`Exemplo: Você é o Luigi, um garçom italiano muito simpático da Pizzaria Spagnolli.
+1. Sempre cumprimente dizendo "Mamma Mia!" ou "Ciao Bello/Bella!".
+2. Se o cliente perguntar o cardápio, liste apenas as categorias principais.
+3. Não invente preços, use as ferramentas disponíveis.
+...`} 
+                        />
+                        <p className="text-xs text-stone-500 mt-1">
+                           Este texto define como o robô deve falar e quais regras ele deve seguir. Se deixar vazio, usaremos um padrão.
+                        </p>
+                    </div>
+
+                    <div className="col-span-1 md:col-span-2 border-t border-stone-200 my-2"></div>
+                    
+                    {/* OpenAI Config */}
+                    <div className="col-span-1 md:col-span-2 bg-stone-100 p-4 rounded-lg border border-stone-200">
+                        <label className={LABEL_STYLE + " flex items-center gap-2"}><Zap className="w-4 h-4 text-purple-600" /> OpenAI API Key (ChatGPT)</label>
+                        <div className="flex gap-2">
+                             <input 
+                                type="password"
+                                value={settingsForm.openaiApiKey || ''} 
+                                onChange={e => setSettingsForm({...settingsForm, openaiApiKey: e.target.value})} 
+                                className={INPUT_STYLE} 
+                                placeholder="sk-proj-..." 
+                             />
+                             <button onClick={handleTestOpenAI} disabled={isTestingOpenAI} className="bg-stone-800 text-white px-4 py-2 rounded-lg font-bold text-xs hover:bg-stone-700 whitespace-nowrap min-w-[140px] flex items-center justify-center gap-2">
+                                 {isTestingOpenAI ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Testar Conexão'}
+                             </button>
+                        </div>
+                        <p className="text-xs text-stone-500 mt-1">
+                           Chave necessária para gerar as respostas inteligentes.
+                        </p>
+                    </div>
+
+                    <div className="col-span-1 md:col-span-2">
+                        <label className={LABEL_STYLE}>URL da API (Evolution API)</label>
+                        <input 
+                           value={settingsForm.evolutionApiUrl || ''} 
+                           onChange={e => setSettingsForm({...settingsForm, evolutionApiUrl: e.target.value})} 
+                           className={INPUT_STYLE} 
+                           placeholder="https://api.seudominio.com" 
+                        />
+                    </div>
+                    
+                    <div>
+                        <label className={LABEL_STYLE}>API Key (Global)</label>
+                        <input 
+                           type="password"
+                           value={settingsForm.evolutionApiKey || ''} 
+                           onChange={e => setSettingsForm({...settingsForm, evolutionApiKey: e.target.value})} 
+                           className={INPUT_STYLE} 
+                           placeholder="Ex: 429683C4C977415CAAFCCE10F7D57E11" 
+                        />
+                    </div>
+                    
+                    <div>
+                        <label className={LABEL_STYLE}>Nome da Instância</label>
+                        <input 
+                           value={settingsForm.evolutionInstanceName || ''} 
+                           onChange={e => setSettingsForm({...settingsForm, evolutionInstanceName: e.target.value})} 
+                           className={INPUT_STYLE} 
+                           placeholder="Ex: MinhaPizzaria" 
+                        />
+                    </div>
+                 </div>
+              </div>
+
+               {/* SAVE BUTTON */}
+              <div className="flex justify-end sticky bottom-6 bg-white/80 backdrop-blur-sm p-4 rounded-xl border border-stone-200 shadow-lg z-20">
+                  <button onClick={handleSaveSettings} disabled={isSavingSettings} className="bg-green-600 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-green-700 transition-transform hover:scale-105 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto justify-center">
+                        {isSavingSettings ? <Loader2 className="w-6 h-6 animate-spin"/> : <Save className="w-6 h-6" />}
+                        {isSavingSettings ? 'Salvando...' : 'Salvar Configurações do Robô'}
                   </button>
               </div>
            </div>
