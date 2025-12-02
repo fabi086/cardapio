@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { MENU_DATA, DEFAULT_SETTINGS, CATEGORY_IMAGES } from './data';
 import { Product, CartItem, Category, StoreSettings, WeeklySchedule } from './types';
@@ -230,7 +231,6 @@ function App() {
             evolutionApiUrl: settingsData.evolution_api_url || '',
             evolutionApiKey: settingsData.evolution_api_key || '',
             evolutionInstanceName: settingsData.evolution_instance_name || '',
-            openaiApiKey: settingsData.openai_api_key || '',
             aiSystemPrompt: settingsData.ai_system_prompt || ''
         });
       } else {
@@ -301,7 +301,7 @@ function App() {
           evolution_api_url: newSettings.evolutionApiUrl,
           evolution_api_key: newSettings.evolutionApiKey,
           evolution_instance_name: newSettings.evolutionInstanceName,
-          openai_api_key: newSettings.openaiApiKey,
+          openai_api_key: (newSettings as any).openaiApiKey,
           ai_system_prompt: newSettings.aiSystemPrompt
        };
        
@@ -469,6 +469,7 @@ function App() {
       
       <AIAssistant 
         isOpen={isAIOpen} 
+        onOpen={() => setIsAIOpen(true)}
         onClose={() => setIsAIOpen(false)} 
         menuData={menuData} 
         storeName={storeSettings.name} 

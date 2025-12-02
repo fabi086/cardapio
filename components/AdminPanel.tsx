@@ -1,4 +1,7 @@
 
+
+
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Category, Product, StoreSettings, ProductOption, ProductChoice, Order, Coupon, DeliveryRegion, WeeklySchedule, Table } from '../types';
 import { Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, Image as ImageIcon, Upload, Grid, MapPin, X, Check, Ticket, QrCode, Clock, CreditCard, LayoutDashboard, ShoppingBag, Palette, Phone, Share2, Calendar, Printer, Filter, ChevronDown, ChevronUp, AlertTriangle, User, Truck, Utensils, Minus, Type, Ban, Wifi, WifiOff, Loader2, Database, Globe, DollarSign, Sun, Moon, Instagram, Facebook, Youtube, Store as StoreIcon, Edit, Brush, Link2, Smartphone, MessageSquare, Bot, Zap } from 'lucide-react';
@@ -51,12 +54,6 @@ const getErrorMessage = (error: any): string => {
      // Propriedades comuns de APIs e Supabase
      const message = error.message || error.error_description || error.details || error.msg || error.description;
      if (message && typeof message === 'string') return message;
-     
-     // OpenAI error structure (error.error pode ser string ou objeto)
-     if (error.error) {
-         if (typeof error.error === 'string') return error.error;
-         if (typeof error.error === 'object' && error.error.message) return String(error.error.message);
-     }
 
      // Tenta serializar JSON como último recurso
      try {
@@ -143,7 +140,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [isProcessingLogo, setIsProcessingLogo] = useState(false);
   const [isProcessingFavicon, setIsProcessingFavicon] = useState(false);
   const [isProcessingBanner, setIsProcessingBanner] = useState(false);
-  const [isTestingOpenAI, setIsTestingOpenAI] = useState(false);
 
   // Custom Date Range State
   const [customDashStart, setCustomDashStart] = useState('');
@@ -545,37 +541,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             fetchTables(); 
         }
     } 
-  };
-
-  const handleTestOpenAI = async () => {
-    setIsTestingOpenAI(true);
-    try {
-        const apiKey = settingsForm.openaiApiKey;
-        if (!apiKey) throw new Error("Insira uma chave API para testar.");
-        
-        const response = await fetch('https://api.openai.com/v1/models', {
-            headers: { 'Authorization': `Bearer ${apiKey}` }
-        });
-        
-        if (response.ok) {
-            alert("Conexão com OpenAI bem sucedida!");
-        } else {
-            // Tenta obter o corpo do erro
-            let err;
-            try {
-               err = await response.json();
-            } catch {
-               err = { message: `Erro HTTP ${response.status}` };
-            }
-            const msg = getErrorMessage(err);
-            throw new Error(msg);
-        }
-    } catch (e: any) {
-        const errMsg = getErrorMessage(e);
-        alert("Erro no teste: " + errMsg);
-    } finally {
-        setIsTestingOpenAI(false);
-    }
   };
 
   const getQrCodeUrl = (tableNum: string) => { 
@@ -1307,26 +1272,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
 
                     <div className="col-span-1 md:col-span-2 border-t border-stone-200 my-2"></div>
-                    
-                    {/* OpenAI Config */}
-                    <div className="col-span-1 md:col-span-2 bg-stone-100 p-4 rounded-lg border border-stone-200">
-                        <label className={LABEL_STYLE + " flex items-center gap-2"}><Zap className="w-4 h-4 text-purple-600" /> OpenAI API Key (ChatGPT)</label>
-                        <div className="flex gap-2">
-                             <input 
-                                type="password"
-                                value={settingsForm.openaiApiKey || ''} 
-                                onChange={e => setSettingsForm({...settingsForm, openaiApiKey: e.target.value})} 
-                                className={INPUT_STYLE} 
-                                placeholder="sk-proj-..." 
-                             />
-                             <button onClick={handleTestOpenAI} disabled={isTestingOpenAI} className="bg-stone-800 text-white px-4 py-2 rounded-lg font-bold text-xs hover:bg-stone-700 whitespace-nowrap min-w-[140px] flex items-center justify-center gap-2">
-                                 {isTestingOpenAI ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Testar Conexão'}
-                             </button>
-                        </div>
-                        <p className="text-xs text-stone-500 mt-1">
-                           Chave necessária para gerar as respostas inteligentes.
-                        </p>
-                    </div>
 
                     <div className="col-span-1 md:col-span-2">
                         <label className={LABEL_STYLE}>URL da API (Evolution API)</label>

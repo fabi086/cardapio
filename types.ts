@@ -157,11 +157,10 @@ export interface StoreSettings {
   // Module 3: Tables
   enableTableOrder?: boolean;
 
-  // Integrations (Evolution API & OpenAI)
+  // Integrations (Evolution API)
   evolutionApiUrl?: string;
   evolutionApiKey?: string;
   evolutionInstanceName?: string;
-  openaiApiKey?: string; // New: OpenAI API Key
   
   // AI Bot Settings
   aiSystemPrompt?: string; // O prompt do "cérebro" do bot
