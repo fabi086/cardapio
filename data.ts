@@ -82,6 +82,9 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   googleBusiness: '',
   
   enableTableOrder: true, // Default to true so it appears immediately
+
+  openaiApiKey: '',
+  aiSystemPrompt: ''
 };
 
 export const WHATSAPP_NUMBER = DEFAULT_SETTINGS.whatsapp; // Legacy support if needed

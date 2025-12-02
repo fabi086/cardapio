@@ -1,9 +1,8 @@
 
-
 import React, { useState, useRef, useEffect } from 'react';
-import { Sparkles, Send, X, User, Bot, Loader2, MessageCircle } from 'lucide-react';
+import { Sparkles, Send, X, User, Bot, Loader2 } from 'lucide-react';
 import { Category, ChatMessage, Product, CartItem, StoreSettings } from '../types';
-import { GoogleGenAI, Type, FunctionDeclaration, Content } from "@google/genai";
+import OpenAI from 'openai';
 
 interface AIAssistantProps {
   isOpen: boolean;
@@ -31,8 +30,8 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome',
-      role: 'model',
-      text: `Ciao! 🍕 Eu sou o Luigi, o assistente virtual da ${storeName}. Posso te ajudar a escolher sabores, calcular a entrega ou montar uma pizza meia a meia. O que manda, chef?`
+      role: 'assistant',
+      content: `Ciao! 🍕 Eu sou o Luigi, o assistente virtual da ${storeName}. Posso te ajudar a escolher sabores, calcular a entrega ou montar uma pizza meia a meia. O que manda, chef?`
     }
   ]);
   
@@ -41,14 +40,19 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
   const [hasUnread, setHasUnread] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  const aiRef = useRef<GoogleGenAI | null>(null);
+  // Use ref to keep instance across renders but recreate if key changes
+  const openaiRef = useRef<OpenAI | null>(null);
 
-  // Initialize Gemini Client
   useEffect(() => {
-    if (process.env.API_KEY) {
-      aiRef.current = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    if (storeSettings.openaiApiKey) {
+      openaiRef.current = new OpenAI({
+        apiKey: storeSettings.openaiApiKey,
+        dangerouslyAllowBrowser: true 
+      });
+    } else {
+        openaiRef.current = null;
     }
-  }, []);
+  }, [storeSettings.openaiApiKey]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -101,61 +105,70 @@ Você é o Luigi 🍕, o garçom virtual da ${storeName}.
           : `${defaultPrompt}\n\n${contextData}`;
   };
 
-  const getTools = () => {
-    const tools: FunctionDeclaration[] = [
-      {
+  const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
+    {
+      type: "function",
+      function: {
         name: "add_item_to_order",
         description: "Adiciona um item INTEIRO ao carrinho.",
         parameters: {
-          type: Type.OBJECT,
+          type: "object",
           properties: {
-            product_name: { type: Type.STRING },
-            quantity: { type: Type.NUMBER },
-            observation: { type: Type.STRING }
+            product_name: { type: "string" },
+            quantity: { type: "number" },
+            observation: { type: "string" }
           },
           required: ["product_name"]
         }
-      },
-      {
+      }
+    },
+    {
+      type: "function",
+      function: {
         name: "add_half_half_pizza",
         description: "Adiciona UMA pizza com dois sabores.",
         parameters: {
-          type: Type.OBJECT,
+          type: "object",
           properties: {
-            flavor1: { type: Type.STRING },
-            flavor2: { type: Type.STRING },
-            observation: { type: Type.STRING }
+            flavor1: { type: "string" },
+            flavor2: { type: "string" },
+            observation: { type: "string" }
           },
           required: ["flavor1", "flavor2"]
         }
-      },
-      {
+      }
+    },
+    {
+      type: "function",
+      function: {
         name: "calculate_delivery_fee",
         description: "Calcula frete pelo bairro.",
         parameters: {
-          type: Type.OBJECT,
+          type: "object",
           properties: {
-            neighborhood: { type: Type.STRING }
+            neighborhood: { type: "string" }
           },
           required: ["neighborhood"]
         }
-      },
-      {
+      }
+    },
+    {
+      type: "function",
+      function: {
         name: "finalize_order",
         description: "Gera link do WhatsApp.",
         parameters: {
-            type: Type.OBJECT,
+            type: "object",
             properties: {
-              customer_name: { type: Type.STRING },
-              payment_method: { type: Type.STRING },
-              delivery_method: { type: Type.STRING, enum: ["entrega", "retirada"] }
+              customer_name: { type: "string" },
+              payment_method: { type: "string" },
+              delivery_method: { type: "string", enum: ["entrega", "retirada"] }
             },
             required: ["customer_name"]
         }
       }
-    ];
-    return tools;
-  };
+    }
+  ];
 
   useEffect(() => {
     if (isOpen) {
@@ -171,16 +184,16 @@ Você é o Luigi 🍕, o garçom virtual da ${storeName}.
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading) return;
     
-    if (!aiRef.current) {
+    if (!openaiRef.current) {
         setMessages(prev => [...prev, 
-            { id: Date.now().toString(), role: 'user', text: inputValue },
-            { id: (Date.now()+1).toString(), role: 'model', text: "⚠️ Configure a API Key do Google Gemini no ambiente." }
+            { id: Date.now().toString(), role: 'user', content: inputValue },
+            { id: (Date.now()+1).toString(), role: 'assistant', content: "⚠️ Configure a API Key da OpenAI no Painel Admin (Aba Integrações)." }
         ]);
         setInputValue('');
         return;
     }
 
-    const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', text: inputValue };
+    const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', content: inputValue };
     const newMessages = [...messages, userMsg];
     
     setMessages(newMessages);
@@ -188,42 +201,33 @@ Você é o Luigi 🍕, o garçom virtual da ${storeName}.
     setIsLoading(true);
 
     try {
-        // Convert UI messages to Gemini Content
-        // Filter out initial welcome message if it's purely UI based or map it
-        const contents: Content[] = newMessages.map(msg => ({
-            role: msg.role === 'model' ? 'model' : 'user',
-            parts: [{ text: msg.text }]
-        }));
+        // Prepare history for OpenAI
+        const apiMessages: any[] = [
+            { role: "system", content: getSystemInstruction() },
+            ...newMessages.map(m => ({ role: m.role as any, content: m.content }))
+        ];
 
         let loopCount = 0;
-        let finalResponseText = '';
-        const maxLoops = 5; // Prevent infinite loops
-        let currentContents = [...contents];
+        const maxLoops = 5; 
 
         while (loopCount < maxLoops) {
-             const response = await aiRef.current.models.generateContent({
-                model: 'gemini-2.5-flash',
-                contents: currentContents,
-                config: {
-                    systemInstruction: getSystemInstruction(),
-                    tools: [{ functionDeclarations: getTools() }],
-                }
+             const completion = await openaiRef.current.chat.completions.create({
+                 messages: apiMessages as any,
+                 model: "gpt-3.5-turbo", // Or gpt-4o-mini
+                 tools: tools,
+                 tool_choice: "auto"
              });
 
-             const responseContent = response.candidates?.[0]?.content;
-             if (!responseContent) break;
+             const choice = completion.choices[0];
+             const message = choice.message;
 
-             // Add model response to history for next turn if needed
-             currentContents.push(responseContent);
+             // Add assistant message to history (even if null content but has tool_calls)
+             apiMessages.push(message as any);
 
-             const functionCalls = response.functionCalls;
-             
-             if (functionCalls && functionCalls.length > 0) {
-                 const functionResponses = [];
-                 
-                 for (const call of functionCalls) {
-                     const fnName = call.name;
-                     const args = call.args as any;
+             if (message.tool_calls && message.tool_calls.length > 0) {
+                 for (const toolCall of message.tool_calls) {
+                     const fnName = toolCall.function.name;
+                     const args = JSON.parse(toolCall.function.arguments);
                      let resultText = "Ok";
 
                      if (fnName === "add_item_to_order") {
@@ -236,6 +240,7 @@ Você é o Luigi 🍕, o garçom virtual da ${storeName}.
                             onAddToCart(foundProduct, args.quantity || 1, args.observation || '');
                             resultText = `SUCESSO: Adicionado ${args.quantity || 1}x ${foundProduct.name}.`;
                         } else {
+                            // Fuzzy search fallback
                             const allProducts = menuData.flatMap(c => c.items);
                             const match = allProducts.find(p => p.name.toLowerCase().includes(args.product_name.toLowerCase().split(' ')[0]));
                             if (match) {
@@ -290,39 +295,29 @@ Você é o Luigi 🍕, o garçom virtual da ${storeName}.
                          window.open(link, '_blank');
                          resultText = "SUCESSO: Link gerado.";
                      }
-                     
-                     functionResponses.push({
-                         id: call.id,
-                         name: call.name,
-                         response: { result: resultText }
+
+                     apiMessages.push({
+                         role: "tool",
+                         tool_call_id: toolCall.id,
+                         content: resultText
                      });
                  }
-                 
-                 // Send function response back to model
-                 currentContents.push({
-                     role: 'user', // In Gemini, tool output comes from user side conceptually or just a part
-                     parts: functionResponses.map(fr => ({
-                         functionResponse: fr
-                     }))
-                 });
-                 
                  loopCount++;
-                 // Continue loop to get natural language response
              } else {
-                 // No function calls, just text response
-                 finalResponseText = response.text || '';
-                 break; 
+                 // Final response
+                 const content = message.content;
+                 if (content) {
+                     setMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content }]);
+                 }
+                 break;
              }
-        }
-
-        if (finalResponseText) {
-            setMessages(prev => [...prev, { id: Date.now().toString(), role: 'model', text: finalResponseText }]);
         }
 
     } catch (error: any) {
         console.error(error);
         let msg = "Desculpe, tive um erro técnico.";
-        setMessages(prev => [...prev, { id: Date.now().toString(), role: 'model', text: `⚠️ ${msg}` }]);
+        if (error?.message?.includes('API key')) msg = "Chave da OpenAI inválida ou não configurada.";
+        setMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: `⚠️ ${msg}` }]);
     } finally {
         setIsLoading(false);
     }
@@ -380,12 +375,12 @@ Você é o Luigi 🍕, o garçom virtual da ${storeName}.
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-stone-50 dark:bg-stone-950/50">
               {messages.map((msg) => (
                 <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border shadow-sm ${msg.role === 'user' ? 'bg-stone-200 dark:bg-stone-700' : 'bg-italian-green text-white'}`} style={msg.role === 'model' ? { backgroundColor: storeSettings.colors?.secondary } : {}}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border shadow-sm ${msg.role === 'user' ? 'bg-stone-200 dark:bg-stone-700' : 'bg-italian-green text-white'}`} style={msg.role === 'assistant' ? { backgroundColor: storeSettings.colors?.secondary } : {}}>
                     {msg.role === 'user' ? <User className="w-5 h-5 text-stone-600 dark:text-stone-300" /> : <Bot className="w-5 h-5" />}
                   </div>
                   
                   <div className={`max-w-[85%] p-3 rounded-2xl text-sm shadow-sm whitespace-pre-wrap ${msg.role === 'user' ? 'bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-100 rounded-tr-none' : 'bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-100 rounded-tl-none border border-stone-100 dark:border-stone-700'}`}>
-                      {msg.text}
+                      {msg.content}
                   </div>
                 </div>
               ))}

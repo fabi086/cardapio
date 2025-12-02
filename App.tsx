@@ -231,6 +231,7 @@ function App() {
             evolutionApiUrl: settingsData.evolution_api_url || '',
             evolutionApiKey: settingsData.evolution_api_key || '',
             evolutionInstanceName: settingsData.evolution_instance_name || '',
+            openaiApiKey: settingsData.openai_api_key || '',
             aiSystemPrompt: settingsData.ai_system_prompt || ''
         });
       } else {
@@ -301,7 +302,7 @@ function App() {
           evolution_api_url: newSettings.evolutionApiUrl,
           evolution_api_key: newSettings.evolutionApiKey,
           evolution_instance_name: newSettings.evolutionInstanceName,
-          openai_api_key: (newSettings as any).openaiApiKey,
+          openai_api_key: newSettings.openaiApiKey,
           ai_system_prompt: newSettings.aiSystemPrompt
        };
        

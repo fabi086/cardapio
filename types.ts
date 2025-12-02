@@ -157,12 +157,12 @@ export interface StoreSettings {
   // Module 3: Tables
   enableTableOrder?: boolean;
 
-  // Integrations (Evolution API)
+  // Integrations (Evolution API & AI)
   evolutionApiUrl?: string;
   evolutionApiKey?: string;
   evolutionInstanceName?: string;
   
-  // AI Bot Settings
+  openaiApiKey?: string; // OpenAI API Key
   aiSystemPrompt?: string; // O prompt do "cérebro" do bot
 }
 
@@ -214,7 +214,6 @@ export interface Order {
 
 export interface ChatMessage {
   id: string;
-  role: 'user' | 'model';
-  text: string;
-  isStreaming?: boolean;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
 }
