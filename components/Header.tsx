@@ -1,5 +1,4 @@
 
-
 import React, { useState } from 'react';
 import { ShoppingBag, Moon, Sun, Phone, Info, Clock, Sparkles } from 'lucide-react';
 
@@ -105,16 +104,6 @@ export const Header: React.FC<HeaderProps> = ({
              </a>
           </div>
 
-          {/* AI Button - New Feature */}
-          <button 
-             onClick={onOpenAI}
-             className="relative p-2 rounded-full hover:bg-white/10 transition-colors group"
-             title="Assistente Virtual (IA)"
-          >
-             <Sparkles className="w-6 h-6 text-yellow-300 animate-pulse group-hover:scale-110 transition-transform" />
-             <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white/10"></span>
-          </button>
-
           {/* Mobile Contact Icons */}
           <a href={whatsLink} target="_blank" rel="noreferrer" className="md:hidden p-2 rounded-full hover:bg-white/10 transition-colors">
             <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5" xmlns="http://www.w3.org/2000/svg">
@@ -125,10 +114,11 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Order Tracker Button */}
           <button 
              onClick={onOpenTracker}
-             className="p-2 rounded-full hover:bg-white/10 transition-colors"
+             className="flex items-center gap-1.5 hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors"
              title="Acompanhar Pedidos"
           >
-             <Clock className="w-6 h-6" />
+             <Clock className="w-5 h-5" />
+             <span className="text-sm font-bold hidden md:inline">Acompanhar Pedido</span>
           </button>
 
           {/* Info Button */}

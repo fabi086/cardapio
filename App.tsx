@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { MENU_DATA, DEFAULT_SETTINGS, CATEGORY_IMAGES } from './data';
 import { Product, CartItem, Category, StoreSettings, WeeklySchedule } from './types';
@@ -187,8 +185,33 @@ function App() {
 
       if (categories && products) {
         const structuredMenu: Category[] = categories.map((cat: any) => ({
-          id: cat.id, name: cat.name, image: cat.image || CATEGORY_IMAGES[cat.id] || null,
-          items: products.filter((prod: any) => { let additionalCats: string[] = []; try { if (prod.additional_categories) additionalCats = typeof prod.additional_categories === 'string' ? JSON.parse(prod.additional_categories) : prod.additional_categories; } catch (e) {} return prod.category_id === cat.id || (additionalCats && additionalCats.includes(cat.id)); }).sort((a: any, b: any) => a.id - b.id).map((prod: any) => { let opts = prod.options; if (typeof opts === 'string') { try { opts = JSON.parse(opts); } catch(e) { opts = []; } } let addCats = prod.additional_categories; if (typeof addCats === 'string') { try { addCats = JSON.parse(addCats); } catch(e) { addCats = []; } } const ingredients = Array.isArray(prod.ingredients) ? prod.ingredients : []; const tags = Array.isArray(prod.tags) ? prod.tags : []; return { ...prod, options: opts || [], ingredients, tags, additional_categories: addCats || [] }; })
+          id: cat.id, 
+          name: cat.name, 
+          image: cat.image || CATEGORY_IMAGES[cat.id] || null,
+          items: products.filter((prod: any) => { 
+            // Normalize logic for robust matching
+            const pCatId = String(prod.category_id || '').toLowerCase().trim();
+            const cId = String(cat.id).toLowerCase().trim();
+            
+            let additionalCats: string[] = []; 
+            try { 
+                if (prod.additional_categories) additionalCats = typeof prod.additional_categories === 'string' ? JSON.parse(prod.additional_categories) : prod.additional_categories; 
+            } catch (e) {} 
+            
+            const normalizedAddCats = Array.isArray(additionalCats) ? additionalCats.map(ac => String(ac).toLowerCase().trim()) : [];
+
+            return pCatId === cId || normalizedAddCats.includes(cId); 
+          })
+          .sort((a: any, b: any) => a.id - b.id)
+          .map((prod: any) => { 
+              let opts = prod.options; 
+              if (typeof opts === 'string') { try { opts = JSON.parse(opts); } catch(e) { opts = []; } } 
+              let addCats = prod.additional_categories; 
+              if (typeof addCats === 'string') { try { addCats = JSON.parse(addCats); } catch(e) { addCats = []; } } 
+              const ingredients = Array.isArray(prod.ingredients) ? prod.ingredients : []; 
+              const tags = Array.isArray(prod.tags) ? prod.tags : []; 
+              return { ...prod, options: opts || [], ingredients, tags, additional_categories: addCats || [] }; 
+          })
         }));
         setMenuData(structuredMenu);
       } else {
@@ -355,9 +378,35 @@ function App() {
   };
 
   const handleResetMenu = () => { fetchData(); };
-  const handleAddCategory = (name: string) => { /* ... */ };
-  const handleUpdateCategory = async (id: string, updates: { name?: string; image?: string }) => { setMenuData(prev => prev.map(cat => cat.id === id ? { ...cat, ...updates } : cat)); if(supabase) await supabase.from('categories').update(updates).eq('id', id); };
-  const handleDeleteCategory = (id: string) => { /* ... */ };
+  
+  const handleAddCategory = async (name: string) => {
+    const newId = name.toLowerCase().replace(/\s+/g, '-');
+    const newCat: Category = {
+      id: newId,
+      name: name,
+      items: []
+    };
+    
+    setMenuData(prev => [...prev, newCat]);
+    
+    if (supabase) {
+        await supabase.from('categories').insert([{ id: newId, name: name, order_index: menuData.length + 1 }]);
+    }
+  };
+
+  const handleUpdateCategory = async (id: string, updates: { name?: string; image?: string }) => { 
+      setMenuData(prev => prev.map(cat => cat.id === id ? { ...cat, ...updates } : cat)); 
+      if(supabase) await supabase.from('categories').update(updates).eq('id', id); 
+  };
+  
+  const handleDeleteCategory = async (id: string) => {
+      setMenuData(prev => prev.filter(c => c.id !== id));
+      if (supabase) {
+          // Delete products first (cascade usually handles this but good to be safe)
+          await supabase.from('products').delete().eq('category_id', id);
+          await supabase.from('categories').delete().eq('id', id);
+      }
+  };
 
   const addToCart = (product: Product, quantity: number = 1, observation: string = '', selectedOptions?: CartItem['selectedOptions']) => {
     const normalizedObservation = (observation || '').trim();
@@ -463,7 +512,25 @@ function App() {
       {storeSettings.enableGuide && ( <div className="fixed bottom-24 left-4 md:bottom-8 md:left-8 z-[60]"> <button onClick={restartGuide} className="bg-white text-italian-green p-2 rounded-full shadow-lg border border-stone-300 hover:scale-105 transition-transform" title="Ajuda"><HelpCircle className="w-6 h-6" /></button> </div> )}
       {showScrollTop && ( <div className="fixed bottom-24 right-4 md:bottom-8 md:right-32 z-40"> <button onClick={scrollToTop} className="bg-white/80 backdrop-blur text-stone-600 p-2.5 rounded-full shadow-lg border border-stone-200 hover:bg-white hover:text-stone-900 transition-all active:scale-95 animate-in fade-in zoom-in" title="Voltar ao topo"> <ArrowUp className="w-5 h-5" /> </button> </div> )}
 
-      <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} items={cartItems} onRemoveItem={removeFromCart} onClearCart={clearCart} onUpdateQuantity={updateQuantity} onUpdateObservation={updateObservation} onAddToCart={addToCart} whatsappNumber={storeSettings.whatsapp} storeName={storeSettings.name} deliveryRegions={storeSettings.deliveryRegions || []} paymentMethods={storeSettings.paymentMethods} freeShipping={storeSettings.freeShipping} menuData={menuData} currencySymbol={storeSettings.currencySymbol} tableNumber={tableNumber} />
+      <CartDrawer 
+        isOpen={isCartOpen} 
+        onClose={() => setIsCartOpen(false)} 
+        items={cartItems} 
+        onRemoveItem={removeFromCart} 
+        onClearCart={clearCart} 
+        onUpdateQuantity={updateQuantity} 
+        onUpdateObservation={updateObservation} 
+        onAddToCart={addToCart} 
+        whatsappNumber={storeSettings.whatsapp} 
+        storeName={storeSettings.name} 
+        deliveryRegions={storeSettings.deliveryRegions || []} 
+        paymentMethods={storeSettings.paymentMethods} 
+        freeShipping={storeSettings.freeShipping} 
+        menuData={menuData} 
+        currencySymbol={storeSettings.currencySymbol} 
+        tableNumber={tableNumber}
+        enableTableOrder={storeSettings.enableTableOrder}
+      />
       <InfoModal isOpen={isInfoModalOpen} onClose={() => setIsInfoModalOpen(false)} settings={storeSettings} isOpenNow={storeStatus.isOpen} />
       <PizzaBuilderModal isOpen={isPizzaBuilderOpen} onClose={() => setIsPizzaBuilderOpen(false)} availablePizzas={pizzasForBuilder} onAddToCart={addToCart} initialFirstHalf={pizzaBuilderFirstHalf} currencySymbol={storeSettings.currencySymbol} />
       <OrderTrackerModal isOpen={isTrackerOpen} onClose={() => setIsTrackerOpen(false)} />
