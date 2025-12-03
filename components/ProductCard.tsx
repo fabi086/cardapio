@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { Product, CartItem } from '../types';
 import { Plus, Minus, Check, ChevronUp, Share2, PieChart } from 'lucide-react';
@@ -205,7 +206,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
           <button 
             onClick={() => setIsExpanded(true)}
             className="w-full py-3 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-md active:scale-95"
-            style={{ backgroundColor: 'var(--btn-primary, var(--color-primary))', color: 'var(--btn-text, #FFFFFF)' }}
+            style={{ backgroundColor: 'var(--btn-card-bg, var(--color-primary))', color: 'var(--btn-card-text, #FFFFFF)' }}
           >
             <Plus className="w-4 h-4" /> Adicionar
           </button>
@@ -291,8 +292,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
                       disabled={isAdded} 
                       className={`flex-1 h-10 rounded-lg font-bold text-xs md:text-sm transition-all shadow-md flex items-center justify-center gap-1 ${isAdded ? 'scale-105' : 'hover:opacity-90 active:scale-95'}`}
                       style={{ 
-                          backgroundColor: isAdded ? '#16a34a' : 'var(--btn-primary, var(--color-primary))',
-                          color: 'var(--btn-text, #FFFFFF)'
+                          backgroundColor: isAdded ? '#16a34a' : 'var(--btn-card-bg, var(--color-primary))',
+                          color: 'var(--btn-card-text, #FFFFFF)'
                       }}
                     >
                       {isAdded ? <><Check className="w-4 h-4" /> Add!</> : `Add ${currencySymbol} ${totalPrice.toFixed(2).replace('.',',')}`}

@@ -94,6 +94,10 @@ export interface StoreColors {
   primary: string;   // Main Action Color (Buttons, Accents)
   secondary: string; // Secondary Accent
   
+  // Specific Button Customization
+  cardButtonBackground?: string;
+  cardButtonText?: string;
+
   // Separate Palettes for Modes
   modes?: {
     light: ColorPalette;

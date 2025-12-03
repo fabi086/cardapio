@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { MENU_DATA, DEFAULT_SETTINGS, CATEGORY_IMAGES } from './data';
 import { Product, CartItem, Category, StoreSettings, WeeklySchedule } from './types';
@@ -109,10 +111,16 @@ function App() {
       root.style.setProperty('--color-secondary', storeSettings.colors.secondary);
       root.style.setProperty('--header-bg', storeSettings.colors.headerBackground || storeSettings.colors.primary);
       root.style.setProperty('--header-text', storeSettings.colors.headerText || '#FFFFFF');
+      
+      // Card Buttons
+      root.style.setProperty('--btn-card-bg', storeSettings.colors.cardButtonBackground || storeSettings.colors.primary);
+      root.style.setProperty('--btn-card-text', storeSettings.colors.cardButtonText || '#FFFFFF');
+
       const mode = isDarkMode ? 'dark' : 'light';
       const defaultLight = { background: '#f5f5f4', cardBackground: '#ffffff', text: '#292524', cardText: '#1c1917', border: '#e7e5e4' };
       const defaultDark = { background: '#0c0a09', cardBackground: '#1c1917', text: '#f5f5f4', cardText: '#ffffff', border: '#292524' };
       const palette = storeSettings.colors.modes ? storeSettings.colors.modes[mode] : (isDarkMode ? defaultDark : defaultLight);
+      
       root.style.setProperty('--bg-body', palette?.background || defaultLight.background);
       root.style.setProperty('--bg-card', palette?.cardBackground || defaultLight.cardBackground);
       root.style.setProperty('--text-body', palette?.text || defaultLight.text);
@@ -189,7 +197,7 @@ function App() {
           name: cat.name, 
           image: cat.image || CATEGORY_IMAGES[cat.id] || null,
           items: products.filter((prod: any) => { 
-            // Normalize logic for robust matching
+            // Robust matching: trim and lowercase both sides
             const pCatId = String(prod.category_id || '').toLowerCase().trim();
             const cId = String(cat.id).toLowerCase().trim();
             
@@ -200,6 +208,7 @@ function App() {
             
             const normalizedAddCats = Array.isArray(additionalCats) ? additionalCats.map(ac => String(ac).toLowerCase().trim()) : [];
 
+            // Match if category_id equals current category or if current category is in additional_categories
             return pCatId === cId || normalizedAddCats.includes(cId); 
           })
           .sort((a: any, b: any) => a.id - b.id)

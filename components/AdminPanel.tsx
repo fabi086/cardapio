@@ -7,7 +7,7 @@ import {
   Image as ImageIcon, Grid, MapPin, X, Check, Ticket, QrCode, 
   Clock, CreditCard, LayoutDashboard, ShoppingBag, Zap, LogOut, 
   Menu, ChevronDown, ChevronUp, TrendingUp, Users,
-  Utensils, Bike, Store, List, Palette, Globe, Printer
+  Utensils, Bike, Store, List, Palette, Globe, Printer, Upload, FileImage
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
@@ -45,9 +45,9 @@ const Input = ({ label, type = "text", ...props }: any) => (
   <div className="w-full">
     {label && <label className="block text-xs font-bold text-stone-600 uppercase mb-1.5">{label}</label>}
     {type === 'color' ? (
-       <div className="flex items-center gap-2 border border-stone-300 p-1 rounded-lg bg-white">
-          <input type="color" className="w-8 h-8 rounded cursor-pointer border-none p-0" {...props} />
-          <span className="text-sm font-mono text-stone-600 uppercase">{props.value}</span>
+       <div className="flex items-center gap-2 border border-stone-300 p-1 rounded-lg bg-white h-[42px]">
+          <input type="color" className="w-8 h-8 rounded cursor-pointer border-none p-0 shrink-0" {...props} />
+          <span className="text-sm font-mono text-stone-600 uppercase truncate">{props.value}</span>
        </div>
     ) : (
        <input type={type} className="w-full p-2.5 bg-white border border-stone-300 rounded-lg text-sm text-stone-900 focus:ring-2 focus:ring-stone-800 focus:border-stone-800 outline-none transition-all placeholder-stone-400" {...props} />
@@ -64,7 +64,7 @@ const Select = ({ label, children, ...props }: any) => (
   </div>
 );
 
-const Badge = ({ children, color = 'gray' }: { children: React.ReactNode, color?: string }) => {
+const Badge = ({ children, color = 'gray' }: { children?: React.ReactNode, color?: string }) => {
    const colors: any = {
       gray: 'bg-stone-100 text-stone-600',
       green: 'bg-green-100 text-green-700',
@@ -74,6 +74,78 @@ const Badge = ({ children, color = 'gray' }: { children: React.ReactNode, color?
       purple: 'bg-purple-100 text-purple-700'
    };
    return <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wide ${colors[color] || colors.gray}`}>{children}</span>
+};
+
+// --- IMAGE UPLOAD HELPER ---
+const ImageInput = ({ label, value, onChange, roundPreview = false }: { label: string, value: string, onChange: (val: string) => void, roundPreview?: boolean }) => {
+    const [uploading, setUploading] = useState(false);
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploading(true);
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                const MAX_WIDTH = 400; // Resize to sensible max
+                const MAX_HEIGHT = 400;
+
+                if (width > height) {
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+                } else {
+                    if (height > MAX_HEIGHT) {
+                        width *= MAX_HEIGHT / height;
+                        height = MAX_HEIGHT;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx?.drawImage(img, 0, 0, width, height);
+                
+                // Compress to JPEG 70% quality
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                onChange(dataUrl);
+                setUploading(false);
+            };
+            img.src = event.target?.result as string;
+        };
+        reader.readAsDataURL(file);
+    };
+
+    return (
+        <div className="w-full">
+            <label className="block text-xs font-bold text-stone-600 uppercase mb-1.5">{label}</label>
+            <div className="flex gap-3 items-start">
+                <div className={`w-16 h-16 shrink-0 bg-stone-100 border border-stone-200 overflow-hidden flex items-center justify-center ${roundPreview ? 'rounded-full' : 'rounded-lg'}`}>
+                    {value ? (
+                        <img src={value} alt="Preview" className="w-full h-full object-cover" />
+                    ) : (
+                        <ImageIcon className="w-6 h-6 text-stone-300" />
+                    )}
+                </div>
+                <div className="flex-1 space-y-2">
+                    <div className="flex gap-2">
+                        <Input placeholder="Cole o link da imagem..." value={value} onChange={(e: any) => onChange(e.target.value)} />
+                        <label className="bg-stone-100 hover:bg-stone-200 text-stone-600 border border-stone-200 px-3 py-2.5 rounded-lg cursor-pointer flex items-center justify-center min-w-[50px]">
+                            {uploading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
+                            <input type="file" className="hidden" accept="image/*" onChange={handleFileUpload} disabled={uploading} />
+                        </label>
+                    </div>
+                    <p className="text-[10px] text-stone-400">Cole uma URL ou clique no ícone para enviar do dispositivo (será redimensionado automaticamente).</p>
+                </div>
+            </div>
+        </div>
+    );
 };
 
 // --- TYPES ---
@@ -98,16 +170,6 @@ const STATUS_LABELS: Record<string, string> = {
   delivery: 'Em Entrega',
   completed: 'Concluído',
   cancelled: 'Cancelado'
-};
-
-const TAG_LABELS: Record<string, string> = {
-  popular: 'Popular',
-  new: 'Novo',
-  vegetarian: 'Vegetariano',
-  spicy: 'Apimentado',
-  gluten_free: 'Sem Glúten',
-  sugar_free: 'Sem Açúcar',
-  vegan: 'Vegano'
 };
 
 // --- MAIN COMPONENT ---
@@ -174,7 +236,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const fetchOrders = async () => {
     if (!supabase) return;
-    const { data } = await supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(200);
+    const { data } = await supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(300);
     if (data) setOrders(data as Order[]);
   };
 
@@ -270,10 +332,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setProductForm({});
     setEditingProduct(null);
   };
-
-  const handleOptionChange = (options: ProductOption[]) => {
-     setProductForm({ ...productForm, options });
-  };
   
   const openProductModal = (categoryId: string, product?: Product) => {
     setActiveCategoryId(categoryId);
@@ -306,6 +364,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       );
   };
 
+  // Helper function to safely update nested color state
+  const updateColorMode = (mode: 'light' | 'dark', key: string, value: string) => {
+      const currentColors = settingsForm.colors || { primary: '#C8102E', secondary: '#008C45' };
+      const currentModes = currentColors.modes || {
+          light: { background: '#f5f5f4', cardBackground: '#ffffff', text: '#292524', cardText: '#1c1917', border: '#e7e5e4' },
+          dark: { background: '#0c0a09', cardBackground: '#1c1917', text: '#f5f5f4', cardText: '#ffffff', border: '#292524' }
+      };
+
+      setSettingsForm({
+          ...settingsForm,
+          colors: {
+              ...currentColors,
+              modes: {
+                  ...currentModes,
+                  [mode]: {
+                      ...currentModes[mode],
+                      [key]: value
+                  }
+              }
+          }
+      });
+  };
+
   // --- RENDERERS ---
 
   const renderDashboard = () => (
@@ -327,7 +408,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="p-6 border-l-4 border-l-green-500">
-          <p className="text-stone-500 text-xs font-bold uppercase mb-1">Faturamento ({dateRange})</p>
+          <p className="text-stone-500 text-xs font-bold uppercase mb-1">Faturamento ({dateRange === 'today' ? 'Hoje' : dateRange})</p>
           <p className="text-3xl font-bold text-stone-800">R$ {dashboardStats.totalSales.toFixed(2)}</p>
         </Card>
         <Card className="p-6 border-l-4 border-l-blue-500">
@@ -433,7 +514,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                  filteredOrders.map(order => (
                     <Card 
                        key={order.id} 
-                       className="cursor-pointer hover:shadow-md transition-all border-l-4 group" 
+                       className="cursor-pointer hover:shadow-md transition-all border-l-4 group relative" 
                        style={{ borderLeftColor: order.status === 'pending' ? '#eab308' : order.status === 'cancelled' ? '#ef4444' : order.status === 'completed' ? '#22c55e' : '#3b82f6' }}
                        onClick={() => openOrderModal(order)}
                     >
@@ -459,7 +540,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                              <div>
                                 <p className="font-bold text-stone-800 leading-tight">{order.customer_name}</p>
                                 <p className="text-xs text-stone-500 mt-0.5 flex items-center gap-1">
-                                   <Clock className="w-3 h-3" /> {new Date(order.created_at).toLocaleTimeString().slice(0, 5)}
+                                   <Clock className="w-3 h-3" /> {new Date(order.created_at).toLocaleTimeString().slice(0, 5)} - {new Date(order.created_at).toLocaleDateString()}
                                 </p>
                              </div>
                           </div>
@@ -470,6 +551,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                 <span className="font-bold text-stone-800">R$ {(order.total || 0).toFixed(2)}</span>
                              </div>
                           </div>
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors pointer-events-none" />
                        </div>
                     </Card>
                  ))
@@ -513,13 +595,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                    </div>
                    
                    {isExpanded && (
-                       <div className="border-t border-stone-200 bg-white animate-in slide-in-from-top-2 duration-200">
+                       <div className="border-t border-stone-200 bg-white">
                           <div className="p-3 bg-stone-50 border-b border-stone-100 flex justify-end">
                              <button onClick={() => openProductModal(cat.id)} className="bg-stone-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-stone-800 shadow-sm"><Plus className="w-3 h-3" /> Adicionar Produto</button>
                           </div>
                           <div className="divide-y divide-stone-100">
-                             {cat.items.map(product => (
-                                <div key={product.id} className="p-3 flex items-center justify-between hover:bg-stone-50 transition-colors group">
+                             {cat.items.map((product, index) => (
+                                <div key={`${product.id}-${index}`} className="p-3 flex items-center justify-between hover:bg-stone-50 transition-colors group">
                                    <div className="flex items-center gap-3">
                                       <div className="w-12 h-12 bg-stone-100 rounded-lg overflow-hidden relative shrink-0 border border-stone-200">
                                          {product.image ? <img src={product.image} className="w-full h-full object-cover" /> : <ImageIcon className="w-5 h-5 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-stone-300" />}
@@ -683,32 +765,99 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
            <Card className="p-6 space-y-4">
               <h3 className="font-bold border-b border-stone-100 pb-2 mb-4 flex items-center gap-2 text-stone-800"><Palette className="w-4 h-4" /> Identidade Visual</h3>
               <Input label="Nome da Loja" value={settingsForm.name} onChange={(e: any) => setSettingsForm({...settingsForm, name: e.target.value})} />
+              
+              <ImageInput 
+                 label="Logo da Loja" 
+                 value={settingsForm.logoUrl} 
+                 onChange={(val) => setSettingsForm({...settingsForm, logoUrl: val})} 
+                 roundPreview={true}
+              />
+              
+              <ImageInput 
+                 label="Favicon (Ícone da Aba)" 
+                 value={settingsForm.faviconUrl || ''} 
+                 onChange={(val) => setSettingsForm({...settingsForm, faviconUrl: val})} 
+              />
+              
+              {/* Cores Principais */}
               <div className="grid grid-cols-2 gap-4">
                  <Input label="Cor Primária" type="color" value={settingsForm.colors?.primary || '#C8102E'} onChange={(e: any) => setSettingsForm({...settingsForm, colors: { ...settingsForm.colors, primary: e.target.value } as any})} />
                  <Input label="Cor Secundária" type="color" value={settingsForm.colors?.secondary || '#008C45'} onChange={(e: any) => setSettingsForm({...settingsForm, colors: { ...settingsForm.colors, secondary: e.target.value } as any})} />
               </div>
-              <Input label="URL do Logo" value={settingsForm.logoUrl} onChange={(e: any) => setSettingsForm({...settingsForm, logoUrl: e.target.value})} placeholder="https://..." />
-           </Card>
+              
+              {/* Botões dos Cards */}
+              <div className="border-t border-stone-100 pt-4 mt-2">
+                 <h4 className="text-sm font-bold text-stone-800 mb-3 flex items-center gap-2">Botões dos Cards (Produto)</h4>
+                 <div className="grid grid-cols-2 gap-4">
+                    <Input label="Fundo do Botão" type="color" value={settingsForm.colors?.cardButtonBackground || settingsForm.colors?.primary || '#C8102E'} onChange={(e: any) => setSettingsForm({...settingsForm, colors: { ...settingsForm.colors, cardButtonBackground: e.target.value } as any})} />
+                    <Input label="Texto do Botão" type="color" value={settingsForm.colors?.cardButtonText || '#FFFFFF'} onChange={(e: any) => setSettingsForm({...settingsForm, colors: { ...settingsForm.colors, cardButtonText: e.target.value } as any})} />
+                 </div>
+              </div>
 
-           <Card className="p-6 space-y-4">
-              <h3 className="font-bold border-b border-stone-100 pb-2 mb-4 flex items-center gap-2 text-stone-800"><Store className="w-4 h-4" /> Contato & Local</h3>
-              <Input label="WhatsApp (Ex: 5511999999999)" value={settingsForm.whatsapp} onChange={(e: any) => setSettingsForm({...settingsForm, whatsapp: e.target.value})} />
-              <div className="w-full">
-                <label className="block text-xs font-bold text-stone-600 uppercase mb-1.5">Endereço Completo</label>
-                <textarea rows={3} className="w-full p-2.5 bg-white border border-stone-300 rounded-lg text-sm text-stone-900 focus:ring-2 focus:ring-stone-800 outline-none" value={settingsForm.address} onChange={(e: any) => setSettingsForm({...settingsForm, address: e.target.value})} />
+              {/* Tema Claro */}
+              <div className="border-t border-stone-100 pt-4 mt-2">
+                 <h4 className="text-sm font-bold text-stone-800 mb-3 flex items-center gap-2">☀️ Modo Claro (Light)</h4>
+                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <Input label="Fundo da Página" type="color" value={settingsForm.colors?.modes?.light?.background || '#f5f5f4'} onChange={(e: any) => updateColorMode('light', 'background', e.target.value)} />
+                    <Input label="Fundo dos Cards" type="color" value={settingsForm.colors?.modes?.light?.cardBackground || '#ffffff'} onChange={(e: any) => updateColorMode('light', 'cardBackground', e.target.value)} />
+                    <Input label="Cor do Texto" type="color" value={settingsForm.colors?.modes?.light?.text || '#292524'} onChange={(e: any) => updateColorMode('light', 'text', e.target.value)} />
+                    <Input label="Texto dos Cards" type="color" value={settingsForm.colors?.modes?.light?.cardText || '#1c1917'} onChange={(e: any) => updateColorMode('light', 'cardText', e.target.value)} />
+                    <Input label="Bordas" type="color" value={settingsForm.colors?.modes?.light?.border || '#e7e5e4'} onChange={(e: any) => updateColorMode('light', 'border', e.target.value)} />
+                 </div>
+              </div>
+
+              {/* Tema Escuro */}
+              <div className="border-t border-stone-100 pt-4 mt-2">
+                 <h4 className="text-sm font-bold text-stone-800 mb-3 flex items-center gap-2">🌑 Modo Escuro (Dark)</h4>
+                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <Input label="Fundo da Página" type="color" value={settingsForm.colors?.modes?.dark?.background || '#0c0a09'} onChange={(e: any) => updateColorMode('dark', 'background', e.target.value)} />
+                    <Input label="Fundo dos Cards" type="color" value={settingsForm.colors?.modes?.dark?.cardBackground || '#1c1917'} onChange={(e: any) => updateColorMode('dark', 'cardBackground', e.target.value)} />
+                    <Input label="Cor do Texto" type="color" value={settingsForm.colors?.modes?.dark?.text || '#f5f5f4'} onChange={(e: any) => updateColorMode('dark', 'text', e.target.value)} />
+                    <Input label="Texto dos Cards" type="color" value={settingsForm.colors?.modes?.dark?.cardText || '#ffffff'} onChange={(e: any) => updateColorMode('dark', 'cardText', e.target.value)} />
+                    <Input label="Bordas" type="color" value={settingsForm.colors?.modes?.dark?.border || '#292524'} onChange={(e: any) => updateColorMode('dark', 'border', e.target.value)} />
+                 </div>
               </div>
            </Card>
 
-           <Card className="p-6 space-y-4">
-              <h3 className="font-bold border-b border-stone-100 pb-2 mb-4 flex items-center gap-2 text-stone-800"><Clock className="w-4 h-4" /> Funcionamento</h3>
-              <Input label="Texto de Horário" value={settingsForm.openingHours} onChange={(e: any) => setSettingsForm({...settingsForm, openingHours: e.target.value})} />
-              <div className="space-y-3 pt-2">
-                 <label className="flex items-center gap-3 cursor-pointer p-3 border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors bg-white">
-                    <input type="checkbox" checked={settingsForm.enableTableOrder} onChange={e => setSettingsForm({...settingsForm, enableTableOrder: e.target.checked})} className="w-5 h-5 rounded text-stone-900" />
-                    <span className="text-sm font-bold text-stone-800">Habilitar Pedidos na Mesa</span>
-                 </label>
-              </div>
-           </Card>
+           <div className="space-y-6">
+               <Card className="p-6 space-y-4">
+                  <h3 className="font-bold border-b border-stone-100 pb-2 mb-4 flex items-center gap-2 text-stone-800"><Globe className="w-4 h-4" /> SEO & Compartilhamento</h3>
+                  <div className="space-y-3">
+                      <Input label="Título da Página (SEO)" value={settingsForm.seoTitle || ''} onChange={(e: any) => setSettingsForm({...settingsForm, seoTitle: e.target.value})} placeholder="Ex: Spagnolli Pizzaria - A Melhor da Cidade" />
+                      
+                      <div className="w-full">
+                        <label className="block text-xs font-bold text-stone-600 uppercase mb-1.5">Descrição (SEO & WhatsApp)</label>
+                        <textarea rows={3} className="w-full p-2.5 bg-white border border-stone-300 rounded-lg text-sm text-stone-900 focus:ring-2 focus:ring-stone-800 outline-none" value={settingsForm.seoDescription || ''} onChange={(e: any) => setSettingsForm({...settingsForm, seoDescription: e.target.value})} placeholder="Descrição curta que aparece no Google e ao compartilhar o link..." />
+                      </div>
+
+                      <ImageInput 
+                         label="Imagem de Compartilhamento (Banner)" 
+                         value={settingsForm.seoBannerUrl || ''} 
+                         onChange={(val) => setSettingsForm({...settingsForm, seoBannerUrl: val})} 
+                      />
+                  </div>
+               </Card>
+
+               <Card className="p-6 space-y-4">
+                  <h3 className="font-bold border-b border-stone-100 pb-2 mb-4 flex items-center gap-2 text-stone-800"><Store className="w-4 h-4" /> Contato & Local</h3>
+                  <Input label="WhatsApp (Ex: 5511999999999)" value={settingsForm.whatsapp} onChange={(e: any) => setSettingsForm({...settingsForm, whatsapp: e.target.value})} />
+                  <div className="w-full">
+                    <label className="block text-xs font-bold text-stone-600 uppercase mb-1.5">Endereço Completo</label>
+                    <textarea rows={3} className="w-full p-2.5 bg-white border border-stone-300 rounded-lg text-sm text-stone-900 focus:ring-2 focus:ring-stone-800 outline-none" value={settingsForm.address} onChange={(e: any) => setSettingsForm({...settingsForm, address: e.target.value})} />
+                  </div>
+               </Card>
+
+               <Card className="p-6 space-y-4">
+                  <h3 className="font-bold border-b border-stone-100 pb-2 mb-4 flex items-center gap-2 text-stone-800"><Clock className="w-4 h-4" /> Funcionamento</h3>
+                  <Input label="Texto de Horário" value={settingsForm.openingHours} onChange={(e: any) => setSettingsForm({...settingsForm, openingHours: e.target.value})} />
+                  <div className="space-y-3 pt-2">
+                     <label className="flex items-center gap-3 cursor-pointer p-3 border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors bg-white">
+                        <input type="checkbox" checked={settingsForm.enableTableOrder} onChange={e => setSettingsForm({...settingsForm, enableTableOrder: e.target.checked})} className="w-5 h-5 rounded text-stone-900" />
+                        <span className="text-sm font-bold text-stone-800">Habilitar Pedidos na Mesa</span>
+                     </label>
+                  </div>
+               </Card>
+           </div>
            
            <Card className="lg:col-span-2 p-6 space-y-4">
                <h3 className="font-bold border-b border-stone-100 pb-2 mb-4 flex items-center gap-2 text-stone-800"><Zap className="w-4 h-4" /> Integrações (IA & API)</h3>

@@ -1,5 +1,4 @@
 
-
 import { Category, StoreSettings, WeeklySchedule } from './types';
 
 const DEFAULT_SCHEDULE: WeeklySchedule = {
@@ -81,14 +80,14 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   youtube: '',
   googleBusiness: '',
   
-  enableTableOrder: true, // Default to true so it appears immediately
+  enableTableOrder: true, 
 
   openaiApiKey: '',
   aiSystemPrompt: ''
 };
 
-export const WHATSAPP_NUMBER = DEFAULT_SETTINGS.whatsapp; // Legacy support if needed
-export const LOGO_URL = DEFAULT_SETTINGS.logoUrl; // Legacy support
+export const WHATSAPP_NUMBER = DEFAULT_SETTINGS.whatsapp; 
+export const LOGO_URL = DEFAULT_SETTINGS.logoUrl; 
 
 // Image Constants
 const IMG_PROMO = 'https://images.unsplash.com/photo-1604382354936-07c5d9983bd3?q=80&w=800&auto=format&fit=crop';
@@ -105,7 +104,7 @@ const IMG_DRINKS = 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97
 
 // Fallback images for categories
 export const CATEGORY_IMAGES: Record<string, string> = {
-  'promocoes': 'https://cdn-icons-png.flaticon.com/512/726/726476.png', // Ou uma foto de oferta
+  'promocoes': 'https://cdn-icons-png.flaticon.com/512/726/726476.png', 
   'esfihas': IMG_ESFIHA_MEAT,
   'esfihas-doces': IMG_SWEET,
   'beirutes': IMG_BEIRUTE,
