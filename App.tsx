@@ -105,6 +105,7 @@ function App() {
   const [tableNumber, setTableNumber] = useState<string | null>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const isManualScrolling = useRef(false);
+  const [view, setView] = useState<'customer' | 'admin'>('customer');
   
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -114,6 +115,18 @@ function App() {
     }
     return false;
   });
+
+  // Check for #admin hash on load
+  useEffect(() => {
+    const handleHashChange = () => {
+      if (window.location.hash === '#admin') {
+        setView('admin');
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    handleHashChange(); // Check on initial load
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   // PWA Service Worker Registration
   useEffect(() => {
@@ -343,7 +356,6 @@ function App() {
   useEffect(() => { fetchData(); }, []);
   useEffect(() => { if (!loading && menuData.length > 0) { const hash = window.location.hash; if (hash && hash.startsWith('#product-')) { setTimeout(() => { const element = document.querySelector(hash); if (element) { element.scrollIntoView({ behavior: 'smooth', block: 'center' }); const card = element.closest('.group') || element.parentElement; if (card) { card.classList.add('ring-4', 'ring-italian-red', 'ring-opacity-50'); setTimeout(() => card.classList.remove('ring-4', 'ring-italian-red', 'ring-opacity-50'), 2500); } } }, 1000); } } }, [loading, menuData]);
 
-  const [view, setView] = useState<'customer' | 'admin'>('customer');
   const [cartItems, setCartItems] = useState<CartItem[]>(() => { try { const savedCart = localStorage.getItem('spagnolli_cart'); if (!savedCart) return []; const parsed = JSON.parse(savedCart); if (Array.isArray(parsed)) return parsed.filter(isValidCartItem).map(item => ({ ...item, observation: item.observation || '', selectedOptions: item.selectedOptions || [] })); return []; } catch (error) { return []; } });
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState('');

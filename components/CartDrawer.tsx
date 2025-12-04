@@ -324,7 +324,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     if (!paymentMethod) { alert('Por favor, selecione a forma de pagamento.'); return; }
     
     // Validate Mesa
-    if (deliveryType === 'table' && !tableNumber && !manualTableNumber) {
+    const finalTableNumber = tableNumber || manualTableNumber;
+    if (deliveryType === 'table' && !finalTableNumber) {
         alert("Por favor, informe o número da mesa.");
         return;
     }
@@ -360,7 +361,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
     setIsSubmitting(true);
     let orderId = null;
-    const finalTableNumber = tableNumber || manualTableNumber;
 
     const cleanItems = items.map(i => ({
       id: i.id,
@@ -418,7 +418,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     }
 
     // Se for mesa, finaliza o fluxo aqui (com sucesso ou erro)
-    if (deliveryType === 'table') {
+    if (deliveryType === 'table' && enableTableOrder) {
         if (saveSuccess) {
             setOrderSuccess(true);
             if (onClearCart) onClearCart();
