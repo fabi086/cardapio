@@ -85,12 +85,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     : ['Dinheiro', 'Cartão de Crédito', 'Cartão de Débito', 'PIX'];
 
   useEffect(() => {
-    if (tableNumber) {
+    if (tableNumber && enableTableOrder) {
       setDeliveryType('table');
     } else if (deliveryType === 'table' && !enableTableOrder) {
       setDeliveryType('delivery');
     }
-  }, [tableNumber, enableTableOrder]);
+  }, [tableNumber, enableTableOrder, isOpen]);
 
   useEffect(() => {
     if (isOpen) {
@@ -413,22 +413,21 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         }
       } catch (err: any) {
          console.error("Erro Conexão:", err);
+         if(deliveryType === 'table') alert("Erro de conexão ao enviar para cozinha. Por favor, chame o garçom.");
       }
     }
 
-    // Se for mesa e salvou, finaliza aqui
+    // Se for mesa, finaliza o fluxo aqui (com sucesso ou erro)
     if (deliveryType === 'table') {
         if (saveSuccess) {
             setOrderSuccess(true);
-            setIsSubmitting(false);
             if (onClearCart) onClearCart();
-        } else {
-            setIsSubmitting(false);
         }
+        setIsSubmitting(false);
         return;
     }
 
-    // Se for Delivery/Retirada, abre WhatsApp
+    // Continua para o WhatsApp se for Delivery/Retirada
     let message = `*NOVO PEDIDO ${orderId ? `#${orderId} ` : ''}- ${storeName}*\n`;
     message += `------------------------------\n`;
     
@@ -611,7 +610,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     </div>
                 )}
 
-                {/* Upsell (Simple) */}
                 {items.length > 0 && (
                     <div className="bg-stone-100 dark:bg-stone-800/50 p-3 rounded-xl border border-dashed border-stone-300 dark:border-stone-700">
                         <div className="flex justify-between items-center mb-2">

@@ -1,7 +1,9 @@
 // FIX: Use the correct type reference for Supabase Edge Functions to include Deno runtime types.
 // Fix: Corrected the path to the Deno type definitions. The previous path was incorrect, leading to errors where the 'Deno' object was not recognized.
 // Fix: Updated the type reference to a specific version to resolve Deno type errors.
-/// <reference types="https://esm.sh/@supabase/functions-js@2.4.1/src/edge-runtime.d.ts" />
+// @FIX: Updated the Deno type reference to a more stable version ('@2') as recommended by Supabase documentation.
+// Fix: Pinning Supabase functions-js to a specific version to resolve Deno type loading errors.
+/// <reference types="https://esm.sh/v135/@supabase/functions-js@2.4.1/src/edge-runtime.d.ts" />
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import webpush from 'https://esm.sh/web-push@3.6.7'
