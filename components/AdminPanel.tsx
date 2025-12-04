@@ -1,23 +1,24 @@
 
-
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Category, Product, StoreSettings, Order, Coupon, Table, ProductOption, ProductChoice, DeliveryRegion } from '../types';
 import { 
   Save, ArrowLeft, RefreshCw, Edit3, Plus, Settings, Trash2, 
   Image as ImageIcon, Grid, MapPin, X, Check, Ticket, QrCode, 
   Clock, CreditCard, LayoutDashboard, ShoppingBag, Zap, LogOut, 
   Menu, ChevronDown, ChevronUp, TrendingUp, Users,
-  Utensils, Bike, Store, List, Palette, Globe, Printer, Upload, FileImage
+  Utensils, Bike, Store, List, Palette, Globe, Printer, Upload, FileImage, Truck,
+  Bell, BellRing // Ícones novos
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
-// --- HELPER COMPONENTS ---
+// --- HELPER COMPONENTS (Moved outside AdminPanel to prevent re-renders) ---
 
 interface CardProps {
   children?: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
   onClick?: () => void;
+  key?: any; // Add key prop
 }
 
 const Card: React.FC<CardProps> = ({ children, className = '', style, onClick }) => (
@@ -76,7 +77,6 @@ const Badge = ({ children, color = 'gray' }: { children?: React.ReactNode, color
    return <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wide ${colors[color] || colors.gray}`}>{children}</span>
 };
 
-// --- IMAGE UPLOAD HELPER ---
 const ImageInput = ({ label, value, onChange, roundPreview = false }: { label: string, value: string, onChange: (val: string) => void, roundPreview?: boolean }) => {
     const [uploading, setUploading] = useState(false);
 
@@ -112,7 +112,6 @@ const ImageInput = ({ label, value, onChange, roundPreview = false }: { label: s
                 const ctx = canvas.getContext('2d');
                 ctx?.drawImage(img, 0, 0, width, height);
                 
-                // Compress to JPEG 70% quality
                 const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
                 onChange(dataUrl);
                 setUploading(false);
@@ -162,6 +161,7 @@ interface AdminPanelProps {
   onAddCategory: (name: string) => void;
   onUpdateCategory: (id: string, updates: { name?: string; image?: string }) => void;
   onDeleteCategory: (id: string) => void;
+  onSubscribeToPush: () => void; // New prop for push subscription
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -185,14 +185,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onBack,
   onAddCategory,
   onUpdateCategory,
-  onDeleteCategory
+  onDeleteCategory,
+  onSubscribeToPush
 }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'menu' | 'coupons' | 'tables' | 'settings' | 'integrations'>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  
   // --- DATA STATES ---
   const [orders, setOrders] = useState<Order[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
@@ -218,16 +220,30 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [productForm, setProductForm] = useState<Partial<Product>>({});
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
 
+  // Delivery Region Modal
+  const [isRegionModalOpen, setIsRegionModalOpen] = useState(false);
+  const [editingRegion, setEditingRegion] = useState<DeliveryRegion | null>(null);
+  const [regionForm, setRegionForm] = useState<Partial<DeliveryRegion>>({});
+
+  useEffect(() => {
+    // Check if a subscription already exists
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then(reg => {
+        reg.pushManager.getSubscription().then(sub => {
+          if (sub) {
+            setIsSubscribed(true);
+          }
+        });
+      });
+    }
+  }, []);
+
   // Init Data
   useEffect(() => {
     if (isAuthenticated && supabase) {
       fetchOrders();
       fetchCoupons();
       fetchTables();
-      const sub = supabase.channel('admin-realtime')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, fetchOrders)
-          .subscribe();
-      return () => { supabase.removeChannel(sub); };
     }
   }, [isAuthenticated]);
 
@@ -257,7 +273,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         console.error(e);
     }
   };
-
+  
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (password === 'admin123') setIsAuthenticated(true);
@@ -288,10 +304,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         table: validOrders.filter(o => o.delivery_type === 'table').length
      };
      
-     // Top Products
      const productCounts: Record<string, number> = {};
      validOrders.forEach(order => {
-         // Protection against null items
          if (Array.isArray(order.items)) {
              order.items.forEach(item => {
                 if (item && item.name) {
@@ -364,7 +378,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       );
   };
 
-  // Helper function to safely update nested color state
   const updateColorMode = (mode: 'light' | 'dark', key: string, value: string) => {
       const currentColors = settingsForm.colors || { primary: '#C8102E', secondary: '#008C45' };
       const currentModes = currentColors.modes || {
@@ -385,6 +398,50 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               }
           }
       });
+  };
+
+  const handleOpenRegionModal = (region?: DeliveryRegion) => {
+      if (region) {
+          setEditingRegion(region);
+          setRegionForm(region);
+      } else {
+          setEditingRegion(null);
+          setRegionForm({
+              id: Date.now().toString(),
+              name: '',
+              price: 0,
+              zipRules: [],
+              zipExclusions: [],
+              neighborhoods: []
+          });
+      }
+      setIsRegionModalOpen(true);
+  };
+
+  const handleSaveRegion = () => {
+      if (!regionForm.name) {
+          alert('Nome da região é obrigatório');
+          return;
+      }
+
+      const newRegion = regionForm as DeliveryRegion;
+      let newRegions = [...(settingsForm.deliveryRegions || [])];
+
+      if (editingRegion) {
+          newRegions = newRegions.map(r => r.id === editingRegion.id ? newRegion : r);
+      } else {
+          newRegions.push(newRegion);
+      }
+
+      setSettingsForm({ ...settingsForm, deliveryRegions: newRegions });
+      setIsRegionModalOpen(false);
+  };
+
+  const handleDeleteRegion = (id: string) => {
+      if (confirm('Excluir esta região?')) {
+          const newRegions = (settingsForm.deliveryRegions || []).filter(r => r.id !== id);
+          setSettingsForm({ ...settingsForm, deliveryRegions: newRegions });
+      }
   };
 
   // --- RENDERERS ---
@@ -761,6 +818,25 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
            </Button>
         </div>
 
+        <Card className="p-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h3 className="font-bold text-lg flex items-center gap-2 text-stone-800"><Bell className="w-5 h-5" /> Notificações de Pedidos</h3>
+                    <p className="text-sm text-stone-500 mt-1">Receba uma notificação no seu dispositivo a cada novo pedido, mesmo com o navegador fechado.</p>
+                </div>
+                {isSubscribed ? (
+                    <div className="flex items-center gap-2 text-green-600 bg-green-50 px-3 py-2 rounded-lg border border-green-200">
+                        <BellRing className="w-5 h-5" />
+                        <span className="font-bold text-sm">Notificações Ativadas</span>
+                    </div>
+                ) : (
+                    <Button onClick={onSubscribeToPush}>
+                        Ativar Notificações Push
+                    </Button>
+                )}
+            </div>
+        </Card>
+
         <div className="grid lg:grid-cols-2 gap-6">
            <Card className="p-6 space-y-4">
               <h3 className="font-bold border-b border-stone-100 pb-2 mb-4 flex items-center gap-2 text-stone-800"><Palette className="w-4 h-4" /> Identidade Visual</h3>
@@ -779,13 +855,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                  onChange={(val) => setSettingsForm({...settingsForm, faviconUrl: val})} 
               />
               
-              {/* Cores Principais */}
               <div className="grid grid-cols-2 gap-4">
                  <Input label="Cor Primária" type="color" value={settingsForm.colors?.primary || '#C8102E'} onChange={(e: any) => setSettingsForm({...settingsForm, colors: { ...settingsForm.colors, primary: e.target.value } as any})} />
                  <Input label="Cor Secundária" type="color" value={settingsForm.colors?.secondary || '#008C45'} onChange={(e: any) => setSettingsForm({...settingsForm, colors: { ...settingsForm.colors, secondary: e.target.value } as any})} />
               </div>
               
-              {/* Botões dos Cards */}
               <div className="border-t border-stone-100 pt-4 mt-2">
                  <h4 className="text-sm font-bold text-stone-800 mb-3 flex items-center gap-2">Botões dos Cards (Produto)</h4>
                  <div className="grid grid-cols-2 gap-4">
@@ -794,7 +868,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                  </div>
               </div>
 
-              {/* Tema Claro */}
               <div className="border-t border-stone-100 pt-4 mt-2">
                  <h4 className="text-sm font-bold text-stone-800 mb-3 flex items-center gap-2">☀️ Modo Claro (Light)</h4>
                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -806,7 +879,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                  </div>
               </div>
 
-              {/* Tema Escuro */}
               <div className="border-t border-stone-100 pt-4 mt-2">
                  <h4 className="text-sm font-bold text-stone-800 mb-3 flex items-center gap-2">🌑 Modo Escuro (Dark)</h4>
                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -820,6 +892,45 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
            </Card>
 
            <div className="space-y-6">
+               <Card className="p-6 space-y-4">
+                  <h3 className="font-bold border-b border-stone-100 pb-2 mb-4 flex items-center gap-2 text-stone-800"><Truck className="w-4 h-4" /> Configurações de Entrega</h3>
+                  
+                  <div className="space-y-4">
+                      <label className="flex items-center gap-3 cursor-pointer p-3 border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors bg-white">
+                        <input type="checkbox" checked={settingsForm.freeShipping} onChange={e => setSettingsForm({...settingsForm, freeShipping: e.target.checked})} className="w-5 h-5 rounded text-stone-900" />
+                        <span className="text-sm font-bold text-stone-800">Ativar Frete Grátis Global</span>
+                      </label>
+                      
+                      <div className="space-y-3">
+                          <div className="flex justify-between items-center">
+                              <h4 className="text-xs font-bold text-stone-600 uppercase">Regiões de Entrega</h4>
+                              <button onClick={() => handleOpenRegionModal()} className="text-xs text-blue-600 font-bold hover:underline">+ Adicionar Região</button>
+                          </div>
+                          
+                          {(settingsForm.deliveryRegions || []).length === 0 ? (
+                              <p className="text-xs text-stone-400 italic">Nenhuma região configurada.</p>
+                          ) : (
+                              <div className="space-y-2">
+                                  {(settingsForm.deliveryRegions || []).map((region) => (
+                                      <div key={region.id} className="flex justify-between items-center p-3 bg-stone-50 border border-stone-200 rounded-lg">
+                                          <div>
+                                              <p className="font-bold text-sm text-stone-800">{region.name}</p>
+                                              <p className="text-xs text-stone-500">
+                                                Taxa: {region.price === 0 ? <span className="text-green-600 font-bold">Grátis</span> : `R$ ${region.price.toFixed(2)}`}
+                                              </p>
+                                          </div>
+                                          <div className="flex gap-2">
+                                              <button onClick={() => handleOpenRegionModal(region)} className="p-1.5 bg-white border border-stone-200 rounded hover:bg-stone-100"><Edit3 className="w-3 h-3 text-stone-600" /></button>
+                                              <button onClick={() => handleDeleteRegion(region.id)} className="p-1.5 bg-white border border-stone-200 rounded hover:bg-red-50 hover:border-red-200"><Trash2 className="w-3 h-3 text-red-500" /></button>
+                                          </div>
+                                      </div>
+                                  ))}
+                              </div>
+                          )}
+                      </div>
+                  </div>
+               </Card>
+
                <Card className="p-6 space-y-4">
                   <h3 className="font-bold border-b border-stone-100 pb-2 mb-4 flex items-center gap-2 text-stone-800"><Globe className="w-4 h-4" /> SEO & Compartilhamento</h3>
                   <div className="space-y-3">
@@ -981,6 +1092,57 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
      );
   };
 
+  const RegionEditorModal = () => {
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsRegionModalOpen(false)} />
+            <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col animate-in fade-in zoom-in-95 max-h-[90vh]">
+                <div className="p-4 border-b border-stone-100 flex justify-between items-center bg-stone-50">
+                    <h3 className="font-bold text-lg">{editingRegion ? 'Editar Região' : 'Nova Região de Entrega'}</h3>
+                    <button onClick={() => setIsRegionModalOpen(false)}><X className="w-6 h-6 text-stone-400" /></button>
+                </div>
+                <div className="p-6 overflow-y-auto space-y-4">
+                    <Input label="Nome da Região (Ex: Centro, Zona Norte)" value={regionForm.name || ''} onChange={(e: any) => setRegionForm({...regionForm, name: e.target.value})} />
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                        <Input type="number" label="Taxa de Entrega (R$)" value={regionForm.price || ''} onChange={(e: any) => setRegionForm({...regionForm, price: parseFloat(e.target.value)})} placeholder="0.00" />
+                    </div>
+                    <p className="text-xs text-stone-500">Dica: Coloque R$ 0,00 para frete grátis nesta região.</p>
+
+                    <div className="w-full">
+                        <label className="block text-xs font-bold text-stone-600 uppercase mb-1.5">CEPs Atendidos (Opcional)</label>
+                        <textarea 
+                            rows={3} 
+                            className="w-full p-2.5 bg-white border border-stone-300 rounded-lg text-sm text-stone-900 focus:ring-2 focus:ring-stone-800 outline-none font-mono" 
+                            value={(regionForm.zipRules || []).join(', ')} 
+                            onChange={(e: any) => setRegionForm({...regionForm, zipRules: e.target.value.split(',').map((s: string) => s.trim()).filter((s:string) => s)})} 
+                            placeholder="Ex: 13295000, 13295-000, 13200..." 
+                        />
+                        <p className="text-[10px] text-stone-400 mt-1">Separe por vírgula. Aceita faixas (Ex: 13000-14000) ou prefixos (Ex: 132).</p>
+                    </div>
+
+                    <div className="w-full">
+                        <label className="block text-xs font-bold text-stone-600 uppercase mb-1.5">Bairros (Opcional)</label>
+                        <textarea 
+                            rows={3} 
+                            className="w-full p-2.5 bg-white border border-stone-300 rounded-lg text-sm text-stone-900 focus:ring-2 focus:ring-stone-800 outline-none" 
+                            value={(regionForm.neighborhoods || []).join(', ')} 
+                            onChange={(e: any) => setRegionForm({...regionForm, neighborhoods: e.target.value.split(',').map((s: string) => s.trim()).filter((s:string) => s)})} 
+                            placeholder="Ex: Centro, Jardim Primavera, Vila Nova..." 
+                        />
+                        <p className="text-[10px] text-stone-400 mt-1">Útil se o cliente não souber o CEP.</p>
+                    </div>
+                </div>
+                <div className="p-4 border-t border-stone-100 flex justify-end gap-2 bg-stone-50">
+                    <Button variant="secondary" onClick={() => setIsRegionModalOpen(false)}>Cancelar</Button>
+                    <Button onClick={handleSaveRegion}>Salvar Região</Button>
+                </div>
+            </div>
+        </div>
+    );
+  };
+
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-stone-100 p-4 font-sans">
@@ -1062,6 +1224,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
        {isOrderModalOpen && <OrderDetailModal />}
        {isProductModalOpen && <ProductEditorModal />}
+       {isRegionModalOpen && <RegionEditorModal />}
     </div>
   );
 };

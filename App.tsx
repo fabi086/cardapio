@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { MENU_DATA, DEFAULT_SETTINGS, CATEGORY_IMAGES } from './data';
 import { Product, CartItem, Category, StoreSettings, WeeklySchedule } from './types';
@@ -17,6 +16,20 @@ import { OrderTrackerModal } from './components/OrderTrackerModal';
 import { AIAssistant } from './components/AIAssistant';
 import { ShoppingBag, Check, Loader2, Search, X, Filter, Clock, AlertCircle, HelpCircle, Leaf, Flame, Star, Zap, PieChart, ArrowUp } from 'lucide-react';
 import { supabase } from './supabaseClient';
+
+const VAPID_PUBLIC_KEY = 'BHk2e8GCT1rman0EBVAbb-7SHHg4bkOraHTytnSuCsAvP09oJ_LbeVTPxnLf1axl25ykS52WCo0wJaMcMzR59uw';
+
+// Helper function to convert VAPID key
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
 
 const isValidCartItem = (item: any): item is CartItem => {
   return (
@@ -101,6 +114,53 @@ function App() {
     }
     return false;
   });
+
+  // PWA Service Worker Registration
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').then(registration => {
+          console.log('SW registered: ', registration);
+        }).catch(registrationError => {
+          console.log('SW registration failed: ', registrationError);
+        });
+      });
+    }
+  }, []);
+
+  const subscribeUserToPush = async () => {
+    if (!('serviceWorker' in navigator) || !supabase) {
+      alert("Notificações Push não são suportadas neste navegador ou o Supabase não está conectado.");
+      return;
+    }
+  
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const existingSubscription = await registration.pushManager.getSubscription();
+  
+      if (existingSubscription) {
+        alert("Você já está inscrito para receber notificações.");
+        return;
+      }
+  
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+  
+      // Send subscription to your Supabase DB
+      const { error } = await supabase.from('push_subscriptions').insert([
+        { subscription_details: subscription, user_role: 'admin' },
+      ]);
+  
+      if (error) throw error;
+  
+      alert("Inscrição para notificações realizada com sucesso!");
+    } catch (err) {
+      console.error("Falha ao se inscrever para notificações push:", err);
+      alert("Falha ao se inscrever para notificações. Verifique as permissões no seu navegador.");
+    }
+  };
 
   useEffect(() => { const params = new URLSearchParams(window.location.search); const tableParam = params.get('mesa'); if (tableParam) setTableNumber(tableParam); }, []);
   
@@ -389,18 +449,11 @@ function App() {
   const handleResetMenu = () => { fetchData(); };
   
   const handleAddCategory = async (name: string) => {
-    const newId = name.toLowerCase().replace(/\s+/g, '-');
-    const newCat: Category = {
-      id: newId,
-      name: name,
-      items: []
-    };
-    
-    setMenuData(prev => [...prev, newCat]);
-    
-    if (supabase) {
-        await supabase.from('categories').insert([{ id: newId, name: name, order_index: menuData.length + 1 }]);
-    }
+    if (!supabase) return;
+    const newId = name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+    const { error } = await supabase.from('categories').insert([{ id: newId, name: name, order_index: menuData.length + 1 }]);
+    if (!error) fetchData();
+    else alert(`Erro ao criar categoria: ${error.message}`)
   };
 
   const handleUpdateCategory = async (id: string, updates: { name?: string; image?: string }) => { 
@@ -409,12 +462,20 @@ function App() {
   };
   
   const handleDeleteCategory = async (id: string) => {
-      setMenuData(prev => prev.filter(c => c.id !== id));
-      if (supabase) {
-          // Delete products first (cascade usually handles this but good to be safe)
-          await supabase.from('products').delete().eq('category_id', id);
-          await supabase.from('categories').delete().eq('id', id);
-      }
+    if (!supabase) return;
+    if (!confirm(`Tem certeza que deseja excluir a categoria "${id}" e TODOS os seus produtos? Esta ação não pode ser desfeita.`)) return;
+    try {
+      // We need to delete products in this category first due to foreign key constraints
+      const { error: prodError } = await supabase.from('products').delete().eq('category_id', id);
+      if (prodError) throw prodError;
+      
+      const { error: catError } = await supabase.from('categories').delete().eq('id', id);
+      if (catError) throw catError;
+
+      fetchData();
+    } catch (error: any) {
+        alert(`Erro ao excluir: ${error.message}`);
+    }
   };
 
   const addToCart = (product: Product, quantity: number = 1, observation: string = '', selectedOptions?: CartItem['selectedOptions']) => {
@@ -453,7 +514,7 @@ function App() {
   const pizzasForBuilder = menuData.find(c => c.id === pizzaBuilderCategory)?.items || [];
 
   if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin" /></div>;
-  if (view === 'admin') return <AdminPanel menuData={menuData} settings={storeSettings} onUpdateProduct={handleUpdateProduct} onAddProduct={handleAddProduct} onDeleteProduct={handleDeleteProduct} onUpdateSettings={handleUpdateSettings} onAddCategory={handleAddCategory} onUpdateCategory={handleUpdateCategory} onDeleteCategory={handleDeleteCategory} onResetMenu={handleResetMenu} onBack={() => setView('customer')} />;
+  if (view === 'admin') return <AdminPanel menuData={menuData} settings={storeSettings} onUpdateProduct={handleUpdateProduct} onAddProduct={handleAddProduct} onDeleteProduct={handleDeleteProduct} onUpdateSettings={handleUpdateSettings} onAddCategory={handleAddCategory} onUpdateCategory={handleUpdateCategory} onDeleteCategory={handleDeleteCategory} onResetMenu={handleResetMenu} onBack={() => setView('customer')} onSubscribeToPush={subscribeUserToPush} />;
   let firstProductFound = false;
 
   return (
